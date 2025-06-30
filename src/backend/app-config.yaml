@@ -10,7 +10,7 @@ LOCATION: global
 VIDEO_BUCKET_NAME: 504683450406-veo-generation
 # VIDEO_BUCKET_NAME: 504683450406-veo-generation
 
-SECRET_ID: ouduo-oauth-secret
+SECRET_ID: veo-oauth-secret
 
 ALLOWED_DOMAINS:
   - google.com
