@@ -1,0 +1,32 @@
+-i https://pypi.tuna.tsinghua.edu.cn/simple
+# FastAPI and Server
+fastapi
+uvicorn[standard]
+
+# Google Cloud Libraries
+google-cloud-aiplatform>=1.49.0
+google-cloud-storage
+google-cloud-secret-manager
+google-cloud-bigquery
+google-cloud-firestore
+google-auth
+google-genai
+
+# Authentication & Sessions
+authlib
+requests
+itsdangerous # Dependency for starlette sessions
+pyjwt # Dependency for authlib
+
+# Configuration and Utilities
+pyyaml
+python-dotenv
+
+# Image Processing
+Pillow
+
+# Video and Audio Processing
+moviepy==1.0.3
+google-cloud-texttospeech
+
+python-multipart

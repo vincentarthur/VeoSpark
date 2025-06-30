@@ -1,0 +1,34 @@
+# Configuration YAML for APP
+
+# Enable OAuth
+ENABLE_OAUTH: True
+
+# App metadata
+PROJECT_ID: genai-dnb-demo
+LOCATION: global
+# GEMINI_MODEL: gemini-2.5-flash
+VIDEO_BUCKET_NAME: 504683450406-veo-generation
+# VIDEO_BUCKET_NAME: 504683450406-veo-generation
+
+SECRET_ID: ouduo-oauth-secret
+
+ALLOWED_DOMAINS:
+  - google.com
+  - vwmc.altostrat.com
+
+# Role-Based Access Control
+COST_MANAGERS:
+  - vwmc@google.com
+
+# Analysis result (BigQuery)
+ENABLE_BIGQUERY_LOGGING: True
+ANALYSIS_DATASET: marketing_materials_analysis
+HISTORY_TABLE: veo_history
+
+# Logging
+LOGGER_NAME: veo.service
+LOGGING_FORMAT: "%(asctime)s [%(levelname)s]: %(message)s"
+
+# Prompt Gallery
+PROMPT_GALLERY_DB: "prompt-gallery"
+PROMPT_GALLERY_COLLECTION: 'prompts'

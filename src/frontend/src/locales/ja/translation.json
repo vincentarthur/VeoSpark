@@ -1,0 +1,99 @@
+{
+  "header": {
+    "title": "VeoSpark",
+    "logout": "ログアウト",
+    "toggleTheme": "テーマを切り替え"
+  },
+  "nav": {
+    "generator": "ビデオジェネレーター",
+    "history": "私の履歴",
+    "analytics": "分析",
+    "gallery": "プロンプトギャラリー"
+  },
+  "gallery": {
+    "search": "検索",
+    "addPrompt": "プロンプトを追加",
+    "listAll": "すべて表示",
+    "promptText": "プロンプトテキスト",
+    "tags": "タグ（カンマ区切り）",
+    "tagsHelper": "例：自然、映画風、4k",
+    "by": "作成者：",
+    "confirmDelete": "このプロンプトを削除してもよろしいですか？"
+  },
+  "dashboard": {
+    "title": "ビデオを作成",
+    "modelLabel": "モデル",
+    "promptLabel": "あなたのプロンプト",
+    "durationLabel": "長さ",
+    "seconds": "{{count}} 秒",
+    "aspectRatioLabel": "アスペクト比",
+    "videoCountLabel": "生成ビデオ数",
+    "v3options": "Veo 3.0 オプション",
+    "generateAudio": "オーディオを生成",
+    "enhancePrompt": "プロンプトを強化 (3.0 デフォルト)",
+    "cameraControlLabel": "カメラ制御 (実験的)",
+    "generateButton": "ビデオを生成",
+    "generatingStatus": "あなたの傑作を生成中... これには数分かかる場合があります。",
+    "uploadImage": "画像をアップロード"
+  },
+  "history": {
+    "title": "私の生成履歴",
+    "fetchButton": "履歴を取得",
+    "fetching": "取得中...",
+    "noHistory": "まだビデオを生成していません。",
+    "noResults": "フィルターに一致する記録は見つかりませんでした。",
+    "pressFetch": "「履歴を取得」をクリックして生成記録を表示します。",
+    "colDate": "日付",
+    "colPrompt": "プロンプト",
+    "colStatus": "ステータス",
+    "colModel": "モデル",
+    "colName": "ビデオ名",
+    "colPreview": "プレビュー",
+    "details": "詳細",
+    "fullPrompt": "完全なプロンプト",
+    "genDuration": "生成時間",
+    "completionTime": "完了時間",
+    "noPreview": "ビデオプレビューはありません。",
+    "actions": {
+      "preview": "プレビュー",
+      "clip": "クリップ",
+      "dub": "吹き替え"
+    },
+    "filters": {
+      "startDate": "開始日",
+      "endDate": "終了日",
+      "status": "ステータス",
+      "all": "すべて",
+      "editedOnly": "編集済みのみ",
+      "apply": "フィルター",
+      "clear": "フィルターをクリア"
+    }
+  },
+  "editModal": {
+    "clipTitle": "ビデオをクリップ",
+    "dubTitle": "吹き替えを追加",
+    "startTime": "開始時間 (秒)",
+    "endTime": "終了時間 (秒)",
+    "timeHelper": "数値を入力してください",
+    "dubText": "吹き替えテキスト"
+  },
+  "common": {
+    "submit": "送信",
+    "cancel": "キャンセル"
+  },
+  "analytics": {
+    "title": "モデルコスト分析",
+    "noData": "分析データはまだありません。",
+    "dailyConsumption": "毎日のコスト傾向",
+    "topUsers": "ユーザーコストランキング (トップ5)",
+    "modelDistribution": "モデル使用分布",
+    "totalSeconds": "合計秒数",
+    "secondsGenerated": "生成された秒数",
+    "totalCost": "総コスト (USD)",
+    "costUSD": "コスト (USD)",
+    "totalCostInRange": "総コスト（フィルター済み）"
+  },
+  "footer": {
+    "poweredBy": "Powered by Google Cloud"
+  }
+}

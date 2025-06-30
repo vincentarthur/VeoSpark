@@ -1,0 +1,99 @@
+{
+  "header": {
+    "title": "VeoSpark",
+    "logout": "Logout",
+    "toggleTheme": "Toggle Theme"
+  },
+  "nav": {
+    "generator": "Video Generator",
+    "history": "My History",
+    "analytics": "Analytics",
+    "gallery": "Prompt Gallery"
+  },
+  "gallery": {
+    "search": "Search",
+    "addPrompt": "Add Prompt",
+    "listAll": "List All",
+    "promptText": "Prompt Text",
+    "tags": "Tags (comma-separated)",
+    "tagsHelper": "e.g., nature, cinematic, 4k",
+    "by": "by",
+    "confirmDelete": "Are you sure you want to delete this prompt?"
+  },
+  "dashboard": {
+    "title": "Create a Video",
+    "modelLabel": "Model",
+    "promptLabel": "Your Prompt",
+    "durationLabel": "Duration",
+    "seconds": "{{count}} seconds",
+    "aspectRatioLabel": "Aspect Ratio",
+    "videoCountLabel": "Number of Videos",
+    "v3options": "Veo 3.0 Options",
+    "generateAudio": "Generate Audio",
+    "enhancePrompt": "Enhance Prompt (Default for 3.0)",
+    "cameraControlLabel": "Camera Control (Experimental)",
+    "generateButton": "Generate Video",
+    "generatingStatus": "Generating your masterpiece... this may take a few minutes.",
+    "uploadImage": "Upload Image"
+  },
+  "history": {
+    "title": "My Generation History",
+    "fetchButton": "Fetch History",
+    "fetching": "Fetching...",
+    "noHistory": "You haven't generated any videos yet.",
+    "noResults": "No records found matching your filters.",
+    "pressFetch": "Click 'Fetch History' to see your generations.",
+    "colDate": "Date",
+    "colPrompt": "Prompt",
+    "colStatus": "Status",
+    "colModel": "Model",
+    "colName": "Video Name",
+    "colPreview": "Preview",
+    "details": "Details",
+    "fullPrompt": "Full Prompt",
+    "genDuration": "Generation Duration",
+    "completionTime": "Completion Time",
+    "noPreview": "No video preview available.",
+    "actions": {
+      "preview": "Preview",
+      "clip": "Clip",
+      "dub": "Dub"
+    },
+    "filters": {
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "status": "Status",
+      "all": "All",
+      "editedOnly": "Edited Only",
+      "apply": "Filter",
+      "clear": "Clear Filter"
+    }
+  },
+  "editModal": {
+    "clipTitle": "Clip Video",
+    "dubTitle": "Add Voiceover",
+    "startTime": "Start Time (seconds)",
+    "endTime": "End Time (seconds)",
+    "timeHelper": "Please enter a number",
+    "dubText": "Voiceover Text"
+  },
+  "common": {
+    "submit": "Submit",
+    "cancel": "Cancel"
+  },
+  "analytics": {
+    "title": "Model Cost Analytics",
+    "noData": "No analytics data available yet.",
+    "dailyConsumption": "Daily Cost Trend",
+    "topUsers": "Top 5 Users by Cost",
+    "modelDistribution": "Model Usage Distribution",
+    "totalSeconds": "Total Seconds",
+    "secondsGenerated": "Seconds Generated",
+    "totalCost": "Total Cost (USD)",
+    "costUSD": "Cost (USD)",
+    "totalCostInRange": "Total Cost (Filtered)"
+  },
+  "footer": {
+    "poweredBy": "Powered by Google Cloud"
+  }
+}

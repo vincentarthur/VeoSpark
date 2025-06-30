@@ -1,0 +1,99 @@
+{
+  "header": {
+    "title": "VeoSpark",
+    "logout": "登出",
+    "toggleTheme": "切换主题"
+  },
+  "nav": {
+    "generator": "视频生成器",
+    "history": "我的历史",
+    "analytics": "消耗分析",
+    "gallery": "提示词画廊"
+  },
+  "gallery": {
+    "search": "搜索",
+    "addPrompt": "添加提示词",
+    "listAll": "列出全部",
+    "promptText": "提示词文本",
+    "tags": "标签（逗号分隔）",
+    "tagsHelper": "例如：自然、电影、4k",
+    "by": "由 ",
+    "confirmDelete": "您确定要删除此提示词吗？"
+  },
+  "dashboard": {
+    "title": "创建视频",
+    "modelLabel": "模型",
+    "promptLabel": "你的提示词",
+    "durationLabel": "时长",
+    "seconds": "{{count}} 秒",
+    "aspectRatioLabel": "宽高比",
+    "videoCountLabel": "生成视频数量",
+    "v3options": "Veo 3.0 选项",
+    "generateAudio": "生成音频",
+    "enhancePrompt": "优化提示词 (3.0 默认)",
+    "cameraControlLabel": "镜头控制 (实验性)",
+    "generateButton": "生成视频",
+    "generatingStatus": "正在生成您的杰作... 这可能需要几分钟。",
+    "uploadImage": "上传图片"
+  },
+  "history": {
+    "title": "我的生成历史",
+    "fetchButton": "获取历史",
+    "fetching": "获取中...",
+    "noHistory": "您还没有生成任何视频。",
+    "noResults": "没有找到符合筛选条件的记录。",
+    "pressFetch": "点击“获取历史”来查看您的生成记录。",
+    "colDate": "日期",
+    "colPrompt": "提示词",
+    "colStatus": "状态",
+    "colModel": "模型",
+    "colName": "视频名称",
+    "colPreview": "预览",
+    "details": "详情",
+    "fullPrompt": "完整提示词",
+    "genDuration": "生成耗时",
+    "completionTime": "完成时间",
+    "noPreview": "无视频预览。",
+    "actions": {
+      "preview": "预览",
+      "clip": "剪辑",
+      "dub": "配音"
+    },
+    "filters": {
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "status": "状态",
+      "all": "全部",
+      "editedOnly": "仅显示编辑后",
+      "apply": "筛选",
+      "clear": "清除筛选"
+    }
+  },
+  "editModal": {
+    "clipTitle": "剪辑视频",
+    "dubTitle": "添加配音",
+    "startTime": "开始时间 (秒)",
+    "endTime": "结束时间 (秒)",
+    "timeHelper": "请输入数字",
+    "dubText": "配音文本"
+  },
+  "common": {
+    "submit": "提交",
+    "cancel": "取消"
+  },
+  "analytics": {
+    "title": "模型成本分析",
+    "noData": "暂无分析数据。",
+    "dailyConsumption": "每日成本趋势",
+    "topUsers": "用户成本排行 (Top 5)",
+    "modelDistribution": "模型使用分布",
+    "totalSeconds": "总秒数",
+    "secondsGenerated": "生成秒数",
+    "totalCost": "总成本 (美元)",
+    "costUSD": "成本 (美元)",
+    "totalCostInRange": "总成本（已筛选）"
+  },
+  "footer": {
+    "poweredBy": "由 Google Cloud 强力驱动"
+  }
+}
