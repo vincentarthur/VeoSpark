@@ -4,8 +4,9 @@ import uuid
 import logging
 from pathlib import Path
 from typing import Tuple, Optional
+from datetime import datetime, timedelta, timezone
 
-from google.cloud import storage, texttospeech
+from google.cloud import storage, texttospeech, bigquery
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
 
 # ==============================================================================
@@ -168,3 +169,66 @@ def process_video_from_gcs(
         target_blob.upload_from_filename(output_path)
 
     return f"gs://{bucket_name}/{output_blob_name}", duration
+
+
+def check_quota(user_email: str, bq_client: bigquery.Client, config: dict, app_conf: dict) -> Tuple[bool, str]:
+    quota_config = config.get('quota', {})
+    quota_type = quota_config.get('type', 'NO_LIMIT')
+
+    if quota_type == 'NO_LIMIT':
+        return False, ""
+
+    limit = quota_config.get('limit')
+    period = quota_config.get('period', 'day')
+    now = datetime.now(timezone.utc)
+    
+    if period == 'day':
+        start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif period == 'week':
+        start_time = now - timedelta(days=now.weekday())
+        start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        return False, ""
+
+    query = f"""
+        SELECT
+            COUNT(*) as generation_count,
+            SUM(
+                CASE
+                    WHEN STARTS_WITH(model_used, 'veo-3.0') THEN
+                        CASE
+                            WHEN with_audio IS NOT FALSE THEN video_duration * 0.75
+                            ELSE video_duration * 0.50
+                        END
+                    WHEN STARTS_WITH(model_used, 'veo-2.0') THEN video_duration * 0.50
+                    ELSE 0
+                END
+            ) as total_cost
+        FROM `{bq_client.project}.{app_conf.get('ANALYSIS_DATASET')}.{app_conf.get('HISTORY_TABLE')}`
+        WHERE user_email = @user_email AND trigger_time >= @start_time AND status = 'SUCCESS'
+    """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("user_email", "STRING", user_email),
+            bigquery.ScalarQueryParameter("start_time", "TIMESTAMP", start_time),
+        ]
+    )
+    query_job = bq_client.query(query, job_config=job_config)
+    results = list(query_job.result())
+
+    if not results:
+        return False, ""
+
+    row = results[0]
+    generation_count = row.generation_count or 0
+    total_cost = row.total_cost or 0
+
+    if quota_type == 'GENERATION_QUANTITY' and generation_count >= limit:
+        message = f"Exceeded generation quota. Limit: {limit}, Current usage: {generation_count}."
+        return True, message
+    
+    if quota_type == 'COST_LIMIT' and total_cost >= limit:
+        message = f"Exceeded cost quota. Limit: ${limit:.2f}, Current usage: ${total_cost:.2f}."
+        return True, message
+
+    return False, ""

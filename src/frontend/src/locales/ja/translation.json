@@ -7,8 +7,9 @@
   "nav": {
     "generator": "ビデオジェネレーター",
     "history": "私の履歴",
-    "analytics": "分析",
-    "gallery": "プロンプトギャラリー"
+    "analytics": "アナリティクス",
+    "gallery": "プロンプトギャラリー",
+    "configurations": "設定"
   },
   "gallery": {
     "search": "検索",
@@ -95,5 +96,18 @@
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"
+  },
+  "configurations": {
+    "title": "設定",
+    "noLimit": "制限なし",
+    "costLimit": "コスト制限",
+    "generationQuantity": "生成数量",
+    "limit": "制限",
+    "period": "期間",
+    "daily": "毎日",
+    "weekly": "毎週",
+    "save": "保存",
+    "costLimitDescription": "生成されたビデオの総コスト（USD）に基づいてユーザーを制限します。",
+    "generationQuantityDescription": "生成されたビデオの総数に基づいてユーザーを制限します。"
   }
 }

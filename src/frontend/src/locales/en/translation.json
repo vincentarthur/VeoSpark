@@ -8,7 +8,8 @@
     "generator": "Video Generator",
     "history": "My History",
     "analytics": "Analytics",
-    "gallery": "Prompt Gallery"
+    "gallery": "Prompt Gallery",
+    "configurations": "Configurations"
   },
   "gallery": {
     "search": "Search",
@@ -106,5 +107,18 @@
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"
+  },
+  "configurations": {
+    "title": "Configurations",
+    "noLimit": "No Limit",
+    "costLimit": "Cost Limit",
+    "generationQuantity": "Generation Quantity",
+    "limit": "Limit",
+    "period": "Period",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "save": "Save",
+    "costLimitDescription": "Limit users based on the total cost of their generated videos (in USD).",
+    "generationQuantityDescription": "Limit users based on the total number of videos they have generated."
   }
 }

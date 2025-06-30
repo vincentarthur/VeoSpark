@@ -10,8 +10,11 @@ import { useEditingModal } from '../hooks/useEditingModal';
 import EditingModal from './EditingModal';
 
 // A simple component for displaying the generated video
-const FilmStripPlayer = ({ video, onEditClick }) => {
+const FilmStripPlayer = ({ video, onEditClick, title }) => {
   const { t } = useTranslation();
+  if (!video || !video.signed_url) {
+    return null;
+  }
   return (
     <Box
       sx={{
@@ -19,7 +22,6 @@ const FilmStripPlayer = ({ video, onEditClick }) => {
         p: '10px',
         pb: '20px',
         borderRadius: '8px',
-//        transform: 'rotate(-1deg)',
         boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
         display: 'inline-block',
       }}
@@ -44,20 +46,22 @@ const FilmStripPlayer = ({ video, onEditClick }) => {
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: '10px', px: 1 }}>
         <Typography variant="caption" sx={{ color: 'grey.500' }}>
-          VEO STUDIO - PREVIEW
+          {title}
         </Typography>
-        <Box>
-          <Tooltip title={t('history.actions.clip')}>
-            <IconButton size="small" onClick={() => onEditClick(video, 'clip')}>
-              <ContentCut sx={{ color: 'grey.400' }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('history.actions.dub')}>
-            <IconButton size="small" onClick={() => onEditClick(video, 'dub')}>
-              <Mic sx={{ color: 'grey.400' }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
+        {onEditClick && (
+          <Box>
+            <Tooltip title={t('history.actions.clip')}>
+              <IconButton size="small" onClick={() => onEditClick(video, 'clip')}>
+                <ContentCut sx={{ color: 'grey.400' }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('history.actions.dub')}>
+              <IconButton size="small" onClick={() => onEditClick(video, 'dub')}>
+                <Mic sx={{ color: 'grey.400' }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
       </Box>
     </Box>
   )
@@ -84,7 +88,7 @@ const LabeledSlider = ({ label, displayValue, ...sliderProps }) => {
 };
 
 const VEO_MODELS = {
-  'veo-3.0-generate-preview': 'Veo 3.0 Preview',
+  'veo-3.0-generate-preview': 'Veo 3.0',
   'veo-2.0-generate-001': 'Veo 2.0',
 };
 
@@ -118,7 +122,6 @@ const Dashboard = () => {
   const [extendDuration, setExtendDuration] = useState(5);
   const [gcsFetchError, setGcsFetchError] = useState(null);
   const [gcsPrefix, setGcsPrefix] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
   const [isFetchingGcs, setIsFetchingGcs] = useState(false);
 
 
@@ -364,11 +367,7 @@ const Dashboard = () => {
                 labelId="video-select-label"
                 value={selectedVideo}
                 label={isFetchingGcs ? t('dashboard.loadingVideos') : t('dashboard.selectVideoLabel')}
-                onChange={(e) => {
-                  const selected = userVideos.find(v => v.gcs_uri === e.target.value);
-                  setSelectedVideo(e.target.value);
-                  setPreviewUrl(selected ? selected.signed_url : '');
-                }}
+                onChange={(e) => setSelectedVideo(e.target.value)}
                 startAdornment={isFetchingGcs && <CircularProgress size={20} sx={{ mr: 1 }} />}
               >
                 {userVideos.map((video) => (
@@ -444,9 +443,9 @@ const Dashboard = () => {
             {loading ? <CircularProgress size={24} color="inherit" /> : t('dashboard.generateButton')}
         </Button>
       </Paper>
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, pt: 4 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 4, pt: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
         {loading && (
-          <Box sx={{ textAlign: 'center' }}>
+          <Box sx={{ textAlign: 'center', width: '100%' }}>
             <CircularProgress />
             <Typography sx={{ mt: 2 }}>{t('dashboard.generatingStatus')}</Typography>
           </Box>
@@ -454,20 +453,26 @@ const Dashboard = () => {
         {error && <Alert severity="error" sx={{ width: '100%' }}>{error}</Alert>}
 
         {revisedPrompt && (
-          <Paper sx={{ p: 2, background: 'rgba(232, 245, 233, 0.8)', width: '100%', maxWidth: '600px', border: '1px solid #4caf50' }}>
+          <Paper sx={{ p: 2, background: 'rgba(232, 245, 233, 0.8)', width: '100%', maxWidth: '820px', border: '1px solid #4caf50' }}>
             <Typography variant="h6" gutterBottom>Enhanced Prompt</Typography>
             <Typography variant="body1" sx={{ fontStyle: 'italic' }}>"{revisedPrompt}"</Typography>
           </Paper>
         )}
 
-        {previewUrl && (
-          <Box sx={{ mt: 2 }}>
-            <video src={previewUrl} width="400" controls autoPlay loop muted style={{ borderRadius: '4px' }} />
-          </Box>
+        {isV2GenerateModel && generationMode === 'extend' && selectedVideo && (
+          <FilmStripPlayer
+            title="EXTENDED VIDEO"
+            video={userVideos.find(v => v.gcs_uri === selectedVideo)}
+          />
         )}
 
         {generatedVideos.map((video, index) => (
-          <FilmStripPlayer key={video.gcs_uri || index} video={video} onEditClick={openModal} />
+          <FilmStripPlayer
+            key={video.gcs_uri || index}
+            video={video}
+            onEditClick={openModal}
+            title={`PREVIEW VIDEO ${index + 1}`}
+          />
         ))}
       </Box>
 

@@ -20,6 +20,9 @@ ALLOWED_DOMAINS:
 COST_MANAGERS:
   - vwmc@google.com
 
+APP_ADMINS:
+  - vwmc@google.com
+
 # Analysis result (BigQuery)
 ENABLE_BIGQUERY_LOGGING: True
 ANALYSIS_DATASET: marketing_materials_analysis
@@ -32,3 +35,6 @@ LOGGING_FORMAT: "%(asctime)s [%(levelname)s]: %(message)s"
 # Prompt Gallery
 PROMPT_GALLERY_DB: "prompt-gallery"
 PROMPT_GALLERY_COLLECTION: 'prompts'
+
+# Configuration
+CONFIG_DB: "veo-app-config"

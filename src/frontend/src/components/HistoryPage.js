@@ -52,8 +52,12 @@ const HistoryRow = ({ row, onEditClick }) => {
             {row.status}
           </Typography>
         </TableCell>
-        <TableCell align="center">{row.model_used.replace('veo-','').replace('-generate','').replace('-preview','').replace('-001','')}
-        </TableCell>
+        <TableCell align="center">
+  {row.model_used
+    .replace(/veo-(\d\.\d+).*/, 'Veo $1')
+    .replace('-preview', '')
+    .replace('-exp', ' Exp')}
+</TableCell>
         <TableCell>{row.video_name}</TableCell>
         <TableCell align="center">
           <Tooltip title={t('history.actions.preview')}>

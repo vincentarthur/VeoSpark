@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import Dashboard from '../components/Dashboard';
 import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage'; // Import the new page
+import ConfigurationsPage from '../components/ConfigurationsPage';
 import PromptGalleryPage from './PromptGalleryPage';
 
 const HomePage = ({ user }) => {
@@ -21,6 +22,8 @@ const HomePage = ({ user }) => {
       setCurrentTab(2);
     } else if (location.pathname === '/analytics') {
       setCurrentTab(3);
+    } else if (location.pathname === '/configurations') {
+      setCurrentTab(4);
     }
     else {
       setCurrentTab(0);
@@ -48,6 +51,9 @@ const HomePage = ({ user }) => {
           {user?.is_cost_manager && (
             <Tab label={t('nav.analytics')} component={Link} to="/analytics" />
           )}
+          {user?.role === 'APP_ADMIN' && (
+            <Tab label={t('nav.configurations')} component={Link} to="/configurations" />
+          )}
         </Tabs>
       </Paper>
       <Box
@@ -63,6 +69,9 @@ const HomePage = ({ user }) => {
           <Route path="/history" element={<HistoryPage />} />
           {user?.is_cost_manager && (
             <Route path="/analytics" element={<AnalyticsPage />} />
+          )}
+          {user?.role === 'APP_ADMIN' && (
+            <Route path="/configurations" element={<ConfigurationsPage />} />
           )}
           <Route path="/gallery" element={<PromptGalleryPage user={user} />} />
         </Routes>

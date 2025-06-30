@@ -29,7 +29,8 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.genai import types
 
 # Import the new video processing functions
-from video_processing import process_video_from_gcs
+from video_processing import process_video_from_gcs, check_quota
+from config_manager import get_config, save_config
 
 
 # ==============================================================================
@@ -123,10 +124,17 @@ else:
 
 try:
     db = firestore.Client(project=PROJECT, database=app_conf.get('PROMPT_GALLERY_DB'))
-    logger.info("Firestore client initialized successfully.")
+    logger.info("Firestore client for prompt gallery initialized successfully.")
 except Exception as e:
-    logger.error(f"Could not initialize Firestore client. Error: {e}", exc_info=True)
+    logger.error(f"Could not initialize Firestore client for prompt gallery. Error: {e}", exc_info=True)
     db = None
+
+try:
+    config_db = firestore.Client(project=PROJECT, database=app_conf.get('CONFIG_DB'))
+    logger.info("Firestore client for configuration initialized successfully.")
+except Exception as e:
+    logger.error(f"Could not initialize Firestore client for configuration. Error: {e}", exc_info=True)
+    config_db = None
 
 
 # ==============================================================================
@@ -208,7 +216,7 @@ class VeoApiClient:
                 self.logger.info(f"Using source image for generation: {image_gcs_uri}")
                 sdk_call_kwargs['image'] = types.Image(gcs_uri=image_gcs_uri, mime_type="image/jpeg")
             
-            if final_frame_gcs_uri and model_id != self.v3_model_id :
+            if final_frame_gcs_uri and model_id != self.v3_model_id:
                 # Only applicable for Veo2
                 self.logger.info(f"Using final frame for generation: {final_frame_gcs_uri}")
                 config.last_frame = types.Image(gcs_uri=final_frame_gcs_uri, mime_type="image/jpeg")
@@ -372,7 +380,12 @@ if app_conf.get('ENABLE_OAUTH', False):
 
 
 def get_user(request: Request) -> Optional[dict]:
-    return request.session.get('user')
+    user = request.session.get('user')
+    if user:
+        app_admins = app_conf.get('APP_ADMINS', [])
+        user_email = user.get('email')
+        user['role'] = 'APP_ADMIN' if user_email in app_admins else 'USER'
+    return user
 
 
 # ==============================================================================
@@ -385,8 +398,10 @@ def get_current_user_details(user: dict = Depends(get_user)):
         return JSONResponse({"authenticated": False}, status_code=401)
 
     cost_managers = app_conf.get('COST_MANAGERS', [])
+    app_admins = app_conf.get('APP_ADMINS', [])
     user_email = user.get('email')
     is_cost_manager = user_email in cost_managers
+    role = 'APP_ADMIN' if user_email in app_admins else 'USER'
 
     return JSONResponse({
         "authenticated": True,
@@ -394,6 +409,7 @@ def get_current_user_details(user: dict = Depends(get_user)):
         "email": user_email,
         "picture": user.get('picture'),
         "is_cost_manager": is_cost_manager,
+        "role": role,
     })
 
 
@@ -405,6 +421,23 @@ def get_app_config():
     return JSONResponse({
         "prompt_gallery_name": app_conf.get("PROMPT_GALLERY_COLLECTION", "prompts")
     })
+
+
+@api_router.get("/configurations", tags=["Configuration"])
+def get_configurations(user: dict = Depends(get_user)):
+    
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    return get_config(config_db)
+
+
+@api_router.post("/configurations", tags=["Configuration"])
+async def set_configurations(request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    config = await request.json()
+    save_config(config, config_db)
+    return {"message": "Configuration saved successfully."}
 
 
 @api_router.post("/videos/generate", tags=["Video Generation"])
@@ -421,6 +454,12 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
         veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to initialize Veo client: {e}")
+
+    # Check quota
+    user_email = user.get('email', 'anonymous') if user else 'anonymous'
+    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf)
+    if quota_exceeded:
+        raise HTTPException(status_code=429, detail=message)
 
     # --- Prepare logging data ---
     trigger_time = datetime.now(timezone.utc)

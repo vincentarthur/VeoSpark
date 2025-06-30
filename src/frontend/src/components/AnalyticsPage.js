@@ -80,9 +80,10 @@ const AnalyticsPage = () => {
   const formatCurrency = (value) => `$${Number(value).toFixed(2)}`;
 
   const modelDistributionData = data.model_distribution.map(item => {
-    let name = item.model_used.replace('-generate-preview', '3').replace('-generate-001', '2').replace('-generate-exp', '2-exp');
+    let name = item.model_used;
     if (item.model_used.includes('veo-')) {
-        name += item.with_audio ? ` (Audio)` : ` (No Audio)`;
+      name = name.replace(/veo-(\d\.\d+).*/, 'Veo $1');
+      name += item.with_audio ? ` (Audio)` : ` (No Audio)`;
     }
     return {
         name: name,

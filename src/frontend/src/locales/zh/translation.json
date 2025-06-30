@@ -7,8 +7,9 @@
   "nav": {
     "generator": "视频生成器",
     "history": "我的历史",
-    "analytics": "消耗分析",
-    "gallery": "提示词画廊"
+    "analytics": "分析",
+    "gallery": "提示画廊",
+    "configurations": "配置"
   },
   "gallery": {
     "search": "搜索",
@@ -97,5 +98,18 @@
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"
+  },
+  "configurations": {
+    "title": "配置",
+    "noLimit": "无限制",
+    "costLimit": "成本限制",
+    "generationQuantity": "生成数量",
+    "limit": "限制",
+    "period": "期间",
+    "daily": "每日",
+    "weekly": "每周",
+    "save": "保存",
+    "costLimitDescription": "根据用户生成的视频总成本（美元）来限制用户。",
+    "generationQuantityDescription": "根据用户生成的视频总数来限制用户。"
   }
 }
