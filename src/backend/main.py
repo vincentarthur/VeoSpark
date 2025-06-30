@@ -57,8 +57,9 @@ def log_generation_to_bq(**kwargs):
             "status": kwargs.get("status"),
             "error_message": str(kwargs.get("error_message", None)),
             "video_duration": kwargs.get("video_duration"),
-            "input_image_gcs_path": kwargs.get("input_image_gcs_path"),
             "with_audio": kwargs.get("with_audio"),
+            "first_frame_gcs_uri": kwargs.get("first_frame_gcs_uri"),
+            "last_frame_gcs_uri": kwargs.get("last_frame_gcs_uri"),
             # Convert list of paths to a JSON string for storage
             "output_video_gcs_paths": json.dumps(kwargs.get("output_video_gcs_paths", [])),
         }
@@ -138,7 +139,6 @@ class VeoApiClient:
         self.location = location
         self.default_bucket_name = default_bucket_name
         self.default_model_id = app_conf.get('GEMINI_MODEL', "veo-2.0-generate-001")
-        self.exp_model_id = "veo-2.0-generate-exp"
         self.v3_model_id = "veo-3.0-generate-preview"
 
         try:
@@ -147,6 +147,7 @@ class VeoApiClient:
             self._credentials.refresh(GoogleAuthRequest())
             self.storage_client = storage.Client(project=self.project_id, credentials=self._credentials)
             self.storage_client.get_bucket(self.default_bucket_name)
+
             self.genai_client = genai.Client(vertexai=True, project=self.project_id, location=self.location)
             self.logger.info("VeoApiClient initialized successfully.")
         except Exception as e:
@@ -181,9 +182,9 @@ class VeoApiClient:
         model_id = kwargs.get('model', self.default_model_id)
         aspect_ratio = kwargs.get('aspect_ratio', '16:9')
         duration_seconds = int(kwargs.get('duration_seconds', 8))
-        sample_count = int(kwargs.get('sample_count', 1))  # <-- Use the new value
-        camera_control = kwargs.get('camera_control')
-        image_gcs_uri = kwargs.get('image_gcs_uri') # <-- Get the new image URI
+        sample_count = int(kwargs.get('sample_count', 1))
+        image_gcs_uri = kwargs.get('image_gcs_uri')
+        final_frame_gcs_uri = kwargs.get('final_frame_gcs_uri')
 
         user_folder = "anonymous"
         if user_info and 'email' in user_info:
@@ -205,26 +206,34 @@ class VeoApiClient:
             # Add image to the generation request if provided
             if image_gcs_uri:
                 self.logger.info(f"Using source image for generation: {image_gcs_uri}")
-                # This assumes the SDK uses a `image` attribute.
-                # The exact structure might be different, e.g. types.Part.from_uri
-                # config.image = types.Image(gcs_uri=image_gcs_uri, mime_type="image/jpeg")
                 sdk_call_kwargs['image'] = types.Image(gcs_uri=image_gcs_uri, mime_type="image/jpeg")
+            
+            if final_frame_gcs_uri and model_id != self.v3_model_id :
+                # Only applicable for Veo2
+                self.logger.info(f"Using final frame for generation: {final_frame_gcs_uri}")
+                config.last_frame = types.Image(gcs_uri=final_frame_gcs_uri, mime_type="image/jpeg")
 
+            if kwargs.get('enhance_prompt') is not None:
+                config.enhance_prompt = kwargs['enhance_prompt']
 
             if model_id == self.v3_model_id:
                 if kwargs.get('generate_audio') is not None:
                     config.generate_audio = kwargs['generate_audio']
-                if kwargs.get('enhance_prompt') is not None:
-                    config.enhance_prompt = kwargs['enhance_prompt']
                 self.logger.info(
                     f"Applying Veo 3.0 specifics: Audio={getattr(config, 'generate_audio', 'Default')}, Enhance={getattr(config, 'enhance_prompt', 'Default')}")
 
-            if model_id == self.exp_model_id and camera_control:
-                # This part is a placeholder based on anticipated SDK features.
-                # You may need to adjust the attribute name, e.g., `config.camera_motion`
-                # config.camera_control = camera_control
-                self.logger.warning(
-                    f"Note: Camera controls are for demonstration and may not be fully implemented in the SDK yet. Controls sent: {camera_control}")
+            # if model_id == self.exp_model_id:
+            #     # This part is a placeholder based on anticipated SDK features.
+            #     # You may need to adjust the attribute name, e.g., `config.camera_motion`
+            #     # config.camera_control = camera_control
+            #     self.logger.warning(
+            #         f"Note: Camera controls are for demonstration and may not be fully implemented in the SDK yet.")
+            
+            if model_id == self.default_model_id and kwargs.get('extend_duration') is not None:
+                self.logger.info(f"Applying video extension for model {model_id}")
+                sdk_call_kwargs['video'] = types.Video(uri=image_gcs_uri)
+                sdk_call_kwargs.pop('image')
+                config.duration_seconds = kwargs['extend_duration']
 
             self.logger.info(f"Submitting video generation request to model '{model_id}'...")
             operation = self.genai_client.models.generate_videos(
@@ -251,7 +260,6 @@ class VeoApiClient:
 
             result = operation.result
 
-            self.logger.info(f"Operation : '{operation}'")
             self.logger.info(f"Operation Result: '{result}'")
 
             revised_prompt = None
@@ -421,10 +429,11 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
     prompt = body.get('prompt')
     requested_duration = body.get('duration')
     image_gcs_uri = body.get('image_gcs_uri')
+    final_frame_gcs_uri = body.get('final_frame_gcs_uri')
     with_audio = body.get('generateAudio', False)
 
     try:
-        # --- Call the generation function ---
+            # --- Call the generation function ---
         _, gcs_paths, op_duration, revised_prompt = veo_client.generate_video(
             prompt=prompt,
             user_info=user,
@@ -433,28 +442,31 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
             duration_seconds=requested_duration,
             sample_count=body.get('sampleCount'),
             image_gcs_uri=image_gcs_uri, # Pass image URI to the client
-            camera_control=body.get('camera_control'),
+            final_frame_gcs_uri=final_frame_gcs_uri,
             generate_audio=body.get('generateAudio'),
-            enhance_prompt=body.get('enhancePrompt')
+            enhance_prompt=body.get('enhancePrompt'),
+            extend_duration=body.get('extend_duration')
         )
 
         # --- Log SUCCESS to BigQuery for each generated video ---
         completion_time = datetime.now(timezone.utc)
-        for path in gcs_paths:
-            log_generation_to_bq(
-                user_email=user_email,
-                trigger_time=trigger_time,
-                completion_time=completion_time,
-                operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0, # Apportion duration
-                prompt=prompt,
-                model_used=model_used,
-                status="SUCCESS",
-                error_message=None,
-                video_duration=requested_duration,
-                with_audio=with_audio,
-                input_image_gcs_path=image_gcs_uri,
-                output_video_gcs_paths=[path]  # Log each path individually
-            )
+        if model_used == 'veo-2.0-generate-001':
+            for path in gcs_paths:
+                log_generation_to_bq(
+                    user_email=user_email,
+                    trigger_time=trigger_time,
+                    completion_time=completion_time,
+                    operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0, # Apportion duration
+                    prompt=prompt,
+                    model_used=model_used,
+                    status="SUCCESS",
+                    error_message=None,
+                    video_duration=requested_duration,
+                    with_audio=with_audio,
+                    first_frame_gcs_uri=image_gcs_uri,
+                    last_frame_gcs_uri=final_frame_gcs_uri,
+                    output_video_gcs_paths=[path]  # Log each path individually
+                )
 
         # --- Return response to frontend ---
         video_data = []
@@ -486,12 +498,51 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
             error_message=e,
             video_duration=requested_duration,
             with_audio=with_audio,
-            input_image_gcs_path=image_gcs_uri,
+            first_frame_gcs_uri=image_gcs_uri,
+            last_frame_gcs_uri=final_frame_gcs_uri,
             output_video_gcs_paths=[]
         )
 
         logger.error(f"Video generation failed for user {user_email}. Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Video generation failed: {e}")
+
+
+@api_router.get("/gcs/videos", tags=["GCS"])
+def list_user_videos(user: dict = Depends(get_user), prefix: Optional[str] = None):
+    """
+    Lists all video files in the user's GCS folder, optionally filtered by a prefix.
+    """
+    if app_conf.get('ENABLE_OAUTH', False) and not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    user_email = user.get('email', 'anonymous') if user else 'anonymous'
+    user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+    
+    # If a prefix is provided by the client, use it. Otherwise, default to the user's folder.
+    search_prefix = prefix if prefix else f"veo_outputs/{user_folder}/"
+
+    try:
+        storage_client = storage.Client(project=PROJECT)
+        storage_client = storage.Client(project=PROJECT)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blobs = bucket.list_blobs(prefix=search_prefix)
+
+        videos = []
+        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+        for blob in blobs:
+            if blob.name.lower().endswith(('.mp4', '.mov', '.avi', '.mkv')):
+                gcs_uri = f"gs://{BUCKET_NAME}/{blob.name}"
+                signed_url = veo_client.generate_signed_gcs_url(gcs_uri)
+                videos.append({
+                    "name": blob.name,
+                    "gcs_uri": gcs_uri,
+                    "signed_url": signed_url
+                })
+        
+        return JSONResponse({"videos": videos, "prefix": search_prefix})
+    except Exception as e:
+        logger.error(f"Failed to list videos for user {user_email} from GCS. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list videos from GCS.")
 
 
 @api_router.post("/prompts", tags=["Prompt Gallery"])
@@ -613,7 +664,8 @@ def get_user_history(
             video_duration,
             status,
             error_message,
-            input_image_gcs_path
+            first_frame_gcs_uri,
+            last_frame_gcs_uri
         FROM
             `{PROJECT}.{dataset_id}.{table_id}`
         WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC
