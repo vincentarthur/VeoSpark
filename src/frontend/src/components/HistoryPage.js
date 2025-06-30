@@ -4,7 +4,8 @@ import axios from 'axios';
 import {
   Box, Typography, Paper, CircularProgress, Alert, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, IconButton, Collapse, Modal, Button, Tooltip,
-  TextField, Select, MenuItem, FormControl, InputLabel, Checkbox, FormControlLabel, Grid
+  TextField, Select, MenuItem, FormControl, InputLabel, Checkbox, FormControlLabel, Grid,
+  TablePagination
 } from '@mui/material';
 import { 
   KeyboardArrowDown, KeyboardArrowUp, PlayCircleOutline, Refresh, ContentCut, Mic, FilterList, Clear
@@ -121,6 +122,9 @@ const HistoryRow = ({ row, onEditClick }) => {
 const HistoryPage = () => {
   const { t } = useTranslation();
   const [history, setHistory] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasFetched, setHasFetched] = useState(false);
@@ -165,7 +169,7 @@ const HistoryPage = () => {
     fetchHistory();
   });
 
-  const fetchHistory = async (isCleared = false) => {
+  const fetchHistory = async (isCleared = false, newPage = 0, newRowsPerPage = 10) => {
     setLoading(true);
     setError(null);
     setHasFetched(true);
@@ -178,8 +182,17 @@ const HistoryPage = () => {
     }, {});
 
     try {
-      const response = await axios.get('/api/videos/history', { params: activeFilters });
-      setHistory(response.data);
+      const response = await axios.get('/api/videos/history', { 
+        params: { 
+          ...activeFilters,
+          page: newPage + 1,
+          page_size: newRowsPerPage
+        } 
+      });
+      setHistory(response.data.rows);
+      setTotalRows(response.data.total);
+      setPage(newPage);
+      setRowsPerPage(newRowsPerPage);
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch history.');
       setHistory([]); // Clear cache on error
@@ -265,26 +278,37 @@ const HistoryPage = () => {
       ) : !hasFetched ? (
         <Typography>{t('history.pressFetch')}</Typography>
       ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: '12px' }}>
-          <Table aria-label="collapsible table">
-            <TableHead>
-              <TableRow>
-                <TableCell />
-                <TableCell>{t('history.colDate')}</TableCell>
-                <TableCell>{t('history.colPrompt')}</TableCell>
-                <TableCell align="center">{t('history.colStatus')}</TableCell>
-                <TableCell align="center">{t('history.colModel')}</TableCell>
-                <TableCell>{t('history.colName')}</TableCell>
-                <TableCell align="center">{t('history.colPreview')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {history.map((row) => (
-                <HistoryRow key={row.trigger_time} row={row} onEditClick={openModal} />
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Paper sx={{ borderRadius: '12px' }}>
+          <TableContainer>
+            <Table aria-label="collapsible table">
+              <TableHead>
+                <TableRow>
+                  <TableCell />
+                  <TableCell>{t('history.colDate')}</TableCell>
+                  <TableCell>{t('history.colPrompt')}</TableCell>
+                  <TableCell align="center">{t('history.colStatus')}</TableCell>
+                  <TableCell align="center">{t('history.colModel')}</TableCell>
+                  <TableCell>{t('history.colName')}</TableCell>
+                  <TableCell align="center">{t('history.colPreview')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {history.map((row) => (
+                  <HistoryRow key={row.trigger_time} row={row} onEditClick={openModal} />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalRows}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(e, newPage) => fetchHistory(false, newPage, rowsPerPage)}
+            onRowsPerPageChange={(e) => fetchHistory(false, 0, parseInt(e.target.value, 10))}
+          />
+        </Paper>
       )}
 
       {selectedVideo && (

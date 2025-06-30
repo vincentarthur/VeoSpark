@@ -108,6 +108,29 @@ bq_client = None
 db = None
 table_ref = None
 
+generate_content_config = types.GenerateContentConfig(
+    temperature = 0,
+    top_p = 1,
+    seed = 0,
+    max_output_tokens = 65535,
+    safety_settings = [types.SafetySetting(
+      category="HARM_CATEGORY_HATE_SPEECH",
+      threshold="OFF"
+    ),types.SafetySetting(
+      category="HARM_CATEGORY_DANGEROUS_CONTENT",
+      threshold="OFF"
+    ),types.SafetySetting(
+      category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+      threshold="OFF"
+    ),types.SafetySetting(
+      category="HARM_CATEGORY_HARASSMENT",
+      threshold="OFF"
+    )],
+    thinking_config=types.ThinkingConfig(
+      thinking_budget=0,
+    ),
+  )
+
 if app_conf.get('ENABLE_BIGQUERY_LOGGING', False):
     if dataset_id and table_id and PROJECT:
         try:
@@ -610,27 +633,38 @@ async def add_prompt_to_gallery(request: Request, user: dict = Depends(get_user)
 
 
 @api_router.get("/prompts", tags=["Prompt Gallery"])
-def get_prompts_from_gallery(tags: Optional[str] = None):
+def get_prompts_from_gallery(tags: Optional[str] = None, page: int = 1, page_size: int = 10):
     if not db:
         raise HTTPException(status_code=503, detail="Firestore is not configured")
 
     prompts_ref = db.collection(prompt_gallery_collection_id)
+    
+    tag_list = [tag.strip() for tag in tags.split(',')] if tags else []
+    
+    # Get total count for pagination
+    count_query = prompts_ref
+    if tag_list:
+        for tag in tag_list:
+            count_query = count_query.where("keywords", "array_contains", tag)
+    total_rows = len(list(count_query.stream()))
+
+    # Get paginated results
     query = prompts_ref.order_by("created_at", direction=firestore.Query.DESCENDING)
+    if tag_list:
+        for tag in tag_list:
+            query = query.where("keywords", "array_contains", tag)
+            
+    query = query.limit(page_size).offset((page - 1) * page_size)
     
     prompts = []
-    tag_list = [tag.strip() for tag in tags.split(',')] if tags else []
-
     for doc in query.stream():
-        prompt_data = doc.to_dict()
-        if tags and not all(tag in prompt_data.get("keywords", []) for tag in tag_list):
-            continue
         prompt_data = doc.to_dict()
         prompt_data["id"] = doc.id
         if 'created_at' in prompt_data and hasattr(prompt_data['created_at'], 'isoformat'):
             prompt_data['created_at'] = prompt_data['created_at'].isoformat()
         prompts.append(prompt_data)
 
-    return JSONResponse(prompts)
+    return JSONResponse({"rows": prompts, "total": total_rows})
 
 
 @api_router.delete("/prompts/{prompt_id}", tags=["Prompt Gallery"])
@@ -661,7 +695,9 @@ def get_user_history(
     end_date: Optional[str] = None,
     status: Optional[str] = None,
     model: Optional[str] = None,
-    is_edited: Optional[bool] = False
+    is_edited: Optional[bool] = False,
+    page: int = 1,
+    page_size: int = 10
 ):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
@@ -691,6 +727,15 @@ def get_user_history(
     if is_edited:
         where_clauses.append("model_used LIKE 'EDITING_TOOL_%'")
 
+    count_query = f"""
+        SELECT COUNT(*) as total
+        FROM `{PROJECT}.{dataset_id}.{table_id}`
+        WHERE {" AND ".join(where_clauses)}
+    """
+    count_job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+    count_query_job = bq_client.query(count_query, job_config=count_job_config)
+    total_rows = list(count_query_job.result())[0].total
+
     query = f"""
         SELECT
             user_email,
@@ -708,6 +753,7 @@ def get_user_history(
         FROM
             `{PROJECT}.{dataset_id}.{table_id}`
         WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC
+        LIMIT {page_size} OFFSET {(page - 1) * page_size}
     """
     
     job_config = bigquery.QueryJobConfig(query_parameters=query_params)
@@ -732,7 +778,7 @@ def get_user_history(
                 row["signed_urls"] = []
                 row["video_name"] = None
 
-        return JSONResponse(rows)
+        return JSONResponse({"rows": rows, "total": total_rows})
 
     except Exception as e:
         logger.error(f"Error querying history for user {user_email}: {e}", exc_info=True)
@@ -1010,6 +1056,37 @@ def get_consumption_analytics(
 # ==============================================================================
 # 6. APP ROUTING AND STARTUP
 # ==============================================================================
+@api_router.post("/translate", tags=["Translation"])
+async def translate_text_endpoint(request: Request, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    body = await request.json()
+    text = body.get("text")
+    target_language = body.get("target_language")
+
+    if not text or not target_language:
+        raise HTTPException(status_code=400, detail="Text and target_language are required.")
+
+    try:
+        genai_client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
+        response = genai_client.models.generate_content(
+            model = "gemini-2.5-flash",
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=f"Translate the following text to {target_language}: {text}")
+                    ]
+                )
+            ],
+            config=generate_content_config
+        )
+        return JSONResponse({"translated_text": response.text})
+    except Exception as e:
+        logger.error(f"Translation failed. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Translation failed: {e}")
+
 
 app.include_router(api_router)
 
