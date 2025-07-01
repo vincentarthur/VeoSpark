@@ -460,6 +460,15 @@ def get_app_config():
     })
 
 
+@api_router.get("/notification-banner", tags=["Configuration"])
+def get_notification_banner():
+    """
+    Returns a list of notification banner messages if set in the config.
+    """
+    messages = app_conf.get("BANNER_MESSAGES", [])
+    return JSONResponse({"messages": messages})
+
+
 @api_router.get("/configurations", tags=["Configuration"])
 def get_configurations(user: dict = Depends(get_user)):
     

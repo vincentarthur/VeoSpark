@@ -1,0 +1,16 @@
+[
+  { "name": "user_email", "type": "STRING", "mode": "REQUIRED" },
+  { "name": "trigger_time", "type": "TIMESTAMP", "mode": "REQUIRED" },
+  { "name": "completion_time", "type": "TIMESTAMP", "mode": "REQUIRED" },
+  { "name": "operation_duration", "type": "FLOAT", "mode": "NULLABLE" },
+  { "name": "prompt", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "model_used", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "status", "type": "STRING", "mode": "REQUIRED" },
+  { "name": "error_message", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "video_duration", "type": "INTEGER", "mode": "NULLABLE" },
+  { "name": "output_video_gcs_paths", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "enhanced_prompt", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "first_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "with_audio", "type": "BOOLEAN", "mode": "NULLABLE" },
+  { "name": "last_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" }
+]

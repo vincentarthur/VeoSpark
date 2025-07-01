@@ -4,6 +4,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Box, Tabs, Tab, Paper, Typography } from '@mui/material';
 
 import Header from '../components/Header';
+import NotificationBanner from '../components/NotificationBanner'; // Import the new component
 import Dashboard from '../components/Dashboard';
 import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage'; // Import the new page
@@ -37,6 +38,7 @@ const HomePage = ({ user }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
       <Header user={user} />
+      <NotificationBanner />
       <Paper square elevation={1}>
         <Tabs
           value={currentTab}

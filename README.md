@@ -107,8 +107,28 @@ You can enable the API and create the database using the `gcloud` CLI:
 
 ### 5. BigQuery
 
--   Create a BigQuery dataset (e.g., `veo_generation_dataset`).
--   Create a table within the dataset (e.g., `veo_history`) with the appropriate schema.
+You can create the required BigQuery dataset and table by running the provided setup script.
+
+1.  **Navigate to the backend directory**:
+    ```bash
+    cd src/backend
+    ```
+
+2.  **Make the script executable**:
+    ```bash
+    chmod +x setup_bigquery.sh
+    ```
+
+3.  **Run the script**:
+    Replace `YOUR_DATASET_ID` and `YOUR_TABLE_ID` with the names you configured in `app-config.yaml`.
+    ```bash
+    ./setup_bigquery.sh YOUR_DATASET_ID YOUR_TABLE_ID
+    ```
+    For example:
+    ```bash
+    ./setup_bigquery.sh marketing_materials_analysis veo_history
+    ```
+    The script will create the dataset and the table with the correct schema defined in `schema.json`.
 
 ### 6. Authentication
 
@@ -184,6 +204,7 @@ You can enable the API and create the database using the `gcloud` CLI:
     export REDIRECT_URI="http://localhost:7860/auth"
     
     OR -
+    
     export FRONTEND_URL: https://veo.vc7.info
     export REDIRECT_URI: https://veo.vc7.info/auth
 
