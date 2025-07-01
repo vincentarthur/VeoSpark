@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'; // <--- THIS LINE IS CRUCIAL
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // <--- AND THIS ONE
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; 
 import axios from 'axios';
 
 // Import Material-UI components
@@ -13,7 +13,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  axios.defaults.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:7860';
+  // Set withCredentials to true for all requests to handle session cookies
   axios.defaults.withCredentials = true;
 
   useEffect(() => {

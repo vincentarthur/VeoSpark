@@ -6,11 +6,11 @@ ENABLE_OAUTH: True
 # App metadata
 PROJECT_ID: genai-dnb-demo
 LOCATION: global
-# GEMINI_MODEL: gemini-2.5-flash
 VIDEO_BUCKET_NAME: 504683450406-veo-generation
-# VIDEO_BUCKET_NAME: 504683450406-veo-generation
-
 SECRET_ID: veo-oauth-secret
+
+FRONTEND_URL: https://veo.vc7.info
+REDIRECT_URI: https://veo.vc7.info/auth
 
 ALLOWED_DOMAINS:
   - google.com

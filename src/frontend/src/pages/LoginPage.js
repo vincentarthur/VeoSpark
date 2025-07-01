@@ -4,8 +4,8 @@ import GoogleIcon from '@mui/icons-material/Google';
 
 const LoginPage = () => {
   const handleLogin = () => {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:7860';
-    window.location.href = `${backendUrl}/login`;
+    // Since the frontend is now served by the backend, we can use a relative URL.
+    window.location.href = '/login';
   };
 
   return (
@@ -21,14 +21,14 @@ const LoginPage = () => {
       }}
     >
       <Paper
-        // MODIFIED: Replaced elevation with our new glassmorphism styles
+        // Replaced elevation with new glassmorphism styles
         sx={{
           padding: { xs: 3, sm: 6 },
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           textAlign: 'center',
-          // NEW: Frosted Glass / Glassmorphism styles
+          // Frosted Glass / Glassmorphism styles
           background: 'rgba(255, 255, 255, 0.7)', // Semi-transparent background
           backdropFilter: 'blur(10px) saturate(120%)',
           WebkitBackdropFilter: 'blur(10px) saturate(120%)', // For Safari support

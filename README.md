@@ -9,12 +9,13 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Google Cloud Setup](#google-cloud-setup)
-- [Local Development Setup](#local-development-setup)
+- [Running the Application Locally](#running-the-application-locally)
 - [Usage](#usage)
 
 ## Features
 
 -   **AI-Powered Video Generation**: Create stunning videos from simple text prompts using Google's Veo models.
+-   **Unified Application**: Frontend and Backend are served from a single FastAPI server.
 -   **Generation History**: Keep track of all your video generations, including prompts, models used, and status.
 -   **Cost Analytics**: Monitor your spending on video generation with detailed analytics and visualizations.
 -   **User Authentication**: Secure access to the application with Google OAuth.
@@ -34,7 +35,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 
 ### Backend
 
--   **FastAPI**: A modern, fast (high-performance), web framework for building APIs with Python 3.7+ based on standard Python type hints.
+-   **FastAPI**: A modern, fast (high-performance), web framework for building APIs and serving web content.
 -   **Google Cloud Libraries**:
     -   `google-cloud-aiplatform`: For accessing Vertex AI services.
     -   `google-cloud-storage`: For interacting with Cloud Storage.
@@ -47,16 +48,22 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 
 ## Architecture
 
-The application consists of a React frontend and a FastAPI backend, both interacting with various Google Cloud services.
+The application runs as a single FastAPI service that serves the React frontend and provides the backend API. This simplifies deployment and eliminates CORS issues.
 
 ```mermaid
 graph TD
-    A[User] --> B{React Frontend};
-    B --> C{FastAPI Backend};
-    C --> D[Vertex AI API];
-    C --> E[Cloud Storage];
-    C --> F[BigQuery];
-    C --> G[Secret Manager];
+    subgraph "Browser"
+        A[User] --> B[React App]
+    end
+
+    subgraph "FastAPI Server (Single Container)"
+        B -- "HTTP Requests" --> C{API Routes}
+        B -- "Initial Load" --> D{Static Files}
+        C -- "Google Cloud" --> E[Vertex AI API]
+        C -- "Google Cloud" --> F[Cloud Storage]
+        C -- "Google Cloud" --> G[BigQuery]
+        C -- "Google Cloud" --> H[Secret Manager]
+    end
 ```
 
 ## Google Cloud Setup
@@ -85,27 +92,23 @@ To run this application, you need to set up the following Google Cloud services:
 -   Create a new Firestore database in **Native mode**.
 -   By default, the application uses the `(default)` database. To use a different database for the prompt gallery, you can specify the database name in the `PROMPT_GALLERY_DB` field in `src/backend/app-config.yaml`.
 
+#### Creating Firestore via Command Line
+You can enable the API and create the database using the `gcloud` CLI:
+
+1.  **Enable the API**:
+    ```bash
+    gcloud services enable firestore.googleapis.com
+    ```
+
+2.  **Create the database in `us-central1`**:
+    ```bash
+    gcloud firestore databases create --location=us-central1
+    ```
+
 ### 5. BigQuery
 
--   Create a BigQuery dataset (e.g., `marketing_materials_analysis`).
--   Create a table within the dataset (e.g., `veo_history`) with the following schema:
-
-| Field Name                 | Type      |
-| -------------------------- | --------- |
-| `user_email`               | `STRING`  |
-| `trigger_time`             | `TIMESTAMP` |
-| `completion_time`          | `TIMESTAMP` |
-| `operation_duration`       | `FLOAT`   |
-| `prompt`                   | `STRING`  |
-| `model_used`               | `STRING`  |
-| `status`                   | `STRING`  |
-| `error_message`            | `STRING`  |
-| `video_duration`           | `INTEGER` |
-| `input_image_gcs_path`     | `STRING`  |
-| `with_audio`               | `BOOLEAN` |
-| `output_video_gcs_paths`   | `STRING`  |
-| `enhanced_prompt`          | `STRING`  |
-
+-   Create a BigQuery dataset (e.g., `veo_generation_dataset`).
+-   Create a table within the dataset (e.g., `veo_history`) with the appropriate schema.
 
 ### 6. Authentication
 
@@ -113,8 +116,9 @@ To run this application, you need to set up the following Google Cloud services:
     -   Go to "APIs & Services" > "Credentials".
     -   Click "Create Credentials" > "OAuth client ID".
     -   Select "Web application" as the application type.
-    -   Add `http://localhost:3000` to the "Authorized JavaScript origins".
-    -   Add `http://localhost:7860/auth` to the "Authorized redirect URIs".
+    -   Add `http://<your_domain>` to the "Authorized JavaScript origins".
+    -   Add `http://<your_domain>/auth` to the "Authorized redirect URIs".
+    -   For production, add your public URL (e.g., `https://your-app-url.com`) to origins and `https://your-app-url.com/auth` to redirect URIs.
     -   Take note of the "Client ID" and "Client secret".
 -   **Secret Manager**:
     -   Create a new secret in Secret Manager.
@@ -126,7 +130,7 @@ To run this application, you need to set up the following Google Cloud services:
         }
         ```
 
-## Local Development Setup
+## Running the Application Locally
 
 ### Prerequisites
 
@@ -134,72 +138,61 @@ To run this application, you need to set up the following Google Cloud services:
 -   [Python](https://www.python.org/) (v3.9 or later)
 -   [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
 
-### Backend Setup
+### Setup and Run
 
-1.  **Navigate to the backend directory**:
-    ```bash
-    cd src/backend
-    ```
-2.  **Create a virtual environment**:
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-3.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Configure the application**:
-    -   Rename `app-config.yaml.example` to `app-config.yaml`.
-    -   Update the values in `app-config.yaml` with your Google Cloud project details.
-5.  **Run the backend server**:
-    ```bash
-    uvicorn main:app --reload
-    ```
-
-### Frontend Setup
-
-1.  **Navigate to the frontend directory**:
+1.  **Install Frontend Dependencies**:
     ```bash
     cd src/frontend
-    ```
-2.  **Install dependencies**:
-    ```bash
     npm install
     ```
-3.  **Run the frontend server**:
+
+2.  **Build the Frontend**:
+    This step bundles the React application into static HTML, CSS, and JavaScript files.
     ```bash
-    npm start
+    npm run build
     ```
 
-## Docker Setup
-
-### Prerequisites
-
--   [Docker](https://www.docker.com/get-started)
-
-### Build and Run with Docker
-
-1.  **Build the backend image**:
+3.  **Copy Static Files to Backend**:
+    The FastAPI backend needs the frontend's build artifacts to serve them.
     ```bash
-    docker build -t veo-backend src/backend
+    # On macOS or Linux
+    cp -R build/* ../backend/static/
+
+    # On Windows (Command Prompt)
+    xcopy build ..\backend\static\ /E /I /Y
     ```
-2.  **Run the backend container**:
+    *Note: You may need to create the `src/backend/static` directory if it doesn't exist.*
+
+4.  **Install Backend Dependencies**:
     ```bash
-    docker run -p 7860:7860 --name veo-backend-container -d veo-backend
+    cd ../backend 
+    # If you are not already in the backend directory
+    
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
     ```
-3.  **Build the frontend image**:
+
+5.  **Configure the Application**:
+    -   In `src/backend/`, update the values in `app-config.yaml` with your Google Cloud project details.
+
+6.  **Run the Server**:
+    From the `src/backend` directory, run the following command:
     ```bash
-    docker build -t veo-frontend src/frontend
-    ```
-4.  **Run the frontend container**:
-    ```bash
-    docker run -p 3000:3000 --name veo-frontend-container -d veo-frontend
+    # (Optional) Set environment variables for local OAuth
+    export FRONTEND_URL="http://localhost:7860"
+    export REDIRECT_URI="http://localhost:7860/auth"
+    
+    OR -
+    export FRONTEND_URL: https://veo.vc7.info
+    export REDIRECT_URI: https://veo.vc7.info/auth
+
+    uvicorn main:app --host 0.0.0.0 --port 7860 --reload
     ```
 
 ## Usage
 
-1.  Open your browser and navigate to `http://localhost:3000`.
+1.  Open your browser and navigate to `http://localhost:7860`.
 2.  Log in with your Google account.
 3.  Use the "Video Generator" tab to create new videos.
 4.  View your past creations in the "My History" tab.

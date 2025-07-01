@@ -7,6 +7,7 @@ import yaml
 import sys
 import tempfile
 import time
+from fastapi.staticfiles import StaticFiles
 import uuid
 import google.auth
 import google.genai as genai
@@ -92,6 +93,11 @@ try:
 except (FileNotFoundError, yaml.YAMLError) as e:
     logger.critical(f"Could not load or parse 'app-config.yaml'. Error: {e}")
     sys.exit(1)
+
+# Overwrite with environment variables if they exist, for cloud deployments
+app_conf['FRONTEND_URL'] = os.environ.get('FRONTEND_URL', app_conf.get('FRONTEND_URL'))
+app_conf['REDIRECT_URI'] = os.environ.get('REDIRECT_URI', app_conf.get('REDIRECT_URI'))
+
 
 PROJECT = app_conf.get('PROJECT_ID')
 LOCATION = app_conf.get('LOCATION')
@@ -196,6 +202,8 @@ class VeoApiClient:
                 version="v4",
                 expiration=timedelta(minutes=expiration_minutes),
                 method="GET",
+                access_token=self._credentials.token,
+                service_account_email=self._credentials.service_account_email
             )
         except Exception as e:
             self.logger.error(f"Failed to generate signed URL for {gcs_uri}: {e}", exc_info=True)
@@ -372,13 +380,19 @@ if app_conf.get('ENABLE_OAUTH', False):
 
     @app.get('/login')
     async def login(request: Request):
-        redirect_uri = app_conf.get("REDIRECT_URI", "http://localhost:7860/auth")
+        redirect_uri = app_conf.get("REDIRECT_URI")
+        if not redirect_uri:
+            logger.error("REDIRECT_URI is not configured. Cannot initiate login.")
+            raise HTTPException(status_code=500, detail="Server configuration error: REDIRECT_URI is missing.")
         return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
     @app.get('/auth')
     async def auth(request: Request):
-        frontend_url = app_conf.get("FRONTEND_URL", "http://localhost:3000")
+        frontend_url = app_conf.get("FRONTEND_URL")
+        if not frontend_url:
+            logger.error("FRONTEND_URL is not configured. Cannot complete auth.")
+            raise HTTPException(status_code=500, detail="Server configuration error: FRONTEND_URL is missing.")
         try:
             token = await oauth.google.authorize_access_token(request)
             user_info = dict(token)["userinfo"]
@@ -398,8 +412,8 @@ if app_conf.get('ENABLE_OAUTH', False):
     @app.get('/logout')
     async def logout(request: Request):
         request.session.pop('user', None)
-        frontend_url = app_conf.get("FRONTEND_URL", "http://localhost:3000")
-        return RedirectResponse(url=f"{frontend_url}/login")
+        # After logout, redirect to the root which is the login page.
+        return RedirectResponse(url="/")
 
 
 def get_user(request: Request) -> Optional[dict]:
@@ -512,23 +526,23 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
 
         # --- Log SUCCESS to BigQuery for each generated video ---
         completion_time = datetime.now(timezone.utc)
-        if model_used == 'veo-2.0-generate-001':
-            for path in gcs_paths:
-                log_generation_to_bq(
-                    user_email=user_email,
-                    trigger_time=trigger_time,
-                    completion_time=completion_time,
-                    operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0, # Apportion duration
-                    prompt=prompt,
-                    model_used=model_used,
-                    status="SUCCESS",
-                    error_message=None,
-                    video_duration=requested_duration,
-                    with_audio=with_audio,
-                    first_frame_gcs_uri=image_gcs_uri,
-                    last_frame_gcs_uri=final_frame_gcs_uri,
-                    output_video_gcs_paths=[path]  # Log each path individually
-                )
+        
+        for path in gcs_paths:
+            log_generation_to_bq(
+                user_email=user_email,
+                trigger_time=trigger_time,
+                completion_time=completion_time,
+                operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0, # Apportion duration
+                prompt=prompt,
+                model_used=model_used,
+                status="SUCCESS",
+                error_message=None,
+                video_duration=requested_duration,
+                with_audio=with_audio,
+                first_frame_gcs_uri=image_gcs_uri,
+                last_frame_gcs_uri=final_frame_gcs_uri,
+                output_video_gcs_paths=[path]  # Log each path individually
+            )
 
         # --- Return response to frontend ---
         video_data = []
@@ -584,7 +598,6 @@ def list_user_videos(user: dict = Depends(get_user), prefix: Optional[str] = Non
     search_prefix = prefix if prefix else f"veo_outputs/{user_folder}/"
 
     try:
-        storage_client = storage.Client(project=PROJECT)
         storage_client = storage.Client(project=PROJECT)
         bucket = storage_client.bucket(BUCKET_NAME)
         blobs = bucket.list_blobs(prefix=search_prefix)
@@ -1091,9 +1104,13 @@ async def translate_text_endpoint(request: Request, user: dict = Depends(get_use
 app.include_router(api_router)
 
 
-@app.get("/", tags=["Health Check"])
-def read_root():
-    return {"status": "Veo API is healthy and running"}
+# ==============================================================================
+# 7. STATIC FILE SERVING (FRONTEND)
+# ==============================================================================
+# This must be placed at the end, after all other API and auth routes have been defined.
+# It acts as a catch-all to serve the React application.
+app.mount("/static", StaticFiles(directory="static/static"), name="static_assets")
+app.mount("/", StaticFiles(directory="static", html=True), name="app")
 
 
 if __name__ == '__main__':

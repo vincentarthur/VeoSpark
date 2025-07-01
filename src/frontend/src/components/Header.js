@@ -8,8 +8,8 @@ const Header = ({ user }) => {
   const { toggleTheme, themeMode } = useContext(ThemeContext);
 
   const handleLogout = () => {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:7860';
-    window.location.href = `${backendUrl}/logout`;
+    // Since the frontend is served by the backend, we can use a relative URL for logout.
+    window.location.href = '/logout';
   };
 
   // 3. This function is the core of the manual switch.
