@@ -257,6 +257,16 @@ const HistoryPage = () => {
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>{t('history.filters.model')}</InputLabel>
+              <Select name="model" value={filters.model} label={t('history.filters.model')} onChange={handleFilterChange}>
+                <MenuItem value=""><em>{t('history.filters.all')}</em></MenuItem>
+                <MenuItem value="veo-2.0-generate-001">Veo 2.0</MenuItem>
+                <MenuItem value="veo-3.0-generate-preview">Veo 3.0</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
              <FormControlLabel
                 control={<Checkbox name="is_edited" checked={filters.is_edited} onChange={handleFilterChange} />}
                 label={t('history.filters.editedOnly')}

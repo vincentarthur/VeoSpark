@@ -64,10 +64,11 @@
       "startDate": "開始日",
       "endDate": "終了日",
       "status": "ステータス",
+      "model": "モデル",
       "all": "すべて",
       "editedOnly": "編集済みのみ",
-      "apply": "フィルター",
-      "clear": "フィルターをクリア"
+      "apply": "フィルタ",
+      "clear": "クリア"
     }
   },
   "editModal": {

@@ -66,10 +66,11 @@
       "startDate": "开始日期",
       "endDate": "结束日期",
       "status": "状态",
+      "model": "模型",
       "all": "全部",
-      "editedOnly": "仅显示编辑后",
+      "editedOnly": "仅限编辑过的",
       "apply": "筛选",
-      "clear": "清除筛选"
+      "clear": "清除"
     }
   },
   "editModal": {
