@@ -102,7 +102,7 @@ You can enable the API and create the database using the `gcloud` CLI:
 
 2.  **Create the database in `us-central1`**:
     ```bash
-    gcloud firestore databases create --location=us-central1
+    gcloud firestore databases create --database="prompt-gallery" --location=us-central1
     ```
 
 #### Deploying Firestore Indexes
@@ -146,7 +146,29 @@ You can create the required BigQuery dataset and table by running the provided s
     ```
     The script will create the dataset and the table with the correct schema defined in `schema.json`.
 
-### 6. Authentication
+### 6. Create a Service Account
+
+It is recommended to create a dedicated service account for this application to follow the principle of least privilege.
+
+1.  **Go to the Service Accounts page** in the [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts).
+2.  Click **Create service account**.
+3.  Enter the service account name as `veo-spark-sa` and provide an optional description.
+4.  Click **Create and continue**.
+5.  **Grant the following roles** to the service account:
+    -   BigQuery Data Editor
+    -   BigQuery Job User
+    -   Cloud Datastore User
+    -   Compute Network Admin
+    -   Secret Manager Secret Accessor
+    -   Service Account Token Creator
+    -   Storage Admin
+    -   Storage Object Admin
+    -   Vertex AI Administrator
+    -   Vertex AI User
+    -   Workload Identity User
+6.  Click **Done**.
+
+### 7. Authentication
 
 -   **OAuth 2.0 Client ID**:
     -   Go to "APIs & Services" > "Credentials".
@@ -168,11 +190,10 @@ You can create the required BigQuery dataset and table by running the provided s
         }
         ```
     -   Leave the other settings as default and click **Create secret**.
-    -   After the secret is created, you need to grant your application's service account access to it. By default, this is the **Compute Engine default service account**.
-        -   Find your service account email in the [IAM & Admin](https://console.cloud.google.com/iam-admin/iam) page. It usually looks like `[PROJECT_NUMBER]-compute@developer.gserviceaccount.com`.
+    -   After the secret is created, you need to grant the `veo-spark-sa` service account access to it.
         -   Go back to the [Secret Manager](https://console.cloud.google.com/security/secret-manager) page, select your secret, and click **Permissions**.
         -   Click **Add principal**.
-        -   In the **New principals** field, paste your service account email.
+        -   In the **New principals** field, enter the email of the `veo-spark-sa` service account. It will look like `veo-spark-sa@[YOUR_PROJECT_ID].iam.gserviceaccount.com`.
         -   In the **Select a role** dropdown, choose **Secret Manager Secret Accessor**.
         -   Click **Save**.
 
