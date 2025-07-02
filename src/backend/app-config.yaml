@@ -9,10 +9,10 @@ LOCATION: global
 VIDEO_BUCKET_NAME: 504683450406-veo-generation
 SECRET_ID: veo-oauth-secret
 
-FRONTEND_URL: https://veo.vc7.info
-REDIRECT_URI: https://veo.vc7.info/auth
-# FRONTEND_URL: http://localhost:7860
-# REDIRECT_URI: http://localhost:7860/auth
+# FRONTEND_URL: https://veo.vc7.info
+# REDIRECT_URI: https://veo.vc7.info/auth
+FRONTEND_URL: http://localhost:7860
+REDIRECT_URI: http://localhost:7860/auth
 
 ALLOWED_DOMAINS:
   - google.com
@@ -35,8 +35,8 @@ LOGGER_NAME: veo.service
 LOGGING_FORMAT: "%(asctime)s [%(levelname)s]: %(message)s"
 
 # Prompt Gallery
-PROMPT_GALLERY_DB: "prompt-gallery"
-PROMPT_GALLERY_COLLECTION: 'prompts'
+PROMPT_GALLERY_DB: prompt-gallery
+PROMPT_GALLERY_COLLECTION: prompts
 
 # Configuration
 CONFIG_DB: "veo-app-config"

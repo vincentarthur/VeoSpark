@@ -105,6 +105,22 @@ You can enable the API and create the database using the `gcloud` CLI:
     gcloud firestore databases create --location=us-central1
     ```
 
+#### Deploying Firestore Indexes
+
+To ensure your Firestore queries are efficient, you need to deploy the required indexes.
+
+1.  **Navigate to the backend directory**:
+    ```bash
+    cd src/backend
+    ```
+
+2.  **Run the setup script**:
+    This script will deploy the indexes from `firestore_index.json`.
+    ```bash
+    ./setup_firestore.sh
+    ```
+    The script will automatically use the `PROJECT_ID` and `PROMPT_GALLERY_DB` from your `app-config.yaml` file.
+
 ### 5. BigQuery
 
 You can create the required BigQuery dataset and table by running the provided setup script.

@@ -25,6 +25,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from urllib.parse import urlparse, urlunparse
 
 from google.cloud import secretmanager, storage, bigquery, firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.genai import types
@@ -665,16 +666,19 @@ def get_prompts_from_gallery(tags: Optional[str] = None, page: int = 1, page_siz
     
     # Get total count for pagination
     count_query = prompts_ref
+    total_rows = 0
     if tag_list:
         for tag in tag_list:
-            count_query = count_query.where("keywords", "array_contains", tag)
+            count_query = count_query.where(filter=FieldFilter("keywords", "array_contains", tag))
+            total_rows += len(list(count_query.stream()))
+        
     total_rows = len(list(count_query.stream()))
 
     # Get paginated results
     query = prompts_ref.order_by("created_at", direction=firestore.Query.DESCENDING)
     if tag_list:
         for tag in tag_list:
-            query = query.where("keywords", "array_contains", tag)
+            query = query.where(filter=FieldFilter("keywords", "array_contains", tag))
             
     query = query.limit(page_size).offset((page - 1) * page_size)
     
