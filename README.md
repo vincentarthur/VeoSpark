@@ -260,7 +260,7 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Usage
 
-1.  Open your browser and navigate to `http://localhost:7860`.
+1.  Open your browser and navigate to `http://<FRONTEND_URI>`.
 2.  Log in with your Google account.
 3.  Use the "Video Generator" tab to create new videos.
 4.  View your past creations in the "My History" tab.
