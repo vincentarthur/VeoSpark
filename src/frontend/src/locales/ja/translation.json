@@ -67,8 +67,9 @@
       "model": "モデル",
       "all": "すべて",
       "editedOnly": "編集済みのみ",
-      "apply": "フィルタ",
-      "clear": "クリア"
+      "onlySuccess": "成功のみ",
+      "apply": "フィルター適用",
+      "all": "すべて"
     }
   },
   "editModal": {

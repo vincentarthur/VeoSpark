@@ -2,121 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
-  Box, Typography, Paper, CircularProgress, Alert, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, IconButton, Collapse, Modal, Button, Tooltip,
+  Box, Typography, Paper, CircularProgress, Alert, Modal, Button, Tooltip,
   TextField, Select, MenuItem, FormControl, InputLabel, Checkbox, FormControlLabel, Grid,
   TablePagination
 } from '@mui/material';
 import { 
-  KeyboardArrowDown, KeyboardArrowUp, PlayCircleOutline, Refresh, ContentCut, Mic, FilterList, Clear
+  Refresh, FilterList, Clear
 } from '@mui/icons-material';
 import EditingModal from './EditingModal';
 import { useEditingModal } from '../hooks/useEditingModal'; // Import the new hook
-
-// --- Modal for Video Preview ---
-const style = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '80%',
-  maxWidth: 700,
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 2,
-};
-
-// --- A single, expandable row in our history table ---
-const HistoryRow = ({ row, onEditClick }) => {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const isActionable = row.status === 'SUCCESS' && row.output_video_gcs_paths;
-
-  return (
-    <React.Fragment>
-      <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
-        <TableCell>
-          <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
-            {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-          </IconButton>
-        </TableCell>
-        <TableCell component="th" scope="row">
-          {new Date(row.trigger_time).toLocaleString()}
-        </TableCell>
-        <TableCell sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {row.prompt}
-        </TableCell>
-        <TableCell align="center">
-          <Typography variant="caption" color={row.status === 'SUCCESS' ? 'success.main' : 'error.main'}>
-            {row.status}
-          </Typography>
-        </TableCell>
-        <TableCell align="center">
-  {row.model_used
-    .replace(/veo-(\d\.\d+).*/, 'Veo $1')
-    .replace('-preview', '')
-    .replace('-exp', ' Exp')}
-</TableCell>
-        <TableCell>{row.video_name}</TableCell>
-        <TableCell align="center">
-          <Tooltip title={t('history.actions.preview')}>
-            <span>
-              <IconButton color="primary" onClick={() => setPreviewOpen(true)} disabled={!row.signed_urls || !row.signed_urls[0]}>
-                <PlayCircleOutline />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={t('history.actions.clip')}>
-            <span>
-              <IconButton color="secondary" onClick={() => onEditClick(row, 'clip')} disabled={!isActionable}>
-                <ContentCut />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={t('history.actions.dub')}>
-            <span>
-              <IconButton color="secondary" onClick={() => onEditClick(row, 'dub')} disabled={!isActionable}>
-                <Mic />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1, padding: 2, border: '1px dashed grey', borderRadius: '8px' }}>
-              <Typography variant="h6" gutterBottom component="div">
-                {t('history.details')}
-              </Typography>
-              <Typography variant="body2" component="p" sx={{ wordBreak: 'break-word' }}>
-                <strong>{t('history.fullPrompt')}:</strong> {row.prompt}
-              </Typography>
-              <Typography variant="body2" component="p">
-                <strong>{t('history.genDuration')}:</strong> {Math.round(row.operation_duration || 0)}s
-              </Typography>
-              <Typography variant="body2" component="p">
-                <strong>{t('history.completionTime')}:</strong> {new Date(row.completion_time).toLocaleString()}
-              </Typography>
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
-
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)}>
-        <Box sx={style}>
-          {row.signed_urls && row.signed_urls[0] ? (
-            <video src={row.signed_urls[0]} width="100%" controls autoPlay />
-          ) : (
-            <Alert severity="error">{t('history.noPreview')}</Alert>
-          )}
-        </Box>
-      </Modal>
-    </React.Fragment>
-  );
-};
+import VideoCard from './VideoCard'; // Import the new VideoCard component
 
 
 const HistoryPage = () => {
@@ -136,6 +31,7 @@ const HistoryPage = () => {
     status: '',
     model: '',
     is_edited: false,
+    only_success: false,
   });
 
   const handleFilterChange = (event) => {
@@ -153,6 +49,7 @@ const HistoryPage = () => {
       status: '',
       model: '',
       is_edited: false,
+      only_success: false,
     });
     fetchHistory(true); // Pass true to indicate clearing
   };
@@ -180,6 +77,10 @@ const HistoryPage = () => {
       }
       return acc;
     }, {});
+
+    if (filters.only_success) {
+      activeFilters.status = 'SUCCESS';
+    }
 
     try {
       const response = await axios.get('/api/videos/history', { 
@@ -272,6 +173,12 @@ const HistoryPage = () => {
                 label={t('history.filters.editedOnly')}
               />
           </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControlLabel
+              control={<Checkbox name="only_success" checked={filters.only_success} onChange={handleFilterChange} />}
+              label={t('history.filters.onlySuccess')}
+            />
+          </Grid>
           <Grid item xs={12} md={2} sx={{ display: 'flex', gap: 1 }}>
             <Button variant="outlined" onClick={() => fetchHistory()} startIcon={<FilterList />}>{t('history.filters.apply')}</Button>
             <Button onClick={clearFilters}><Clear size="small" /></Button>
@@ -288,37 +195,25 @@ const HistoryPage = () => {
       ) : !hasFetched ? (
         <Typography>{t('history.pressFetch')}</Typography>
       ) : (
-        <Paper sx={{ borderRadius: '12px' }}>
-          <TableContainer>
-            <Table aria-label="collapsible table">
-              <TableHead>
-                <TableRow>
-                  <TableCell />
-                  <TableCell>{t('history.colDate')}</TableCell>
-                  <TableCell>{t('history.colPrompt')}</TableCell>
-                  <TableCell align="center">{t('history.colStatus')}</TableCell>
-                  <TableCell align="center">{t('history.colModel')}</TableCell>
-                  <TableCell>{t('history.colName')}</TableCell>
-                  <TableCell align="center">{t('history.colPreview')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {history.map((row) => (
-                  <HistoryRow key={row.trigger_time} row={row} onEditClick={openModal} />
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+        <Box>
+          <Grid container spacing={3}>
+            {history.map((video) => (
+              <Grid item xs={12} sm={6} md={4} key={video.trigger_time}>
+                <VideoCard video={video} onEditClick={openModal} />
+              </Grid>
+            ))}
+          </Grid>
           <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
+            rowsPerPageOptions={[5, 10, 25, 50]}
             component="div"
             count={totalRows}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={(e, newPage) => fetchHistory(false, newPage, rowsPerPage)}
             onRowsPerPageChange={(e) => fetchHistory(false, 0, parseInt(e.target.value, 10))}
+            sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
           />
-        </Paper>
+        </Box>
       )}
 
       {selectedVideo && (

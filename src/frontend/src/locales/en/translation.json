@@ -78,6 +78,7 @@
       "model": "Model",
       "all": "All",
       "editedOnly": "Edited Only",
+      "onlySuccess": "Only Success",
       "apply": "Filter",
       "clear": "Clear Filter"
     }

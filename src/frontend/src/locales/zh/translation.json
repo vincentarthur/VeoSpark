@@ -69,6 +69,7 @@
       "model": "模型",
       "all": "全部",
       "editedOnly": "仅限编辑过的",
+      "onlySuccess": "仅看成功",
       "apply": "筛选",
       "clear": "清除"
     }
