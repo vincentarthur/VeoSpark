@@ -157,14 +157,24 @@ You can create the required BigQuery dataset and table by running the provided s
     -   For production, add your public URL (e.g., `https://your-app-url.com`) to origins and `https://your-app-url.com/auth` to redirect URIs.
     -   Take note of the "Client ID" and "Client secret".
 -   **Secret Manager**:
-    -   Create a new secret in Secret Manager.
-    -   Store the "Client ID" and "Client secret" as a JSON object in the secret value, like this:
+    -   Go to the [Secret Manager](https://console.cloud.google.com/security/secret-manager) page in the Google Cloud Console.
+    -   Click **Create secret**.
+    -   Enter a name for your secret (e.g., `veo-oauth-secret`). Note this name for your `app-config.yaml`.
+    -   In the **Secret value** field, paste the following JSON, replacing the placeholder values with your actual Client ID and Client Secret:
         ```json
         {
           "GOOGLE_CLIENT_ID": "YOUR_CLIENT_ID",
           "GOOGLE_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
         }
         ```
+    -   Leave the other settings as default and click **Create secret**.
+    -   After the secret is created, you need to grant your application's service account access to it. By default, this is the **Compute Engine default service account**.
+        -   Find your service account email in the [IAM & Admin](https://console.cloud.google.com/iam-admin/iam) page. It usually looks like `[PROJECT_NUMBER]-compute@developer.gserviceaccount.com`.
+        -   Go back to the [Secret Manager](https://console.cloud.google.com/security/secret-manager) page, select your secret, and click **Permissions**.
+        -   Click **Add principal**.
+        -   In the **New principals** field, paste your service account email.
+        -   In the **Select a role** dropdown, choose **Secret Manager Secret Accessor**.
+        -   Click **Save**.
 
 ## Running the Application Locally
 
