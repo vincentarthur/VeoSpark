@@ -100,9 +100,13 @@ You can enable the API and create the database using the `gcloud` CLI:
     gcloud services enable firestore.googleapis.com
     ```
 
-2.  **Create the database in `us-central1`**:
+2.  **Create the databases in `us-central1`**:
     ```bash
+    # Create the database for the prompt gallery
     gcloud firestore databases create --database="prompt-gallery" --location=us-central1
+
+    # Create the database for application configuration
+    gcloud firestore databases create --database="veo-app-config" --location=us-central1
     ```
 
 #### Deploying Firestore Indexes
