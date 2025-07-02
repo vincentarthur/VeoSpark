@@ -37,7 +37,15 @@
     "cameraControlLabel": "镜头控制 (实验性)",
     "generateButton": "生成视频",
     "generatingStatus": "正在生成您的杰作... 这可能需要几分钟。",
-    "uploadImage": "上传图片"
+    "uploadImage": "上传图片",
+    "uploadFirstFrame": "上传第一帧",
+    "uploadLastFrame": "上传最后一帧",
+    "generateWithImage": "使用图像生成",
+    "extendVideo": "扩展视频",
+    "extendVideoTitle": "扩展视频",
+    "selectVideoLabel": "选择要扩展的视频",
+    "extendDurationLabel": "扩展时长",
+    "loadingVideos": "正在加载视频..."
   },
   "history": {
     "title": "我的生成历史",
