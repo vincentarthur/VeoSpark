@@ -1,0 +1,10 @@
+[
+  {
+    "field-path": "shared_with_group_id",
+    "order":"ASCENDING"
+  },
+  {
+    "field-path": "shared_at",
+    "order": "DESCENDING"
+  }
+]

@@ -5,11 +5,15 @@
     "toggleTheme": "切换主题"
   },
   "nav": {
+    "videoGenerator": "视频生成器",
+    "promptFromImages": "从图片生成提示",
     "generator": "视频生成器",
     "history": "我的历史",
     "analytics": "分析",
     "gallery": "提示画廊",
-    "configurations": "配置"
+    "configurations": "配置",
+    "groups": "群组管理",
+    "teamGallery": "团队画廊"
   },
   "gallery": {
     "search": "搜索",
@@ -68,7 +72,13 @@
     "actions": {
       "preview": "预览",
       "clip": "剪辑",
-      "dub": "配音"
+      "dub": "配音",
+      "upscale": "放大",
+      "share": "分享"
+    },
+    "tabs": {
+      "history": "生成历史",
+      "upscaleJobs": "放大任务"
     },
     "filters": {
       "startDate": "开始日期",
@@ -90,9 +100,60 @@
     "timeHelper": "请输入数字",
     "dubText": "配音文本"
   },
+  "upscaleModal": {
+    "title": "放大视频"
+  },
+  "upscaleJobs": {
+    "noJobs": "没有找到放大任务。",
+    "colJobId": "任务ID",
+    "colStatus": "状态",
+    "colResolution": "分辨率",
+    "colCreatedAt": "创建于",
+    "colResult": "结果",
+    "viewVideo": "查看视频"
+  },
+  "groups": {
+    "title": "群组管理",
+    "importFromFile": "从文件导入",
+    "importHint": "文件应包含 'group' 和 'member' (或 'email') 列。",
+    "selectFile": "选择文件",
+    "confirmImport": "确认导入",
+    "createGroup": "创建新群组",
+    "groupName": "群组名称",
+    "addMember": "添加成员",
+    "memberEmail": "成员电子邮件",
+    "bulkActions": "批量操作",
+    "bulkPlaceholder": "输入逗号分隔的电子邮件",
+    "bulkAdd": "批量添加",
+    "bulkRemove": "批量删除",
+    "manageMembers": "管理成员",
+    "manageMembersFor": "管理成员",
+    "membersCount": "{{count}} 名成员",
+    "manageMembersDescription": "从此组中添加或删除成员。",
+    "confirmRemoveTitle": "确认删除",
+    "confirmRemoveDescription": "您确定要从此组中删除 {{email}} 吗？",
+    "memberRemovedSuccess": "成员已成功删除。"
+  },
+  "sharedVideos": {
+    "title": "团队画廊",
+    "selectGroup": "选择一个群组",
+    "noVideos": "没有视频被分享到这个群组。",
+    "confirmDeleteTitle": "删除分享的视频",
+    "confirmDeleteDescription": "您确定要永久删除此分享的视频吗？此操作无法撤销。",
+    "refresh": "刷新",
+    "refreshing": "刷新中..."
+  },
+  "shareModal": {
+    "title": "分享视频",
+    "selectGroup": "选择一个群组来分享"
+  },
   "common": {
     "submit": "提交",
-    "cancel": "取消"
+    "cancel": "取消",
+    "add": "添加",
+    "close": "关闭",
+    "actions": "操作",
+    "confirm": "确认"
   },
   "analytics": {
     "title": "模型成本分析",
@@ -105,6 +166,28 @@
     "totalCost": "总成本 (美元)",
     "costUSD": "成本 (美元)",
     "totalCostInRange": "总成本（已筛选）"
+  },
+  "videoCard": {
+    "sharedBy": "分享者",
+    "generatedBy": "生成者",
+    "deleteShare": "删除分享"
+  },
+  "imagePromptGenerator": {
+    "title": "从图片生成提示",
+    "characterImage": "角色图片",
+    "backgroundImage": "背景图片",
+    "propImage": "道具图片",
+    "clickToUpload": "点击上传",
+    "preview": "预览",
+    "generatePrompt": "生成提示",
+    "generating": "生成中...",
+    "generatedPrompt": "生成的提示：",
+    "pleaseUploadAtLeastOne": "请至少上传一张图片。",
+    "failedToGenerate": "生成提示失败。请检查控制台以获取详细信息。",
+    "translate": "翻译",
+    "translating": "翻译中...",
+    "failedToTranslate": "翻译提示失败。",
+    "translatedPromptTitle": "翻译后的提示"
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"

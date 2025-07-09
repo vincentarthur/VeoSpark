@@ -9,10 +9,10 @@ LOCATION: global
 VIDEO_BUCKET_NAME: 504683450406-veo-generation
 SECRET_ID: veo-oauth-secret
 
-FRONTEND_URL: https://veo.vc7.info
-REDIRECT_URI: https://veo.vc7.info/auth
-# FRONTEND_URL: http://localhost:7860
-# REDIRECT_URI: http://localhost:7860/auth
+# FRONTEND_URL: https://veo.vc7.info
+# REDIRECT_URI: https://veo.vc7.info/auth
+FRONTEND_URL: http://localhost:7860
+REDIRECT_URI: http://localhost:7860/auth
 
 ALLOWED_DOMAINS:
   - google.com
@@ -38,6 +38,13 @@ LOGGING_FORMAT: "%(asctime)s [%(levelname)s]: %(message)s"
 PROMPT_GALLERY_DB: prompt-gallery
 PROMPT_GALLERY_COLLECTION: prompts
 
+# Groups
+GROUPS_DB: veo-app-user-groups
+
+# Video Sharing
+SHARED_VIDEOS_DB: veo-app-shared-videos
+SHARED_VIDEOS_COLLECTION: shared_videos
+
 # Configuration
 CONFIG_DB: "veo-app-config"
 
@@ -47,3 +54,9 @@ CONFIG_DB: "veo-app-config"
 BANNER_MESSAGES:
   - "Veo3 Image-2-Video in current Argolis project is infeasible."
   - "A new model 'veo-3.0-generate-preview' is now available for testing."
+
+# Upscaling Configuration
+ENABLE_UPSCALE: False
+UPSCALE_QUEUE_ID: "veo-upscale-queue"
+UPSCALE_WORKER_URL: "https://your-upscale-worker-url.a.run.app" # Replace with your actual worker URL
+UPSCALE_JOBS_COLLECTION: "upscale-jobs"

@@ -15,5 +15,6 @@ echo "Deploying Firestore indexes..."
 
 # Around 2-3 minutes
 gcloud firestore indexes composite create --field-config=firestore_index.json --project=$(grep 'PROJECT_ID' app-config.yaml | awk '{print $2}') --database=$(grep 'PROMPT_GALLERY_DB' app-config.yaml | awk '{print $2}') --query-scope=collection --collection-group=prompts
+gcloud firestore indexes composite create --field-config=firestore_index_shared_video.json --project=$(grep 'PROJECT_ID' app-config.yaml | awk '{print $2}') --database=$(grep 'SHARED_VIDEOS_DB' app-config.yaml | awk '{print $2}') --query-scope=collection --collection-group=$(grep 'SHARED_VIDEOS_COLLECTION' app-config.yaml | awk '{print $2}')
 
 echo "Firestore index setup complete."

@@ -6,25 +6,33 @@ import { Box, Tabs, Tab, Paper, Typography } from '@mui/material';
 import Header from '../components/Header';
 import NotificationBanner from '../components/NotificationBanner'; // Import the new component
 import Dashboard from '../components/Dashboard';
+import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage'; // Import the new page
 import ConfigurationsPage from '../components/ConfigurationsPage';
 import PromptGalleryPage from './PromptGalleryPage';
+import GroupsPage from './GroupsPage';
+import SharedVideosPage from './SharedVideosPage';
 
 const HomePage = ({ user }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const [currentTab, setCurrentTab] = useState(0);
+  const [generatorTab, setGeneratorTab] = useState(0);
 
   useEffect(() => {
     if (location.pathname === '/gallery') {
       setCurrentTab(1);
     } else if (location.pathname === '/history') {
       setCurrentTab(2);
-    } else if (location.pathname === '/analytics') {
+    } else if (location.pathname === '/shared-videos') {
       setCurrentTab(3);
-    } else if (location.pathname === '/configurations') {
+    } else if (location.pathname === '/groups') {
       setCurrentTab(4);
+    } else if (location.pathname === '/analytics') {
+      setCurrentTab(5);
+    } else if (location.pathname === '/configurations') {
+      setCurrentTab(6);
     }
     else {
       setCurrentTab(0);
@@ -50,6 +58,10 @@ const HomePage = ({ user }) => {
           <Tab label={t('nav.generator')} component={Link} to="/" />
           <Tab label={t('nav.gallery')} component={Link} to="/gallery" />
           <Tab label={t('nav.history')} component={Link} to="/history" />
+          <Tab label={t('nav.teamGallery')} component={Link} to="/shared-videos" />
+          {user?.role === 'APP_ADMIN' && (
+            <Tab label={t('nav.groups')} component={Link} to="/groups" />
+          )}
           {user?.is_cost_manager && (
             <Tab label={t('nav.analytics')} component={Link} to="/analytics" />
           )}
@@ -67,8 +79,21 @@ const HomePage = ({ user }) => {
           }}
         >
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={
+            <Box>
+              <Tabs value={generatorTab} onChange={(e, newValue) => setGeneratorTab(newValue)} centered>
+                <Tab label={t('nav.videoGenerator')} />
+                <Tab label={t('nav.promptFromImages')} />
+              </Tabs>
+              {generatorTab === 0 && <Dashboard />}
+              {generatorTab === 1 && <ImagePromptGenerator />}
+            </Box>
+          } />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/shared-videos" element={<SharedVideosPage user={user} />} />
+          {user?.role === 'APP_ADMIN' && (
+            <Route path="/groups" element={<GroupsPage />} />
+          )}
           {user?.is_cost_manager && (
             <Route path="/analytics" element={<AnalyticsPage />} />
           )}

@@ -15,13 +15,18 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 ## Features
 
 -   **AI-Powered Video Generation**: Create stunning videos from simple text prompts using Google's Veo models.
+-   **Image-to-Prompt Generation**: Upload a character, background, and/or prop image to generate a descriptive prompt using Gemini 2.5 Pro.
+-   **Prompt Translation**: Instantly translate generated prompts into different languages using Gemini 2.5 Flash.
 -   **Unified Application**: Frontend and Backend are served from a single FastAPI server.
 -   **Generation History**: Keep track of all your video generations, including prompts, models used, and status.
 -   **Cost Analytics**: Monitor your spending on video generation with detailed analytics and visualizations.
 -   **User Authentication**: Secure access to the application with Google OAuth.
 -   **Internationalization**: Support for multiple languages (English, Japanese, Chinese).
 -   **Video Editing**: Basic video editing features like clipping and dubbing.
+-   **Video Upscaling**: Upscale videos to 1080p or 4K using an asynchronous task queue.
+-   **Team Gallery & Sharing**: Share videos with user-managed groups. Shared videos retain all original generation details. Only the user who shared a video can delete it from the gallery.
 -   **Prompt Gallery**: A collaborative space to share and discover creative prompts.
+-   **Group Management**: Admins can create user groups and manage memberships, including bulk add/remove functionality.
 
 ## Tech Stack
 
@@ -41,6 +46,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
     -   `google-cloud-storage`: For interacting with Cloud Storage.
     -   `google-cloud-secret-manager`: For managing secrets.
     -   `google-cloud-bigquery`: For working with BigQuery.
+    -   `google-cloud-tasks`: For creating and managing tasks in Cloud Tasks.
 -   **Authlib**: The ultimate Python library in building OAuth and OpenID Connect clients and providers.
 -   **MoviePy**: A Python module for video editing.
 -   **google-cloud-firestore**: For a flexible, scalable database for mobile, web, and server development.
@@ -81,6 +87,7 @@ To run this application, you need to set up the following Google Cloud services:
     -   Cloud Storage API
     -   BigQuery API
     -   Secret Manager API
+    -   Cloud Tasks API
 
 ### 3. Cloud Storage
 
@@ -107,6 +114,19 @@ You can enable the API and create the database using the `gcloud` CLI:
 
     # Create the database for application configuration
     gcloud firestore databases create --database="veo-app-config" --location=us-central1
+
+    # Create the database for user groups
+    gcloud firestore databases create --database="veo-app-user-groups" --location=us-central1
+
+    # Create the database for shared videos
+    gcloud firestore databases create --database="veo-app-shared-videos" --location=us-central1
+    ```
+
+### 5. Cloud Tasks
+
+- Create a Cloud Tasks queue for handling asynchronous video upscaling.
+    ```bash
+    gcloud tasks queues create veo-upscale-queue --location=us-central1
     ```
 
 #### Deploying Firestore Indexes
@@ -170,6 +190,7 @@ It is recommended to create a dedicated service account for this application to 
     -   Vertex AI Administrator
     -   Vertex AI User
     -   Workload Identity User
+    -   Cloud Tasks Enqueuer
 6.  Click **Done**.
 
 ### 7. Authentication

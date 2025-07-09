@@ -5,11 +5,15 @@
     "toggleTheme": "テーマを切り替え"
   },
   "nav": {
+    "videoGenerator": "ビデオジェネレーター",
+    "promptFromImages": "画像からプロンプト",
     "generator": "ビデオジェネレーター",
     "history": "私の履歴",
     "analytics": "アナリティクス",
     "gallery": "プロンプトギャラリー",
-    "configurations": "設定"
+    "configurations": "設定",
+    "groups": "グループ管理",
+    "teamGallery": "チームギャラリー"
   },
   "gallery": {
     "search": "検索",
@@ -67,7 +71,13 @@
     "actions": {
       "preview": "プレビュー",
       "clip": "クリップ",
-      "dub": "吹き替え"
+      "dub": "吹き替え",
+      "upscale": "アップスケール",
+      "share": "共有"
+    },
+    "tabs": {
+      "history": "生成履歴",
+      "upscaleJobs": "アップスケールジョブ"
     },
     "filters": {
       "startDate": "開始日",
@@ -89,9 +99,60 @@
     "timeHelper": "数値を入力してください",
     "dubText": "吹き替えテキスト"
   },
+  "upscaleModal": {
+    "title": "ビデオをアップスケール"
+  },
+  "upscaleJobs": {
+    "noJobs": "アップスケールジョブが見つかりません。",
+    "colJobId": "ジョブID",
+    "colStatus": "ステータス",
+    "colResolution": "解像度",
+    "colCreatedAt": "作成日時",
+    "colResult": "結果",
+    "viewVideo": "ビデオを表示"
+  },
+  "groups": {
+    "title": "グループ管理",
+    "importFromFile": "ファイルからインポート",
+    "importHint": "ファイルには 'group' と 'member' (または 'email') の列が必要です。",
+    "selectFile": "ファイルを選択",
+    "confirmImport": "インポートを確認",
+    "createGroup": "新しいグループを作成",
+    "groupName": "グループ名",
+    "addMember": "メンバーを追加",
+    "memberEmail": "メンバーのメールアドレス",
+    "bulkActions": "一括操作",
+    "bulkPlaceholder": "コンマで区切られたメールアドレスを入力してください",
+    "bulkAdd": "一括追加",
+    "bulkRemove": "一括削除",
+    "manageMembers": "メンバーを管理",
+    "manageMembersFor": "のメンバーを管理",
+    "membersCount": "{{count}} 人のメンバー",
+    "manageMembersDescription": "このグループにメンバーを追加または削除します。",
+    "confirmRemoveTitle": "削除の確認",
+    "confirmRemoveDescription": "本当に {{email}} をこのグループから削除しますか？",
+    "memberRemovedSuccess": "メンバーを正常に削除しました。"
+  },
+  "sharedVideos": {
+    "title": "チームギャラリー",
+    "selectGroup": "グループを選択",
+    "noVideos": "このグループにはビデオが共有されていません。",
+    "confirmDeleteTitle": "共有ビデオを削除",
+    "confirmDeleteDescription": "この共有ビデオを完全に削除してもよろしいですか？この操作は元に戻せません。",
+    "refresh": "更新",
+    "refreshing": "更新中..."
+  },
+  "shareModal": {
+    "title": "ビデオを共有",
+    "selectGroup": "共有するグループを選択"
+  },
   "common": {
     "submit": "送信",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "add": "追加",
+    "close": "閉じる",
+    "actions": "アクション",
+    "confirm": "確認"
   },
   "analytics": {
     "title": "モデルコスト分析",
@@ -104,6 +165,28 @@
     "totalCost": "総コスト (USD)",
     "costUSD": "コスト (USD)",
     "totalCostInRange": "総コスト（フィルター済み）"
+  },
+  "videoCard": {
+    "sharedBy": "共有者",
+    "generatedBy": "生成者",
+    "deleteShare": "共有を削除"
+  },
+  "imagePromptGenerator": {
+    "title": "画像からプロンプトを生成",
+    "characterImage": "キャラクター画像",
+    "backgroundImage": "背景画像",
+    "propImage": "小道具画像",
+    "clickToUpload": "クリックしてアップロード",
+    "preview": "プレビュー",
+    "generatePrompt": "プロンプトを生成",
+    "generating": "生成中...",
+    "generatedPrompt": "生成されたプロンプト：",
+    "pleaseUploadAtLeastOne": "少なくとも1枚の画像をアップロードしてください。",
+    "failedToGenerate": "プロンプトの生成に失敗しました。詳細はコンソールを確認してください。",
+    "translate": "翻訳",
+    "translating": "翻訳中...",
+    "failedToTranslate": "プロンプトの翻訳に失敗しました。",
+    "translatedPromptTitle": "翻訳されたプロンプト"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

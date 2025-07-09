@@ -17,18 +17,20 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 
 from authlib.integrations.starlette_client import OAuth, OAuthError
-from fastapi import FastAPI, Depends, Request, APIRouter, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, Request, APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.config import Config
 from starlette.responses import RedirectResponse, JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from urllib.parse import urlparse, urlunparse
 
-from google.cloud import secretmanager, storage, bigquery, firestore
+from google.cloud import secretmanager, storage, bigquery, firestore, tasks_v2
 from google.cloud.firestore_v1.base_query import FieldFilter
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.genai import types
+from PIL import Image
+import io
 
 # Import the new video processing functions
 from video_processing import process_video_from_gcs, check_quota
@@ -165,6 +167,29 @@ try:
 except Exception as e:
     logger.error(f"Could not initialize Firestore client for configuration. Error: {e}", exc_info=True)
     config_db = None
+
+try:
+    groups_db = firestore.Client(project=PROJECT, database=app_conf.get('GROUPS_DB'))
+    logger.info("Firestore client for groups initialized successfully.")
+except Exception as e:
+    logger.error(f"Could not initialize Firestore client for groups. Error: {e}", exc_info=True)
+    groups_db = None
+
+try:
+    shared_videos_db = firestore.Client(project=PROJECT, database=app_conf.get('SHARED_VIDEOS_DB'))
+    logger.info("Firestore client for shared videos initialized successfully.")
+except Exception as e:
+    logger.error(f"Could not initialize Firestore client for shared videos. Error: {e}", exc_info=True)
+    shared_videos_db = None
+
+try:
+    tasks_client = tasks_v2.CloudTasksClient()
+    task_queue_path = tasks_client.queue_path(PROJECT, LOCATION, app_conf.get('UPSCALE_QUEUE_ID'))
+    logger.info("Cloud Tasks client initialized successfully.")
+except Exception as e:
+    logger.error(f"Could not initialize Cloud Tasks client. Upscaling will be disabled. Error: {e}", exc_info=True)
+    tasks_client = None
+    task_queue_path = None
 
 
 # ==============================================================================
@@ -457,7 +482,8 @@ def get_app_config():
     Returns public configuration details to the frontend.
     """
     return JSONResponse({
-        "prompt_gallery_name": app_conf.get("PROMPT_GALLERY_COLLECTION", "prompts")
+        "prompt_gallery_name": app_conf.get("PROMPT_GALLERY_COLLECTION", "prompts"),
+        "enable_upscale": app_conf.get("ENABLE_UPSCALE", False)
     })
 
 
@@ -970,6 +996,371 @@ async def dub_video_endpoint(request: Request, user: dict = Depends(get_user)):
         raise HTTPException(status_code=500, detail=f"Video dubbing failed: {e}")
 
 
+@api_router.post("/videos/upscale", tags=["Video Editing"])
+async def upscale_video_endpoint(request: Request, user: dict = Depends(get_user)):
+    if not app_conf.get("ENABLE_UPSCALE", False):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not tasks_client or not task_queue_path:
+        raise HTTPException(status_code=503, detail="Upscaling service is not available.")
+
+    body = await request.json()
+    gcs_uri = body.get('gcs_uri')
+    resolution = body.get('resolution')
+
+    if not gcs_uri or not resolution:
+        raise HTTPException(status_code=400, detail="gcs_uri and resolution are required.")
+
+    job_id = str(uuid.uuid4())
+    user_email = user.get('email', 'anonymous')
+
+    # Create a record in Firestore for the job
+    job_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).document(job_id)
+    job_ref.set({
+        'user_email': user_email,
+        'gcs_uri': gcs_uri,
+        'resolution': resolution,
+        'status': 'queued',
+        'created_at': firestore.SERVER_TIMESTAMP,
+    })
+
+    # Create a task in Cloud Tasks
+    task = {
+        'http_request': {
+            'http_method': tasks_v2.HttpMethod.POST,
+            'url': app_conf.get('UPSCALE_WORKER_URL'),
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({
+                'job_id': job_id,
+                'gcs_uri': gcs_uri,
+                'resolution': resolution,
+            }).encode(),
+        }
+    }
+    tasks_client.create_task(parent=task_queue_path, task=task)
+
+    return JSONResponse({"message": "Upscale job created successfully.", "job_id": job_id}, status_code=202)
+
+
+@api_router.get("/videos/upscale/status/{job_id}", tags=["Video Editing"])
+def get_upscale_job_status(job_id: str, user: dict = Depends(get_user)):
+    if not app_conf.get("ENABLE_UPSCALE", False):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    job_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).document(job_id)
+    job = job_ref.get()
+
+    if not job.exists:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return JSONResponse(job.to_dict())
+
+
+@api_router.get("/videos/upscale/jobs", tags=["Video Editing"])
+def get_upscale_jobs(user: dict = Depends(get_user)):
+    if not app_conf.get("ENABLE_UPSCALE", False):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    user_email = user.get('email')
+    # jobs_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).where('user_email', '==', user_email).order_by('created_at', direction=firestore.Query.DESCENDING)
+    jobs_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).where(filter=FieldFilter('user_email', '==', user_email)).order_by('created_at', direction=firestore.Query.DESCENDING)
+
+    jobs = []
+    veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+    for doc in jobs_ref.stream():
+        job_data = doc.to_dict()
+        job_data["id"] = doc.id
+        if 'created_at' in job_data and hasattr(job_data['created_at'], 'isoformat'):
+            job_data['created_at'] = job_data['created_at'].isoformat()
+        if job_data.get('status') == 'completed' and job_data.get('upscaled_gcs_uri'):
+            job_data['signed_url'] = veo_client.generate_signed_gcs_url(job_data['upscaled_gcs_uri'])
+        jobs.append(job_data)
+
+    return JSONResponse(jobs)
+
+
+@api_router.post("/groups", tags=["Groups"])
+async def create_group(request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    body = await request.json()
+    group_name = body.get("name")
+    members = body.get("members", [])
+
+    if not group_name:
+        raise HTTPException(status_code=400, detail="Group name is required.")
+
+    doc_ref = groups_db.collection('groups').document()
+    doc_ref.set({
+        "name": group_name,
+        "members": members,
+        "created_by": user.get("email"),
+        "created_at": firestore.SERVER_TIMESTAMP
+    })
+    return JSONResponse({"message": "Group created successfully", "id": doc_ref.id}, status_code=201)
+
+
+@api_router.get("/groups", tags=["Groups"])
+def get_groups(user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    if user.get('role') == 'APP_ADMIN':
+        groups_ref = groups_db.collection('groups')
+    else:
+        user_email = user.get('email')
+        groups_ref = groups_db.collection('groups').where(filter=FieldFilter('members', 'array_contains', user_email))
+    
+    groups = []
+    for doc in groups_ref.stream():
+        group_data = doc.to_dict()
+        group_data["id"] = doc.id
+        if 'created_at' in group_data and hasattr(group_data['created_at'], 'isoformat'):
+            group_data['created_at'] = group_data['created_at'].isoformat()
+        groups.append(group_data)
+
+    return JSONResponse(groups)
+
+
+@api_router.post("/groups/{group_id}/members", tags=["Groups"])
+async def add_group_member(group_id: str, request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    body = await request.json()
+    member_email = body.get("email")
+
+    if not member_email:
+        raise HTTPException(status_code=400, detail="Member email is required.")
+
+    doc_ref = groups_db.collection('groups').document(group_id)
+    doc_ref.update({
+        "members": firestore.ArrayUnion([member_email])
+    })
+    return JSONResponse({"message": "Member added successfully."})
+
+
+@api_router.delete("/groups/{group_id}/members/{member_email}", tags=["Groups"])
+def remove_group_member(group_id: str, member_email: str, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    doc_ref = groups_db.collection('groups').document(group_id)
+    doc_ref.update({
+        "members": firestore.ArrayRemove([member_email])
+    })
+    return JSONResponse({"message": "Member removed successfully."})
+
+
+@api_router.post("/groups/{group_id}/members/bulk", tags=["Groups"])
+async def bulk_add_group_members(group_id: str, request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    body = await request.json()
+    emails = body.get("emails", [])
+
+    if not emails:
+        raise HTTPException(status_code=400, detail="Emails are required.")
+
+    doc_ref = groups_db.collection('groups').document(group_id)
+    doc_ref.update({
+        "members": firestore.ArrayUnion(emails)
+    })
+    return JSONResponse({"message": "Members added successfully."})
+
+
+@api_router.delete("/groups/{group_id}/members/bulk", tags=["Groups"])
+async def bulk_remove_group_members(group_id: str, request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    body = await request.json()
+    emails = body.get("emails", [])
+
+    if not emails:
+        raise HTTPException(status_code=400, detail="Emails are required.")
+
+    doc_ref = groups_db.collection('groups').document(group_id)
+    doc_ref.update({
+        "members": firestore.ArrayRemove(emails)
+    })
+    return JSONResponse({"message": "Members removed successfully."})
+
+
+@api_router.post("/groups/import", tags=["Groups"])
+async def import_groups(request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not groups_db:
+        raise HTTPException(status_code=503, detail="Groups database is not configured")
+
+    body = await request.json()
+    import_data = body.get("data", [])
+
+    if not import_data:
+        raise HTTPException(status_code=400, detail="No data provided for import.")
+
+    try:
+        for group_data in import_data:
+            group_name = group_data.get("groupName")
+            members = group_data.get("members", [])
+            
+            if not group_name or not members:
+                continue
+
+            # Check if group exists
+            query = groups_db.collection('groups').where(filter=FieldFilter("name", "==", group_name)).limit(1)
+            existing_groups = list(query.stream())
+
+            if existing_groups:
+                # Group exists, update members
+                group_ref = existing_groups[0].reference
+                group_ref.update({"members": firestore.ArrayUnion(members)})
+            else:
+                # Group does not exist, create it
+                doc_ref = groups_db.collection('groups').document()
+                doc_ref.set({
+                    "name": group_name,
+                    "members": members,
+                    "created_by": user.get("email"),
+                    "created_at": firestore.SERVER_TIMESTAMP
+                })
+        
+        return JSONResponse({"message": "Groups imported successfully."})
+    except Exception as e:
+        logger.error(f"Group import failed. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Group import failed: {e}")
+
+
+@api_router.post("/videos/share", tags=["Video Sharing"])
+async def share_video(request: Request, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not shared_videos_db:
+        raise HTTPException(status_code=503, detail="Shared videos database is not configured")
+
+    body = await request.json()
+    video_data = body.get("video")
+    group_id = body.get("group_id")
+
+    if not video_data or not group_id:
+        raise HTTPException(status_code=400, detail="Video data and group_id are required.")
+
+    # Extract the GCS URI from the potentially nested structure
+    gcs_uri = video_data.get('gcs_uri')
+    if not gcs_uri:
+        gcs_paths_str = video_data.get("output_video_gcs_paths", "[]")
+        try:
+            gcs_paths = json.loads(gcs_paths_str)
+            if gcs_paths:
+                gcs_uri = gcs_paths[0]
+        except (json.JSONDecodeError, TypeError):
+            pass
+    
+    if not gcs_uri:
+        raise HTTPException(status_code=400, detail="Could not determine a valid GCS URI from the video data.")
+
+    doc_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).document()
+    
+    # Create a new document with all the relevant video details
+    shared_video_payload = {
+        "video_gcs_uri": gcs_uri,
+        "shared_with_group_id": group_id,
+        "shared_by_user_email": user.get("email"),
+        "shared_at": firestore.SERVER_TIMESTAMP,
+        "prompt": video_data.get("prompt"),
+        "user_email": video_data.get("user_email"), # Original generator
+        "trigger_time": video_data.get("trigger_time"),
+        "completion_time": video_data.get("completion_time"),
+        "operation_duration": video_data.get("operation_duration"),
+        "status": video_data.get("status"),
+        "model_used": video_data.get("model_used"),
+    }
+    
+    # Filter out any None values to keep the Firestore document clean
+    shared_video_payload = {k: v for k, v in shared_video_payload.items() if v is not None}
+
+    doc_ref.set(shared_video_payload)
+    
+    return JSONResponse({"message": "Video shared successfully", "id": doc_ref.id}, status_code=201)
+
+
+@api_router.get("/groups/{group_id}/videos", tags=["Video Sharing"])
+def get_shared_videos(group_id: str, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not groups_db or not shared_videos_db:
+        raise HTTPException(status_code=503, detail="Database services are not configured")
+
+    # Check if user is a member of the group
+    group_ref = groups_db.collection('groups').document(group_id)
+    group = group_ref.get()
+    if not group.exists or user.get('email') not in group.to_dict().get('members', []):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    videos_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).where(filter=FieldFilter('shared_with_group_id', '==', group_id)).order_by('shared_at', direction=firestore.Query.DESCENDING)
+    
+    videos = []
+    veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+    
+    for doc in videos_ref.stream():
+        video_data = doc.to_dict()
+        video_data["id"] = doc.id
+        
+        # Format timestamps if they exist
+        if 'shared_at' in video_data and hasattr(video_data['shared_at'], 'isoformat'):
+            video_data['shared_at'] = video_data['shared_at'].isoformat()
+        
+        # Generate signed URL for preview
+        video_gcs_uri = video_data.get('video_gcs_uri')
+        if video_gcs_uri:
+            # The signed URL for the main video file
+            video_data['signed_urls'] = [veo_client.generate_signed_gcs_url(video_gcs_uri)]
+        
+        videos.append(video_data)
+
+    return JSONResponse(videos)
+
+
+@api_router.delete("/shared-videos/{shared_video_id}", tags=["Video Sharing"])
+def delete_shared_video(shared_video_id: str, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not shared_videos_db:
+        raise HTTPException(status_code=503, detail="Shared videos database is not configured")
+
+    doc_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).document(shared_video_id)
+    doc = doc_ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Shared video not found")
+
+    if doc.to_dict().get("shared_by_user_email") != user.get("email"):
+        raise HTTPException(status_code=403, detail="You can only delete videos you have shared.")
+
+    doc_ref.delete()
+    return JSONResponse({"message": "Shared video deleted successfully"})
+
+
 @api_router.get("/analytics/consumption", tags=["Analytics"])
 def get_consumption_analytics(
     user: dict = Depends(get_user),
@@ -1082,6 +1473,69 @@ def get_consumption_analytics(
 # ==============================================================================
 # 6. APP ROUTING AND STARTUP
 # ==============================================================================
+@api_router.post("/generate-prompt-from-images", tags=["Prompt Generation"])
+async def generate_prompt_from_images(
+    character_image: Optional[UploadFile] = File(None),
+    background_image: Optional[UploadFile] = File(None),
+    prop_image: Optional[UploadFile] = File(None)
+):
+    if not character_image and not background_image and not prop_image:
+        raise HTTPException(status_code=400, detail="At least one image must be provided.")
+
+    try:
+        client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
+        
+        parts = []
+        prompt_text = "Describe a scene based on the following images: "
+        
+        if character_image:
+            prompt_text += "a character, "
+            img_bytes = await character_image.read()
+            parts.append(types.Part.from_bytes(data=img_bytes, mime_type=character_image.content_type))
+        
+        if background_image:
+            prompt_text += "a background, "
+            img_bytes = await background_image.read()
+            parts.append(types.Part.from_bytes(data=img_bytes, mime_type=background_image.content_type))
+
+        if prop_image:
+            prompt_text += "a prop. "
+            img_bytes = await prop_image.read()
+            parts.append(types.Part.from_bytes(data=img_bytes, mime_type=prop_image.content_type))
+
+        # Insert the descriptive text at the beginning of the parts list
+        parts.insert(0, types.Part.from_text(text=prompt_text.strip().rstrip(',')))
+
+        model = "gemini-2.5-pro"
+        contents = [types.Content(role="user", parts=parts)]
+
+        generate_config = types.GenerateContentConfig(
+            temperature=1,
+            top_p=1,
+            seed=0,
+            max_output_tokens=65535,
+            safety_settings=[
+                types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+                types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+                types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+                types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF")
+            ],
+            thinking_config=types.ThinkingConfig(thinking_budget=-1),
+        )
+
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=generate_config,
+        )
+
+        return JSONResponse({"prompt": response.text})
+
+    except Exception as e:
+        logger.error(f"Prompt generation from images failed. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Prompt generation failed: {e}")
+
+
 @api_router.post("/translate", tags=["Translation"])
 async def translate_text_endpoint(request: Request, user: dict = Depends(get_user)):
     if not user:
