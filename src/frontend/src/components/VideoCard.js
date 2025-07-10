@@ -86,6 +86,9 @@ const VideoCard = ({ video, user, onEditClick, onUpscaleClick, onShareClick, onS
                 <strong>{t('history.fullPrompt')}:</strong> {video.prompt}
             </Typography>
             <Typography variant="body2" component="p">
+                <strong>{t('history.model')}:</strong> {video.model_used}
+            </Typography>
+            <Typography variant="body2" component="p">
                 <strong>{t('history.genDuration')}:</strong> {Math.round(video.operation_duration || 0)}s
             </Typography>
             <Typography variant="body2" component="p">

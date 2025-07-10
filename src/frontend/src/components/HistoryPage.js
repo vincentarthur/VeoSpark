@@ -30,6 +30,7 @@ const HistoryPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const [models, setModels] = useState([]);
 
   // State for filters
   const [filters, setFilters] = useState({
@@ -145,7 +146,16 @@ const HistoryPage = () => {
         console.error("Failed to fetch config", error);
       }
     };
+    const fetchModels = async () => {
+      try {
+        const response = await axios.get('/api/models');
+        setModels(response.data.models || []);
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      }
+    };
     fetchConfig();
+    fetchModels();
   }, []);
 
   return (
@@ -212,8 +222,9 @@ const HistoryPage = () => {
                   <InputLabel>{t('history.filters.model')}</InputLabel>
                   <Select name="model" value={filters.model} label={t('history.filters.model')} onChange={handleFilterChange}>
                     <MenuItem value=""><em>{t('history.filters.all')}</em></MenuItem>
-                    <MenuItem value="veo-2.0-generate-001">Veo 2.0</MenuItem>
-                    <MenuItem value="veo-3.0-generate-preview">Veo 3.0</MenuItem>
+                    {models.map((m) => (
+                      <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>

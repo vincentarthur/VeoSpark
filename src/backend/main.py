@@ -97,6 +97,14 @@ except (FileNotFoundError, yaml.YAMLError) as e:
     logger.critical(f"Could not load or parse 'app-config.yaml'. Error: {e}")
     sys.exit(1)
 
+try:
+    with open('./models.yaml', 'r') as models_file:
+        models_conf = yaml.safe_load(models_file)
+    logger.info("Successfully loaded models.yaml.")
+except (FileNotFoundError, yaml.YAMLError) as e:
+    logger.critical(f"Could not load or parse 'models.yaml'. Error: {e}")
+    sys.exit(1)
+
 # Overwrite with environment variables if they exist, for cloud deployments
 app_conf['FRONTEND_URL'] = os.environ.get('FRONTEND_URL', app_conf.get('FRONTEND_URL'))
 app_conf['REDIRECT_URI'] = os.environ.get('REDIRECT_URI', app_conf.get('REDIRECT_URI'))
@@ -203,6 +211,7 @@ class VeoApiClient:
         self.default_bucket_name = default_bucket_name
         self.default_model_id = app_conf.get('GEMINI_MODEL', "veo-2.0-generate-001")
         self.v3_model_id = "veo-3.0-generate-preview"
+        self.models_config = models_conf.get('models', [])
 
         try:
             self.logger = logging.getLogger("VeoApiServer")
@@ -485,6 +494,14 @@ def get_app_config():
         "prompt_gallery_name": app_conf.get("PROMPT_GALLERY_COLLECTION", "prompts"),
         "enable_upscale": app_conf.get("ENABLE_UPSCALE", False)
     })
+
+
+@api_router.get("/models", tags=["Configuration"])
+def get_models():
+    """
+    Returns the available models from the configuration.
+    """
+    return JSONResponse(models_conf)
 
 
 @api_router.get("/notification-banner", tags=["Configuration"])
@@ -1406,12 +1423,15 @@ def get_consumption_analytics(
 
     def calculate_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
         if not model_used or not video_duration: return 0.0
-        cost_per_second = 0.0
-        if 'veo-3.0' in model_used:
-            # Assume with_audio is true for old data where the field is NULL
-            cost_per_second = 0.75 if with_audio is not False else 0.50
-        elif 'veo-2.0' in model_used:
-            cost_per_second = 0.50
+        
+        model_info = next((m for m in models_conf.get('models', []) if m['id'] == model_used), None)
+        
+        if not model_info:
+            return 0.0
+            
+        pricing = model_info.get('pricing', {})
+        cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
+        
         return round(video_duration * cost_per_second, 4)
 
     try:

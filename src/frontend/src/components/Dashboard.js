@@ -88,15 +88,11 @@ const LabeledSlider = ({ label, displayValue, ...sliderProps }) => {
   );
 };
 
-const VEO_MODELS = {
-  'veo-3.0-generate-preview': 'Veo 3.0',
-  'veo-2.0-generate-001': 'Veo 2.0',
-};
-
 const Dashboard = () => {
   const { t } = useTranslation();
 
-  const [model, setModel] = useState('veo-3.0-generate-preview');
+  const [models, setModels] = useState([]);
+  const [model, setModel] = useState('');
   const [prompt, setPrompt] = useState('A dramatic timelapse of a storm cloud over a desert');
   const [generationMode, setGenerationMode] = useState('generate'); // 'generate' or 'extend'
   const [duration, setDuration] = useState(8);
@@ -228,9 +224,25 @@ const Dashboard = () => {
     setFinalFrameUploadError(null);
   };
 
-  const isV3Model = model === 'veo-3.0-generate-preview';
+  const isV3Model = model.startsWith('veo-3.0');
   const isV2GenerateModel = model === 'veo-2.0-generate-001';
   const isVeo2Model = model.startsWith('veo-2.0');
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await axios.get('/api/models');
+        const fetchedModels = response.data.models || [];
+        setModels(fetchedModels);
+        if (fetchedModels.length > 0) {
+          setModel(fetchedModels[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      }
+    };
+    fetchModels();
+  }, []);
 
   useEffect(() => {
     if (isV3Model && aspectRatio === '9:16') setAspectRatio('16:9');
@@ -311,8 +323,8 @@ const Dashboard = () => {
             label={t('dashboard.modelLabel')}
             onChange={(e) => setModel(e.target.value)}
           >
-            {Object.entries(VEO_MODELS).map(([id, name]) => (
-              <MenuItem key={id} value={id}>{name}</MenuItem>
+            {models.map((m) => (
+              <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
             ))}
           </Select>
         </FormControl>
