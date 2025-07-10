@@ -8,6 +8,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
+- [Model Configuration](#model-configuration)
 - [Google Cloud Setup](#google-cloud-setup)
 - [Running the Application Locally](#running-the-application-locally)
 - [Usage](#usage)
@@ -15,6 +16,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 ## Features
 
 -   **AI-Powered Video Generation**: Create stunning videos from simple text prompts using Google's Veo models.
+-   **Dynamic Model Configuration**: Easily add, remove, or update Veo models and their pricing through a simple `models.yaml` file without changing any code.
 -   **Image-to-Prompt Generation**: Upload a character, background, and/or prop image to generate a descriptive prompt using Gemini 2.5 Pro.
 -   **Prompt Translation**: Instantly translate generated prompts into different languages using Gemini 2.5 Flash.
 -   **Unified Application**: Frontend and Backend are served from a single FastAPI server.
@@ -72,6 +74,47 @@ graph TD
     end
 ```
 
+## Model Configuration
+
+VeoSpark allows for easy management of Veo models through the `src/backend/models.yaml` file. This file centralizes model definitions and pricing, allowing administrators to add, remove, or update models without any code changes.
+
+### Structure of `models.yaml`
+
+The file contains a list of model objects, each with the following properties:
+
+-   `id`: The unique identifier for the model used by the API.
+-   `name`: The user-friendly display name for the model in the UI.
+-   `type`: The model type (e.g., `veo-2.0`, `veo-3.0`), used for conditional logic in the application.
+-   `pricing`: An object containing the cost per second for video generation.
+    -   `video_with_audio`: Cost per second for generating video with audio.
+    -   `video_without_audio`: Cost per second for generating video without audio.
+
+### Example `models.yaml`
+
+```yaml
+models:
+  - id: "veo-2.0-generate-001"
+    name: "Veo 2.0"
+    type: "veo-2.0"
+    pricing:
+      video_with_audio: 0.50
+      video_without_audio: 0.50
+  - id: "veo-3.0-generate-preview"
+    name: "Veo 3.0 Preview"
+    type: "veo-3.0"
+    pricing:
+      video_with_audio: 0.75
+      video_without_audio: 0.50
+  - id: "veo-3.0-fast-generate-preview"
+    name: "Veo 3.0 Fast Preview"
+    type: "veo-3.0"
+    pricing:
+      video_with_audio: 0.40
+      video_without_audio: 0.25
+```
+
+To add a new model, simply append a new entry to the `models` list in this file. The application will automatically pick up the new model and make it available in the UI.
+
 ## Google Cloud Setup
 
 To run this application, you need to set up the following Google Cloud services:
@@ -122,13 +165,6 @@ You can enable the API and create the database using the `gcloud` CLI:
     gcloud firestore databases create --database="veo-app-shared-videos" --location=us-central1
     ```
 
-### 5. Cloud Tasks
-
-- Create a Cloud Tasks queue for handling asynchronous video upscaling.
-    ```bash
-    gcloud tasks queues create veo-upscale-queue --location=us-central1
-    ```
-
 #### Deploying Firestore Indexes
 
 To ensure your Firestore queries are efficient, you need to deploy the required indexes.
@@ -145,7 +181,14 @@ To ensure your Firestore queries are efficient, you need to deploy the required 
     ```
     The script will automatically use the `PROJECT_ID` and `PROMPT_GALLERY_DB` from your `app-config.yaml` file.
 
-### 5. BigQuery
+### 5. Cloud Tasks
+
+- Create a Cloud Tasks queue for handling asynchronous video upscaling.
+    ```bash
+    gcloud tasks queues create veo-upscale-queue --location=us-central1
+    ```
+
+### 6. BigQuery
 
 You can create the required BigQuery dataset and table by running the provided setup script.
 
@@ -170,7 +213,7 @@ You can create the required BigQuery dataset and table by running the provided s
     ```
     The script will create the dataset and the table with the correct schema defined in `schema.json`.
 
-### 6. Create a Service Account
+### 7. Create a Service Account
 
 It is recommended to create a dedicated service account for this application to follow the principle of least privilege.
 
@@ -193,7 +236,7 @@ It is recommended to create a dedicated service account for this application to 
     -   Cloud Tasks Enqueuer
 6.  Click **Done**.
 
-### 7. Authentication
+### 8. Authentication
 
 -   **OAuth 2.0 Client ID**:
     -   Go to "APIs & Services" > "Credentials".
@@ -267,6 +310,7 @@ It is recommended to create a dedicated service account for this application to 
 
 5.  **Configure the Application**:
     -   In `src/backend/`, update the values in `app-config.yaml` with your Google Cloud project details.
+    -   In `src/backend/`, update the models in `models.yaml` as needed.
 
 6.  **Run the Server**:
     From the `src/backend` directory, run the following command:
