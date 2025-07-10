@@ -62,6 +62,7 @@
     "colPrompt": "提示词",
     "colStatus": "状态",
     "colModel": "模型",
+    "model": "模型",
     "colName": "视频名称",
     "colPreview": "预览",
     "details": "详情",
@@ -90,6 +91,10 @@
       "onlySuccess": "仅看成功",
       "apply": "筛选",
       "clear": "清除"
+    },
+    "editingTools": {
+      "clip": "剪辑工具",
+      "dub": "配音工具"
     }
   },
   "editModal": {

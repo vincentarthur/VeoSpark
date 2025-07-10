@@ -210,7 +210,6 @@ class VeoApiClient:
         self.location = location
         self.default_bucket_name = default_bucket_name
         self.default_model_id = app_conf.get('GEMINI_MODEL', "veo-2.0-generate-001")
-        self.v3_model_id = "veo-3.0-generate-preview"
         self.models_config = models_conf.get('models', [])
 
         try:
@@ -282,7 +281,13 @@ class VeoApiClient:
                 self.logger.info(f"Using source image for generation: {image_gcs_uri}")
                 sdk_call_kwargs['image'] = types.Image(gcs_uri=image_gcs_uri, mime_type="image/jpeg")
             
-            if final_frame_gcs_uri and model_id != self.v3_model_id:
+            model_info = next((m for m in self.models_config if m['id'] == model_id), None)
+            if not model_info:
+                raise ValueError(f"Model '{model_id}' not found in configuration.")
+
+            model_type = model_info.get('type')
+
+            if final_frame_gcs_uri and model_type == "veo-2.0":
                 # Only applicable for Veo2
                 self.logger.info(f"Using final frame for generation: {final_frame_gcs_uri}")
                 config.last_frame = types.Image(gcs_uri=final_frame_gcs_uri, mime_type="image/jpeg")
@@ -290,7 +295,7 @@ class VeoApiClient:
             if kwargs.get('enhance_prompt') is not None:
                 config.enhance_prompt = kwargs['enhance_prompt']
 
-            if model_id == self.v3_model_id:
+            if model_type == "veo-3.0":
                 if kwargs.get('generate_audio') is not None:
                     config.generate_audio = kwargs['generate_audio']
                 self.logger.info(

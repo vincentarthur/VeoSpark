@@ -36,10 +36,19 @@ const ExpandableCard = ({ children, title }) => {
     );
   };
 
-const VideoCard = ({ video, user, onEditClick, onUpscaleClick, onShareClick, onShareDelete }) => {
+const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareClick, onShareDelete }) => {
   const { t } = useTranslation();
   const isActionable = video.status === 'SUCCESS' && (video.output_video_gcs_paths || video.video_gcs_uri);
   const canDelete = onShareDelete && user && video.shared_by_user_email === user.email;
+  
+  const getModelName = (modelId) => {
+    if (modelId === 'EDITING_TOOL_CLIP') return t('history.editingTools.clip', 'Clipping Tool');
+    if (modelId === 'EDITING_TOOL_DUB') return t('history.editingTools.dub', 'Dubbing Tool');
+    const model = models?.find(m => m.id === modelId);
+    return model ? model.name : modelId;
+  }
+
+  const modelName = getModelName(video.model_used);
 
   return (
     <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '12px' }}>
@@ -86,7 +95,7 @@ const VideoCard = ({ video, user, onEditClick, onUpscaleClick, onShareClick, onS
                 <strong>{t('history.fullPrompt')}:</strong> {video.prompt}
             </Typography>
             <Typography variant="body2" component="p">
-                <strong>{t('history.model')}:</strong> {video.model_used}
+                <strong>{t('history.model')}:</strong> {modelName}
             </Typography>
             <Typography variant="body2" component="p">
                 <strong>{t('history.genDuration')}:</strong> {Math.round(video.operation_duration || 0)}s

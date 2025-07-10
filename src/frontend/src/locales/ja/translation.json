@@ -61,6 +61,7 @@
     "colPrompt": "プロンプト",
     "colStatus": "ステータス",
     "colModel": "モデル",
+    "model": "モデル",
     "colName": "ビデオ名",
     "colPreview": "プレビュー",
     "details": "詳細",
@@ -89,6 +90,10 @@
       "onlySuccess": "成功のみ",
       "apply": "フィルター適用",
       "all": "すべて"
+    },
+    "editingTools": {
+      "clip": "クリッピングツール",
+      "dub": "吹き替えツール"
     }
   },
   "editModal": {

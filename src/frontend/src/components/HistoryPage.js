@@ -262,6 +262,7 @@ const HistoryPage = () => {
                   <Grid item xs={12} sm={6} md={4} key={video.trigger_time}>
                     <VideoCard
                       video={video}
+                      models={models}
                       onEditClick={openModal}
                       onUpscaleClick={config.enable_upscale ? openUpscaleModal : null}
                       onShareClick={openShareModal}

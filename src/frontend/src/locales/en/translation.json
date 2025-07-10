@@ -63,6 +63,7 @@
     "colPrompt": "Prompt",
     "colStatus": "Status",
     "colModel": "Model",
+    "model": "Model",
     "colName": "Video Name",
     "colPreview": "Preview",
     "details": "Details",
@@ -91,6 +92,10 @@
       "onlySuccess": "Only Success",
       "apply": "Filter",
       "clear": "Clear Filter"
+    },
+    "editingTools": {
+      "clip": "Clipping Tool",
+      "dub": "Dubbing Tool"
     }
   },
   "editModal": {
