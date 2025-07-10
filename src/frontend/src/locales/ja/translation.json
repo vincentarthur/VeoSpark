@@ -186,7 +186,37 @@
     "translate": "翻訳",
     "translating": "翻訳中...",
     "failedToTranslate": "プロンプトの翻訳に失敗しました。",
-    "translatedPromptTitle": "翻訳されたプロンプト"
+    "translatedPromptTitle": "翻訳されたプロンプト",
+    "Camera Movement": "カメラワーク",
+    "Show Preview": "プレビューを表示",
+    "Hide Preview": "プレビューを非表示",
+    "Final Prompt Preview": "最終プロンプトのプレビュー"
+  },
+  "cameraMovements": {
+    "fixed": "固定",
+    "panLeft": "パン（左）",
+    "panRight": "パン（右）",
+    "pullOut": "プルアウト",
+    "pedestalDown": "ペデスタル（下）",
+    "pushIn": "プッシュイン",
+    "truckLeft": "トラック（左）",
+    "truckRight": "トラック（右）",
+    "pedestalUp": "ペデスタル（上）",
+    "tiltDown": "チルト（下）",
+    "tiltUp": "チルト（上）"
+  },
+  "cameraPrompts": {
+    "fixed": "カメラは固定されています",
+    "panLeft": "カメラは左にパンします",
+    "panRight": "カメラは右にパンします",
+    "pullOut": "カメラはプルアウトします",
+    "pedestalDown": "カメラは下にペデスタルします",
+    "pushIn": "カメラはプッシュインします",
+    "truckLeft": "カメラは左にトラックします",
+    "truckRight": "カメラは右にトラックします",
+    "pedestalUp": "カメラは上にペデスタルします",
+    "tiltDown": "カメラは下にチルトします",
+    "tiltUp": "カメラは上にチルトします"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

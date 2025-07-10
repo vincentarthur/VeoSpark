@@ -187,7 +187,37 @@
     "translate": "翻译",
     "translating": "翻译中...",
     "failedToTranslate": "翻译提示失败。",
-    "translatedPromptTitle": "翻译后的提示"
+    "translatedPromptTitle": "翻译后的提示",
+    "Camera Movement": "镜头移动",
+    "Show Preview": "显示预览",
+    "Hide Preview": "隐藏预览",
+    "Final Prompt Preview": "最终提示预览"
+  },
+  "cameraMovements": {
+    "fixed": "固定镜头",
+    "panLeft": "向左平移",
+    "panRight": "向右平移",
+    "pullOut": "拉远",
+    "pedestalDown": "下降",
+    "pushIn": "推近",
+    "truckLeft": "向左横移",
+    "truckRight": "向右横移",
+    "pedestalUp": "上升",
+    "tiltDown": "向下倾斜",
+    "tiltUp": "向上倾斜"
+  },
+  "cameraPrompts": {
+    "fixed": "镜头已固定",
+    "panLeft": "镜头向左平移",
+    "panRight": "镜头向右平移",
+    "pullOut": "镜头拉远",
+    "pedestalDown": "镜头下降",
+    "pushIn": "镜头推近",
+    "truckLeft": "镜头向左横移",
+    "truckRight": "镜头向右横移",
+    "pedestalUp": "镜头上升",
+    "tiltDown": "镜头向下倾斜",
+    "tiltUp": "镜头向上倾斜"
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"

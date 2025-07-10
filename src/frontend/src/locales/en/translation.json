@@ -188,7 +188,37 @@
     "translate": "Translate",
     "translating": "Translating...",
     "failedToTranslate": "Failed to translate prompt.",
-    "translatedPromptTitle": "Translated Prompt"
+    "translatedPromptTitle": "Translated Prompt",
+    "Camera Movement": "Camera Movement",
+    "Show Preview": "Show Preview",
+    "Hide Preview": "Hide Preview",
+    "Final Prompt Preview": "Final Prompt Preview"
+  },
+  "cameraMovements": {
+    "fixed": "Fixed",
+    "panLeft": "Pan Left",
+    "panRight": "Pan Right",
+    "pullOut": "Pull Out",
+    "pedestalDown": "Pedestal Down",
+    "pushIn": "Push In",
+    "truckLeft": "Truck Left",
+    "truckRight": "Truck Right",
+    "pedestalUp": "Pedestal Up",
+    "tiltDown": "Tilt Down",
+    "tiltUp": "Tilt Up"
+  },
+  "cameraPrompts": {
+    "fixed": "The camera is fixed",
+    "panLeft": "The camera pans to the left",
+    "panRight": "The camera pans to the right",
+    "pullOut": "The camera pulls out",
+    "pedestalDown": "The camera pedestals down",
+    "pushIn": "The camera pushes in",
+    "truckLeft": "The camera trucks to the left",
+    "truckRight": "The camera trucks to the right",
+    "pedestalUp": "The camera pedestals up",
+    "tiltDown": "The camera tilts down",
+    "tiltUp": "The camera tilts up"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

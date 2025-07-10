@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Button, TextField, Typography, Slider, RadioGroup, FormControlLabel, Radio, Checkbox,
@@ -8,6 +8,7 @@ import { ContentCut, Mic, CloudUpload, Clear } from '@mui/icons-material';
 import axios from 'axios';
 import { useEditingModal } from '../hooks/useEditingModal';
 import EditingModal from './EditingModal';
+import CameraMovements from './CameraMovements';
 
 // A simple component for displaying the generated video
 const FilmStripPlayer = ({ video, onEditClick, title }) => {
@@ -129,6 +130,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [generatedVideos, setGeneratedVideos] = useState([]); // Now stores array of video objects
   const [revisedPrompt, setRevisedPrompt] = useState('');
+  const promptInputRef = useRef(null);
 
   const {
     modalOpen,
@@ -145,6 +147,26 @@ const Dashboard = () => {
       )
     );
   });
+
+  const handleMovementClick = (promptText) => {
+    const textarea = promptInputRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentPrompt = prompt;
+    // Add a space if the current prompt is not empty and doesn't end with a space.
+    const separator = currentPrompt && !currentPrompt.endsWith(' ') ? ' ' : '';
+    const newPrompt = `${currentPrompt.substring(0, start)}${separator}${promptText}${currentPrompt.substring(end)}`;
+
+    setPrompt(newPrompt);
+
+    // Move cursor to after the inserted text
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + separator.length + promptText.length;
+      textarea.focus();
+    }, 0);
+  };
 
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
@@ -295,7 +317,19 @@ const Dashboard = () => {
           </Select>
         </FormControl>
 
-        <TextField label={t('dashboard.promptLabel')} multiline rows={4} fullWidth value={prompt} onChange={(e) => setPrompt(e.target.value)} margin="normal" required />
+        <TextField
+          label={t('dashboard.promptLabel')}
+          multiline
+          rows={4}
+          fullWidth
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          margin="normal"
+          required
+          inputRef={promptInputRef}
+        />
+
+        <CameraMovements onMovementClick={handleMovementClick} />
 
         {isV2GenerateModel && (
           <Box sx={{ my: 2 }}>
