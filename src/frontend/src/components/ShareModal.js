@@ -20,7 +20,7 @@ const style = {
   gap: 2,
 };
 
-const ShareModal = ({ open, onClose, onSubmit, video }) => {
+const ShareModal = ({ open, onClose, onSubmit, item }) => {
   const { t } = useTranslation();
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -49,10 +49,10 @@ const ShareModal = ({ open, onClose, onSubmit, video }) => {
     setIsLoading(true);
     setError('');
     try {
-      await onSubmit({ group_id: selectedGroup, video_gcs_uri: video.gcs_uri });
+      await onSubmit({ group_id: selectedGroup });
       onClose();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to share video.');
+      setError(err.response?.data?.detail || 'Failed to share item.');
     } finally {
       setIsLoading(false);
     }

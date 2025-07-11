@@ -79,17 +79,31 @@ const AnalyticsPage = () => {
 
   const formatCurrency = (value) => `$${Number(value).toFixed(2)}`;
 
-  const modelDistributionData = data.model_distribution.map(item => {
+  const videoModelDistributionData = data.model_distribution.video.reduce((acc, item) => {
     let name = item.model_used;
     if (item.model_used.includes('veo-')) {
       name = name.replace(/veo-(\d\.\d+).*/, 'Veo $1');
-      name += item.with_audio ? ` (Audio)` : ` (No Audio)`;
+      name += item.with_audio ? ' (Audio)' : ' (No Audio)';
     }
-    return {
-        name: name,
-        value: item.generation_count
-    };
-  });
+    const existing = acc.find(x => x.name === name);
+    if (existing) {
+      existing.value += item.generation_count;
+    } else {
+      acc.push({ name, value: item.generation_count });
+    }
+    return acc;
+  }, []);
+
+  const imageModelDistributionData = data.model_distribution.image.reduce((acc, item) => {
+    const name = item.model_used.replace(/-generate-preview-\d{2}-\d{2}$/, '');
+    const existing = acc.find(x => x.name === name);
+    if (existing) {
+      existing.value += item.generation_count;
+    } else {
+      acc.push({ name, value: item.generation_count });
+    }
+    return acc;
+  }, []);
 
   return (
     <Box>
@@ -133,32 +147,52 @@ const AnalyticsPage = () => {
       </Paper>
       
       <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, height: 150, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.totalCostInRange')}</Typography>
+        {/* Summary Cards */}
+        <Grid item xs={12} sm={4}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', height: 150 }}>
+            <Typography variant="h6" gutterBottom>{t('analytics.totalVideoCost', 'Video Cost')}</Typography>
             <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', color: '#8884d8' }}>
-              {formatCurrency(data.total_cost)}
+              {formatCurrency(data.summary.total_video_cost)}
             </Typography>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} sm={4}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', height: 150 }}>
+            <Typography variant="h6" gutterBottom>{t('analytics.totalImageCost', 'Image Cost')}</Typography>
+            <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', color: '#82ca9d' }}>
+              {formatCurrency(data.summary.total_image_cost)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', height: 150, backgroundColor: 'primary.main', color: 'primary.contrastText' }}>
+            <Typography variant="h6" gutterBottom>{t('analytics.totalCostInRange')}</Typography>
+            <Typography variant="h4" component="p" sx={{ fontWeight: 'bold' }}>
+              {formatCurrency(data.summary.total_cost)}
+            </Typography>
+          </Paper>
+        </Grid>
+
+        {/* Daily Consumption Chart */}
+        <Grid item xs={12}>
           <Paper sx={{ p: 2, height: 350, borderRadius: '12px' }}>
             <Typography variant="h6" gutterBottom>{t('analytics.dailyConsumption')}</Typography>
             <ResponsiveContainer width="100%" height="85%">
               <BarChart data={data.daily_consumption} margin={{ top: 20, right: 30, left: 30, bottom: 25 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="consumption_date" angle={-30} textAnchor="end" height={60} />
-                <YAxis yAxisId="left" orientation="left" label={{ value: t('analytics.totalCost'), angle: -90, position: 'insideLeft' }} tickFormatter={formatCurrency} domain={[0, dataMax => Math.ceil(dataMax * 1.1)]} />
-                <Tooltip formatter={formatCurrency} />
+                <YAxis label={{ value: t('analytics.totalCost'), angle: -90, position: 'insideLeft' }} tickFormatter={formatCurrency} />
+                <Tooltip formatter={(value, name, props) => [formatCurrency(value), name]} />
                 <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '10px' }} />
-                <Bar yAxisId="left" dataKey="total_cost" fill="#8884d8" name={t('analytics.costUSD')}>
-                   <LabelList dataKey="total_cost" position="top" formatter={formatCurrency} />
-                </Bar>
+                <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
+                <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={7}>
+
+        {/* Top Users Chart */}
+        <Grid item xs={12}>
           <Paper sx={{ p: 2, height: 400, borderRadius: '12px' }}>
             <Typography variant="h6" gutterBottom>{t('analytics.topUsers')}</Typography>
             <ResponsiveContainer width="100%" height="90%">
@@ -166,33 +200,37 @@ const AnalyticsPage = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickFormatter={formatCurrency} />
                 <YAxis dataKey="user_email" type="category" width={200} />
-                <Tooltip formatter={formatCurrency} />
+                <Tooltip formatter={(value, name, props) => [formatCurrency(value), name]} />
                 <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '10px' }} />
-                <Bar dataKey="total_cost" fill="#82ca9d" name={t('analytics.costUSD')}>
-                  <LabelList dataKey="total_cost" position="right" formatter={formatCurrency} />
-                </Bar>
+                <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
+                <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={5}>
+
+        {/* Model Distribution Charts */}
+        <Grid item xs={12} md={6}>
            <Paper sx={{ p: 2, height: 400, borderRadius: '12px' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.modelDistribution')}</Typography>
+            <Typography variant="h6" gutterBottom>{t('analytics.videoModelDistribution', 'Video Model Distribution')}</Typography>
             <ResponsiveContainer width="100%" height="90%">
               <PieChart>
-                <Pie
-                  data={modelDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={CustomPieLabel}
-                  outerRadius={120}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {modelDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
+                <Pie data={videoModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={120} fill="#8884d8" dataKey="value">
+                  {videoModelDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(value, name) => [`${value} generations`, name]}/>
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+           <Paper sx={{ p: 2, height: 400, borderRadius: '12px' }}>
+            <Typography variant="h6" gutterBottom>{t('analytics.imageModelDistribution', 'Image Model Distribution')}</Typography>
+            <ResponsiveContainer width="100%" height="90%">
+              <PieChart>
+                <Pie data={imageModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={120} fill="#82ca9d" dataKey="value">
+                  {imageModelDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(value, name) => [`${value} generations`, name]}/>
                 <Legend />

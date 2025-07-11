@@ -88,7 +88,7 @@ const LabeledSlider = ({ label, displayValue, ...sliderProps }) => {
   );
 };
 
-const Dashboard = () => {
+const Dashboard = ({ initialFirstFrame }) => {
   const { t } = useTranslation();
 
   const [models, setModels] = useState([]);
@@ -227,6 +227,13 @@ const Dashboard = () => {
   const isV3Model = model.startsWith('veo-3.0');
   const isV2GenerateModel = model === 'veo-2.0-generate-001';
   const isVeo2Model = model.startsWith('veo-2.0');
+
+  useEffect(() => {
+    if (initialFirstFrame) {
+      setImageGcsUri(initialFirstFrame.gcsUri);
+      setImagePreview(initialFirstFrame.signedUrl);
+    }
+  }, [initialFirstFrame]);
 
   useEffect(() => {
     const fetchModels = async () => {

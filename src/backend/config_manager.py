@@ -1,4 +1,5 @@
 from google.cloud import firestore
+import yaml
 
 CONFIG_COLLECTION = 'system_config'
 CONFIG_DOCUMENT = 'quota_settings'
@@ -13,3 +14,13 @@ def get_config(db: firestore.Client):
 def save_config(config: dict, db: firestore.Client):
     doc_ref = db.collection(CONFIG_COLLECTION).document(CONFIG_DOCUMENT)
     doc_ref.set(config)
+
+def get_image_models():
+    """
+    Retrieves the image models from the image-models.yaml file.
+    """
+    try:
+        with open('./image-models.yaml', 'r') as f:
+            return yaml.safe_load(f)
+    except (FileNotFoundError, yaml.YAMLError):
+        return {"models": []}

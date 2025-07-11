@@ -1,0 +1,16 @@
+models:
+  - id: "imagen-4.0-ultra-generate-preview-06-06"
+    name: "Imagen 4 Ultra"
+    type: "imagen-4.0"
+    pricing:
+      per_image: 0.06
+  - id: "imagen-4.0-generate-preview-06-06"
+    name: "Imagen 4"
+    type: "imagen-4.0"
+    pricing:
+      per_image: 0.04
+  - id: "imagen-4.0-fast-generate-preview-06-06"
+    name: "Imagen 4 Fast"
+    type: "imagen-4.0"
+    pricing:
+      per_image: 0.02

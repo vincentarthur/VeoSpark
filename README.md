@@ -15,20 +15,22 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 
 ## Features
 
--   **AI-Powered Video Generation**: Create stunning videos from simple text prompts using Google's Veo models.
--   **Dynamic Model Configuration**: Easily add, remove, or update Veo models and their pricing through a simple `models.yaml` file without changing any code.
+-   **Unified Creative Production**: A streamlined interface for generating both videos and images from a single, unified tab.
+-   **AI-Powered Video & Image Generation**: Create stunning videos and images from simple text prompts using Google's Veo and Imagen models.
+-   **Image-to-Video Workflow**: Seamlessly use any generated or shared image as the first frame for a new video generation, bridging the gap between image and video creation.
+-   **Dynamic Model Configuration**: Easily add, remove, or update Veo and Imagen models and their pricing through simple `.yaml` files without changing any code.
 -   **Image-to-Prompt Generation**: Upload a character, background, and/or prop image to generate a descriptive prompt using Gemini 2.5 Pro.
 -   **Prompt Translation**: Instantly translate generated prompts into different languages using Gemini 2.5 Flash.
--   **Unified Application**: Frontend and Backend are served from a single FastAPI server.
--   **Generation History**: Keep track of all your video generations, including prompts, models used, and status.
--   **Cost Analytics**: Monitor your spending on video generation with detailed analytics and visualizations.
+-   **Generation History & Caching**: Keep track of all your video and image generations. The history page now caches data for faster load times when switching between tabs.
+-   **Comprehensive Cost Analytics**: Monitor your spending with a detailed dashboard that provides a complete overview of both video and image creation costs.
 -   **User Authentication**: Secure access to the application with Google OAuth.
 -   **Internationalization**: Support for multiple languages (English, Japanese, Chinese).
 -   **Video Editing**: Basic video editing features like clipping and dubbing.
 -   **Video Upscaling**: Upscale videos to 1080p or 4K using an asynchronous task queue.
--   **Team Gallery & Sharing**: Share videos with user-managed groups. Shared videos retain all original generation details. Only the user who shared a video can delete it from the gallery.
+-   **Team Gallery & Sharing**: Share videos and images with user-managed groups. Shared items retain all original generation details.
 -   **Prompt Gallery**: A collaborative space to share and discover creative prompts.
 -   **Group Management**: Admins can create user groups and manage memberships, including bulk add/remove functionality.
+-   **Improved UI/UX**: The Image Generator now features a two-column layout, and tooltips on item cards have been improved to be more concise and visually appealing.
 
 ## Tech Stack
 

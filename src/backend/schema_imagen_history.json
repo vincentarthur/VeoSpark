@@ -1,0 +1,13 @@
+[
+  {"name": "user_email", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "trigger_time", "type": "TIMESTAMP", "mode": "NULLABLE"},
+  {"name": "completion_time", "type": "TIMESTAMP", "mode": "NULLABLE"},
+  {"name": "operation_duration", "type": "FLOAT", "mode": "NULLABLE"},
+  {"name": "prompt", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "negative_prompt", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "model_used", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "status", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "error_message", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "aspect_ratio", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "output_image_gcs_path", "type": "STRING", "mode": "NULLABLE"}
+]

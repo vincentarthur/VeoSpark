@@ -52,8 +52,7 @@ CONFIG_DB: "veo-app-config"
 # Set a list of messages here to display banners to all users.
 # An empty list will hide the banner.
 BANNER_MESSAGES:
-  - "Veo3 Image-2-Video in current Argolis project is infeasible."
-  - "A new model 'veo-3.0-generate-preview' is now available for testing."
+  - "Veo3 Fast & Imagen 4 series are ready to use."
 
 # Upscaling Configuration
 ENABLE_UPSCALE: False

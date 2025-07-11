@@ -6,8 +6,9 @@
   },
   "nav": {
     "videoGenerator": "视频生成器",
+    "imageGenerator": "图片生成器",
     "promptFromImages": "从图片生成提示",
-    "generator": "视频生成器",
+    "generator": "创意生产",
     "history": "我的历史",
     "analytics": "分析",
     "gallery": "提示画廊",
@@ -78,7 +79,8 @@
       "share": "分享"
     },
     "tabs": {
-      "history": "生成历史",
+      "videoHistory": "视频历史",
+      "imageHistory": "图片历史",
       "upscaleJobs": "放大任务"
     },
     "filters": {
@@ -96,6 +98,9 @@
       "clip": "剪辑工具",
       "dub": "配音工具"
     }
+  },
+  "imageHistory": {
+    "title": "图片生成历史"
   },
   "editModal": {
     "clipTitle": "剪辑视频",
@@ -139,17 +144,17 @@
     "confirmRemoveDescription": "您确定要从此组中删除 {{email}} 吗？",
     "memberRemovedSuccess": "成员已成功删除。"
   },
-  "sharedVideos": {
+  "sharedItems": {
     "title": "团队画廊",
     "selectGroup": "选择一个群组",
-    "noVideos": "没有视频被分享到这个群组。",
-    "confirmDeleteTitle": "删除分享的视频",
-    "confirmDeleteDescription": "您确定要永久删除此分享的视频吗？此操作无法撤销。",
+    "noItems": "没有项目被分享到这个群组。",
+    "confirmDeleteTitle": "删除分享的项目",
+    "confirmDeleteDescription": "您确定要永久删除此分享的项目吗？此操作无法撤销。",
     "refresh": "刷新",
     "refreshing": "刷新中..."
   },
   "shareModal": {
-    "title": "分享视频",
+    "title": "分享项目",
     "selectGroup": "选择一个群组来分享"
   },
   "common": {
@@ -172,10 +177,24 @@
     "costUSD": "成本 (美元)",
     "totalCostInRange": "总成本（已筛选）"
   },
+  "imageCard": {
+    "useAsFirstFrame": "用作第一帧"
+  },
   "videoCard": {
     "sharedBy": "分享者",
     "generatedBy": "生成者",
     "deleteShare": "删除分享"
+  },
+  "imageGenerator": {
+    "title": "图片生成",
+    "modelLabel": "模型",
+    "promptLabel": "提示",
+    "negativePromptLabel": "负面提示",
+    "aspectRatioLabel": "长宽比",
+    "sampleCountLabel": "图片数量",
+    "generateButton": "生成图片",
+    "generatingStatus": "生成中...",
+    "resultsTitle": "结果"
   },
   "imagePromptGenerator": {
     "title": "从图片生成提示",

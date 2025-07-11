@@ -31,10 +31,12 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.genai import types
 from PIL import Image
 import io
+from vertexai.preview.vision_models import ImageGenerationModel
+import vertexai
 
 # Import the new video processing functions
 from video_processing import process_video_from_gcs, check_quota
-from config_manager import get_config, save_config
+from config_manager import get_config, save_config, get_image_models
 
 
 # ==============================================================================
@@ -46,33 +48,48 @@ def log_generation_to_bq(**kwargs):
     Constructs a row and inserts it into the BigQuery history table.
     Ensures that logging does not crash the main application.
     """
-    if not app_conf.get('ENABLE_BIGQUERY_LOGGING', False) or not bq_client or not table_ref:
+    if not app_conf.get('ENABLE_BIGQUERY_LOGGING', False) or not bq_client:
         logger.warning("BigQuery client not configured or logging is disabled. Skipping logging.")
         return
 
     try:
-        # Prepare the row based on the BQ schema
-        row_to_insert = {
-            "user_email": kwargs.get("user_email"),
-            "trigger_time": kwargs.get("trigger_time").isoformat(),
-            "completion_time": kwargs.get("completion_time").isoformat(),
-            "operation_duration": kwargs.get("operation_duration"),
-            "prompt": kwargs.get("prompt"),
-            "model_used": kwargs.get("model_used"),
-            "status": kwargs.get("status"),
-            "error_message": str(kwargs.get("error_message", None)),
-            "video_duration": kwargs.get("video_duration"),
-            "with_audio": kwargs.get("with_audio"),
-            "first_frame_gcs_uri": kwargs.get("first_frame_gcs_uri"),
-            "last_frame_gcs_uri": kwargs.get("last_frame_gcs_uri"),
-            # Convert list of paths to a JSON string for storage
-            "output_video_gcs_paths": json.dumps(kwargs.get("output_video_gcs_paths", [])),
-        }
+        table_to_use = table_ref
+        if "negative_prompt" in kwargs:
+            table_to_use = bq_client.dataset(dataset_id).table("imagen_history")
+            row_to_insert = {
+                "user_email": kwargs.get("user_email"),
+                "trigger_time": kwargs.get("trigger_time").isoformat(),
+                "completion_time": kwargs.get("completion_time").isoformat(),
+                "operation_duration": kwargs.get("operation_duration"),
+                "prompt": kwargs.get("prompt"),
+                "negative_prompt": kwargs.get("negative_prompt"),
+                "model_used": kwargs.get("model_used"),
+                "status": kwargs.get("status"),
+                "error_message": str(kwargs.get("error_message", None)),
+                "aspect_ratio": kwargs.get("aspect_ratio"),
+                "output_image_gcs_path": kwargs.get("output_image_gcs_path"),
+            }
+        else:
+            row_to_insert = {
+                "user_email": kwargs.get("user_email"),
+                "trigger_time": kwargs.get("trigger_time").isoformat(),
+                "completion_time": kwargs.get("completion_time").isoformat(),
+                "operation_duration": kwargs.get("operation_duration"),
+                "prompt": kwargs.get("prompt"),
+                "model_used": kwargs.get("model_used"),
+                "status": kwargs.get("status"),
+                "error_message": str(kwargs.get("error_message", None)),
+                "video_duration": kwargs.get("video_duration"),
+                "with_audio": kwargs.get("with_audio"),
+                "first_frame_gcs_uri": kwargs.get("first_frame_gcs_uri"),
+                "last_frame_gcs_uri": kwargs.get("last_frame_gcs_uri"),
+                "output_video_gcs_paths": json.dumps(kwargs.get("output_video_gcs_paths", [])),
+            }
 
         # Remove None values so BQ doesn't complain about missing columns if not provided
         row_to_insert = {k: v for k, v in row_to_insert.items() if v is not None}
 
-        errors = bq_client.insert_rows_json(table_ref, [row_to_insert])
+        errors = bq_client.insert_rows_json(table_to_use, [row_to_insert])
         if not errors:
             logger.info(f"Successfully logged generation event for user {kwargs.get('user_email')} to BigQuery.")
         else:
@@ -104,6 +121,8 @@ try:
 except (FileNotFoundError, yaml.YAMLError) as e:
     logger.critical(f"Could not load or parse 'models.yaml'. Error: {e}")
     sys.exit(1)
+
+image_models_conf = get_image_models()
 
 # Overwrite with environment variables if they exist, for cloud deployments
 app_conf['FRONTEND_URL'] = os.environ.get('FRONTEND_URL', app_conf.get('FRONTEND_URL'))
@@ -199,6 +218,11 @@ except Exception as e:
     tasks_client = None
     task_queue_path = None
 
+# Imagen Client
+try:
+    imagen_client = genai.Client(vertexai=True, project=PROJECT, location='us-central1') # imagen only applicable for us-central1
+except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Failed to initialize client: {e}")
 
 # ==============================================================================
 # 2. VEO API CLIENT CLASS
@@ -509,6 +533,14 @@ def get_models():
     return JSONResponse(models_conf)
 
 
+@api_router.get("/image-models", tags=["Configuration"])
+def get_image_models_endpoint():
+    """
+    Returns the available image models from the configuration.
+    """
+    return JSONResponse(image_models_conf)
+
+
 @api_router.get("/notification-banner", tags=["Configuration"])
 def get_notification_banner():
     """
@@ -641,6 +673,110 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
         raise HTTPException(status_code=500, detail=f"Video generation failed: {e}")
 
 
+@api_router.post("/images/generate", tags=["Image Generation"])
+async def generate_image(request: Request, user: dict = Depends(get_user)):
+    if app_conf.get('ENABLE_OAUTH', False) and not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    body = await request.json()
+
+    if not body.get('prompt'):
+        raise HTTPException(status_code=400, detail="Prompt is required.")
+
+    # --- Prepare logging data ---
+    trigger_time = datetime.now(timezone.utc)
+    user_email = user.get('email', 'anonymous') if user else 'anonymous'
+    model_used = body.get('model')
+    prompt = body.get('prompt')
+    negative_prompt = body.get('negative_prompt')
+    aspect_ratio = body.get('aspect_ratio')
+    sample_count = body.get('sample_count')
+
+    try:
+        
+        start_time = time.time()
+        images = imagen_client.models.generate_images(
+            model=model_used,
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=sample_count,
+                aspect_ratio=aspect_ratio,
+                negative_prompt=negative_prompt,
+                person_generation="allow_all",
+                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
+                add_watermark=True
+            )
+        )
+        op_duration = time.time() - start_time
+
+        gcs_paths = []
+        for generated_image in images.generated_images:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+                generated_image.image._pil_image.save(temp_file.name)
+                
+                user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+                blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
+                
+                storage_client = storage.Client(project=PROJECT)
+                bucket = storage_client.bucket(BUCKET_NAME)
+                blob = bucket.blob(blob_name)
+                blob.upload_from_filename(temp_file.name)
+                
+                gcs_paths.append(f"gs://{BUCKET_NAME}/{blob_name}")
+
+        # --- Log SUCCESS to BigQuery for each generated image ---
+        completion_time = datetime.now(timezone.utc)
+        
+        for path in gcs_paths:
+            log_generation_to_bq(
+                user_email=user_email,
+                trigger_time=trigger_time,
+                completion_time=completion_time,
+                operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0,
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                model_used=model_used,
+                status="SUCCESS",
+                aspect_ratio=aspect_ratio,
+                output_image_gcs_path=path
+            )
+
+        # --- Return response to frontend ---
+        image_data = []
+        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+        for uri in gcs_paths:
+            signed_url = veo_client.generate_signed_gcs_url(uri)
+            if signed_url:
+                image_data.append({
+                    "gcs_uri": uri,
+                    "signed_url": signed_url
+                })
+        
+        return JSONResponse({
+            "message": "Image generation successful.",
+            "images": image_data,
+            "duration": op_duration
+        }, status_code=200)
+
+    except Exception as e:
+        # --- Log FAILURE to BigQuery ---
+        log_generation_to_bq(
+            user_email=user_email,
+            trigger_time=trigger_time,
+            completion_time=datetime.now(timezone.utc),
+            operation_duration=time.time() - trigger_time.timestamp(),
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            model_used=model_used,
+            status="FAILURE",
+            error_message=str(e),
+            aspect_ratio=aspect_ratio
+        )
+
+        logger.error(f"Image generation failed for user {user_email}. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
+
+
 @api_router.get("/gcs/videos", tags=["GCS"])
 def list_user_videos(user: dict = Depends(get_user), prefix: Optional[str] = None):
     """
@@ -759,6 +895,85 @@ def delete_prompt_from_gallery(prompt_id: str, user: dict = Depends(get_user)):
 
     doc_ref.delete()
     return JSONResponse({"message": "Prompt deleted successfully"})
+
+
+@api_router.get("/images/history", tags=["Image Generation"])
+def get_image_history(
+    request: Request,
+    user: dict = Depends(get_user),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+    model: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 10
+):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    if not app_conf.get('ENABLE_BIGQUERY_LOGGING', False) or not bq_client:
+        logger.warning(f"Attempted to access image history for {user.get('email')} but BigQuery is disabled.")
+        return JSONResponse({"rows": [], "total": 0}, status_code=200)
+
+    user_email = user.get('email')
+    
+    query_params = [bigquery.ScalarQueryParameter("user_email", "STRING", user_email)]
+    where_clauses = ["user_email = @user_email"]
+
+    if start_date:
+        where_clauses.append("trigger_time >= @start_date")
+        query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
+    if end_date:
+        # Add 1 day to end_date to make it inclusive
+        end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
+        where_clauses.append("trigger_time < @end_date")
+        query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
+    if status:
+        where_clauses.append("status = @status")
+        query_params.append(bigquery.ScalarQueryParameter("status", "STRING", status))
+    if model:
+        where_clauses.append("model_used = @model")
+        query_params.append(bigquery.ScalarQueryParameter("model", "STRING", model))
+
+    count_query = f"""
+        SELECT COUNT(*) as total
+        FROM `{PROJECT}.{dataset_id}.imagen_history`
+        WHERE {" AND ".join(where_clauses)}
+    """
+    count_job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+    count_query_job = bq_client.query(count_query, job_config=count_job_config)
+    total_rows = list(count_query_job.result())[0].total
+
+    query = f"""
+        SELECT
+            user_email,
+            CAST(trigger_time AS STRING) AS trigger_time,
+            prompt,
+            model_used,
+            output_image_gcs_path,
+            status
+        FROM
+            `{PROJECT}.{dataset_id}.imagen_history`
+        WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC
+        LIMIT {page_size} OFFSET {(page - 1) * page_size}
+    """
+    
+    job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+
+    try:
+        query_job = bq_client.query(query, job_config=job_config)
+        rows = [dict(row) for row in query_job.result()]
+
+        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+        for row in rows:
+            gcs_path = row.get("output_image_gcs_path")
+            if gcs_path:
+                row["signed_url"] = veo_client.generate_signed_gcs_url(gcs_path)
+
+        return JSONResponse({"rows": rows, "total": total_rows})
+
+    except Exception as e:
+        logger.error(f"Error querying image history for user {user_email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve image history.")
 
 
 @api_router.get("/videos/history", tags=["Video Generation"])
@@ -1273,7 +1488,7 @@ async def import_groups(request: Request, user: dict = Depends(get_user)):
         raise HTTPException(status_code=500, detail=f"Group import failed: {e}")
 
 
-@api_router.post("/videos/share", tags=["Video Sharing"])
+@api_router.post("/videos/share", tags=["Sharing"])
 async def share_video(request: Request, user: dict = Depends(get_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -1288,7 +1503,7 @@ async def share_video(request: Request, user: dict = Depends(get_user)):
         raise HTTPException(status_code=400, detail="Video data and group_id are required.")
 
     # Extract the GCS URI from the potentially nested structure
-    gcs_uri = video_data.get('gcs_uri')
+    gcs_uri = video_data.get('gcs_uri') or video_data.get('output_image_gcs_path')
     if not gcs_uri:
         gcs_paths_str = video_data.get("output_video_gcs_paths", "[]")
         try:
@@ -1305,7 +1520,7 @@ async def share_video(request: Request, user: dict = Depends(get_user)):
     
     # Create a new document with all the relevant video details
     shared_video_payload = {
-        "video_gcs_uri": gcs_uri,
+        "gcs_uri": gcs_uri,
         "shared_with_group_id": group_id,
         "shared_by_user_email": user.get("email"),
         "shared_at": firestore.SERVER_TIMESTAMP,
@@ -1323,11 +1538,54 @@ async def share_video(request: Request, user: dict = Depends(get_user)):
 
     doc_ref.set(shared_video_payload)
     
-    return JSONResponse({"message": "Video shared successfully", "id": doc_ref.id}, status_code=201)
+    return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
 
 
-@api_router.get("/groups/{group_id}/videos", tags=["Video Sharing"])
-def get_shared_videos(group_id: str, user: dict = Depends(get_user)):
+@api_router.post("/images/share", tags=["Sharing"])
+async def share_image(request: Request, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not shared_videos_db:
+        raise HTTPException(status_code=503, detail="Shared items database is not configured")
+
+    body = await request.json()
+    item_data = body.get("item")
+    group_id = body.get("group_id")
+
+    if not item_data or not group_id:
+        raise HTTPException(status_code=400, detail="Item data and group_id are required.")
+
+    gcs_uri = item_data.get('gcs_uri')
+
+    if not gcs_uri:
+        raise HTTPException(status_code=400, detail="Could not determine a valid GCS URI from the item data.")
+
+    doc_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).document()
+    
+    shared_item_payload = {
+        "gcs_uri": gcs_uri,
+        "shared_with_group_id": group_id,
+        "shared_by_user_email": user.get("email"),
+        "shared_at": firestore.SERVER_TIMESTAMP,
+        "prompt": item_data.get("prompt"),
+        "user_email": item_data.get("user_email"),
+        "trigger_time": item_data.get("trigger_time"),
+        "completion_time": item_data.get("completion_time"),
+        "operation_duration": item_data.get("operation_duration"),
+        "status": item_data.get("status"),
+        "model_used": item_data.get("model_used"),
+        "type": item_data.get("type"),
+    }
+    
+    shared_item_payload = {k: v for k, v in shared_item_payload.items() if v is not None}
+
+    doc_ref.set(shared_item_payload)
+    
+    return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
+
+
+@api_router.get("/groups/{group_id}/items", tags=["Sharing"])
+def get_shared_items(group_id: str, user: dict = Depends(get_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
     if not groups_db or not shared_videos_db:
@@ -1339,48 +1597,46 @@ def get_shared_videos(group_id: str, user: dict = Depends(get_user)):
     if not group.exists or user.get('email') not in group.to_dict().get('members', []):
         raise HTTPException(status_code=403, detail="Permission denied")
 
-    videos_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).where(filter=FieldFilter('shared_with_group_id', '==', group_id)).order_by('shared_at', direction=firestore.Query.DESCENDING)
+    items_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).where(filter=FieldFilter('shared_with_group_id', '==', group_id)).order_by('shared_at', direction=firestore.Query.DESCENDING)
     
-    videos = []
+    items = []
     veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
     
-    for doc in videos_ref.stream():
-        video_data = doc.to_dict()
-        video_data["id"] = doc.id
+    for doc in items_ref.stream():
+        item_data = doc.to_dict()
+        item_data["id"] = doc.id
         
-        # Format timestamps if they exist
-        if 'shared_at' in video_data and hasattr(video_data['shared_at'], 'isoformat'):
-            video_data['shared_at'] = video_data['shared_at'].isoformat()
+        if 'shared_at' in item_data and hasattr(item_data['shared_at'], 'isoformat'):
+            item_data['shared_at'] = item_data['shared_at'].isoformat()
         
-        # Generate signed URL for preview
-        video_gcs_uri = video_data.get('video_gcs_uri')
-        if video_gcs_uri:
-            # The signed URL for the main video file
-            video_data['signed_urls'] = [veo_client.generate_signed_gcs_url(video_gcs_uri)]
+        # 'gcs_uri' for image, video_gcs_uri for video
+        gcs_uri = item_data.get('gcs_uri') or item_data.get('video_gcs_uri')
+        if gcs_uri:
+            item_data['signed_url'] = veo_client.generate_signed_gcs_url(gcs_uri)
         
-        videos.append(video_data)
+        items.append(item_data)
 
-    return JSONResponse(videos)
+    return JSONResponse(items)
 
 
-@api_router.delete("/shared-videos/{shared_video_id}", tags=["Video Sharing"])
-def delete_shared_video(shared_video_id: str, user: dict = Depends(get_user)):
+@api_router.delete("/shared-items/{shared_item_id}", tags=["Sharing"])
+def delete_shared_item(shared_item_id: str, user: dict = Depends(get_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
     if not shared_videos_db:
-        raise HTTPException(status_code=503, detail="Shared videos database is not configured")
+        raise HTTPException(status_code=503, detail="Shared items database is not configured")
 
-    doc_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).document(shared_video_id)
+    doc_ref = shared_videos_db.collection(app_conf['SHARED_VIDEOS_COLLECTION']).document(shared_item_id)
     doc = doc_ref.get()
 
     if not doc.exists:
-        raise HTTPException(status_code=404, detail="Shared video not found")
+        raise HTTPException(status_code=404, detail="Shared item not found")
 
     if doc.to_dict().get("shared_by_user_email") != user.get("email"):
-        raise HTTPException(status_code=403, detail="You can only delete videos you have shared.")
+        raise HTTPException(status_code=403, detail="You can only delete items you have shared.")
 
     doc_ref.delete()
-    return JSONResponse({"message": "Shared video deleted successfully"})
+    return JSONResponse({"message": "Shared item deleted successfully"})
 
 
 @api_router.get("/analytics/consumption", tags=["Analytics"])
@@ -1390,7 +1646,7 @@ def get_consumption_analytics(
     end_date: Optional[str] = None
 ):
     """
-    Provides aggregated consumption data by calculating cost on the fly.
+    Provides aggregated consumption data for both video and image generation.
     """
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -1402,92 +1658,127 @@ def get_consumption_analytics(
     if not app_conf.get('ENABLE_BIGQUERY_LOGGING', False) or not bq_client:
         raise HTTPException(status_code=501, detail="Analytics are disabled (BigQuery not configured).")
 
-    query_params = []
-    where_clauses = ["status = 'SUCCESS'", "video_duration > 0"]
-
-    if start_date:
-        where_clauses.append("trigger_time >= @start_date")
-        query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
-    if end_date:
-        end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
-        where_clauses.append("trigger_time < @end_date")
-        query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
-
-    query = f"""
-        SELECT
-            trigger_time,
-            user_email,
-            model_used,
-            video_duration,
-            with_audio
-        FROM `{PROJECT}.{dataset_id}.{table_id}`
-        WHERE {" AND ".join(where_clauses)}
-    """
-    
-    job_config = bigquery.QueryJobConfig(query_parameters=query_params)
-
-    def calculate_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
+    # --- Helper functions for cost calculation ---
+    def calculate_video_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
         if not model_used or not video_duration: return 0.0
-        
         model_info = next((m for m in models_conf.get('models', []) if m['id'] == model_used), None)
-        
-        if not model_info:
-            return 0.0
-            
+        if not model_info: return 0.0
         pricing = model_info.get('pricing', {})
         cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
-        
         return round(video_duration * cost_per_second, 4)
 
+    def calculate_image_cost(model_used: str) -> float:
+        if not model_used: return 0.0
+        model_info = next((m for m in image_models_conf.get('models', []) if m['id'] == model_used), None)
+        if not model_info: return 0.0
+        pricing = model_info.get('pricing', {})
+        return round(pricing.get('per_image', 0.0), 4)
+
     try:
-        query_job = bq_client.query(query, job_config=job_config)
-        rows = query_job.result()
+        # --- Prepare queries and parameters ---
+        query_params = []
+        video_where_clauses = ["status = 'SUCCESS'", "video_duration > 0"]
+        image_where_clauses = ["status = 'SUCCESS'"]
+
+        if start_date:
+            video_where_clauses.append("trigger_time >= @start_date")
+            image_where_clauses.append("trigger_time >= @start_date")
+            query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
+        if end_date:
+            end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
+            video_where_clauses.append("trigger_time < @end_date")
+            image_where_clauses.append("trigger_time < @end_date")
+            query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
+
+        video_query = f"""
+            SELECT trigger_time, user_email, model_used, video_duration, with_audio
+            FROM `{PROJECT}.{dataset_id}.{table_id}`
+            WHERE {" AND ".join(video_where_clauses)}
+        """
+        image_query = f"""
+            SELECT trigger_time, user_email, model_used
+            FROM `{PROJECT}.{dataset_id}.imagen_history`
+            WHERE {" AND ".join(image_where_clauses)}
+        """
+        job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+
+        # --- Execute queries and process data ---
+        video_rows = bq_client.query(video_query, job_config=job_config).result()
+        image_rows = bq_client.query(image_query, job_config=job_config).result()
 
         daily_costs = {}
         user_costs = {}
-        total_cost = 0
 
-        for row in rows:
-            cost = calculate_cost(row.model_used, row.video_duration, row.with_audio)
-            total_cost += cost
+        # Process video costs
+        for row in video_rows:
+            cost = calculate_video_cost(row.model_used, row.video_duration, row.with_audio)
             if cost > 0:
-                # Aggregate daily costs
                 consumption_date = row.trigger_time.strftime('%Y-%m-%d')
-                daily_costs[consumption_date] = daily_costs.get(consumption_date, 0) + cost
-                
-                # Aggregate user costs
-                user_costs[row.user_email] = user_costs.get(row.user_email, 0) + cost
+                date_entry = daily_costs.setdefault(consumption_date, {'video': 0, 'image': 0})
+                date_entry['video'] += cost
 
-        # Format for recharts
+                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
+                user_entry['video'] += cost
+        
+        # Process image costs
+        for row in image_rows:
+            cost = calculate_image_cost(row.model_used)
+            if cost > 0:
+                consumption_date = row.trigger_time.strftime('%Y-%m-%d')
+                date_entry = daily_costs.setdefault(consumption_date, {'video': 0, 'image': 0})
+                date_entry['image'] += cost
+
+                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
+                user_entry['image'] += cost
+
+        # --- Format data for response ---
+        total_video_cost = sum(user['video'] for user in user_costs.values())
+        total_image_cost = sum(user['image'] for user in user_costs.values())
+        total_cost = total_video_cost + total_image_cost
+
         daily_consumption_chart_data = [
-            {"consumption_date": date, "total_cost": round(cost, 2)}
-            for date, cost in sorted(daily_costs.items())
+            {
+                "consumption_date": date, 
+                "video_cost": round(costs['video'], 2),
+                "image_cost": round(costs['image'], 2),
+                "total_cost": round(costs['video'] + costs['image'], 2)
+            }
+            for date, costs in sorted(daily_costs.items())
         ]
         
         top_users_chart_data = sorted(
-            [{"user_email": email, "total_cost": round(cost, 2)} for email, cost in user_costs.items()],
+            [
+                {
+                    "user_email": email, 
+                    "video_cost": round(costs['video'], 2),
+                    "image_cost": round(costs['image'], 2),
+                    "total_cost": round(costs['video'] + costs['image'], 2)
+                } 
+                for email, costs in user_costs.items()
+            ],
             key=lambda x: x["total_cost"],
             reverse=True
-        )[:5]
+        )[:10]
 
-        # Query 3: Model Usage Distribution
-        model_dist_query = f"""
-            SELECT
-                model_used,
-                with_audio,
-                COUNT(*) as generation_count
-            FROM `{PROJECT}.{dataset_id}.{table_id}`
-            WHERE {" AND ".join(where_clauses)} AND model_used LIKE 'veo-%'
-            GROUP BY model_used, with_audio
-        """
-        model_dist_job = bq_client.query(model_dist_query, job_config=job_config)
-        model_dist_results = [dict(row) for row in model_dist_job.result()]
+        # --- Model Usage Distribution ---
+        video_dist_query = f"SELECT model_used, with_audio, COUNT(*) as generation_count FROM `{PROJECT}.{dataset_id}.{table_id}` WHERE {' AND '.join(video_where_clauses)} AND model_used LIKE 'veo-%' GROUP BY model_used, with_audio"
+        image_dist_query = f"SELECT model_used, COUNT(*) as generation_count FROM `{PROJECT}.{dataset_id}.imagen_history` WHERE {' AND '.join(image_where_clauses)} GROUP BY model_used"
+        
+        video_dist_results = [dict(row) for row in bq_client.query(video_dist_query, job_config=job_config).result()]
+        image_dist_results = [dict(row) for row in bq_client.query(image_dist_query, job_config=job_config).result()]
 
         return JSONResponse({
-            "total_cost": round(total_cost, 2),
+            "summary": {
+                "total_cost": round(total_cost, 2),
+                "total_video_cost": round(total_video_cost, 2),
+                "total_image_cost": round(total_image_cost, 2),
+            },
             "daily_consumption": daily_consumption_chart_data,
             "top_users": top_users_chart_data,
-            "model_distribution": model_dist_results
+            "model_distribution": {
+                "video": video_dist_results,
+                "image": image_dist_results
+            }
         })
 
     except Exception as e:

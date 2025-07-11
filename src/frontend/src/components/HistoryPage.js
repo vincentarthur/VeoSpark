@@ -17,9 +17,10 @@ import { useUpscaleModal } from '../hooks/useUpscaleModal';
 import UpscaleJobsTab from './UpscaleJobsTab';
 import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
+import ImageHistory from './ImageHistory';
 
 
-const HistoryPage = () => {
+const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const [history, setHistory] = useState([]);
   const [tab, setTab] = useState(0);
@@ -29,8 +30,13 @@ const HistoryPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [hasFetched, setHasFetched] = useState(false);
   const [models, setModels] = useState([]);
+
+  // Caching state
+  const [videoHistoryCache, setVideoHistoryCache] = useState({ data: [], total: 0 });
+  const [imageHistoryCache, setImageHistoryCache] = useState({ data: [], total: 0 });
+  const [videoHasFetched, setVideoHasFetched] = useState(false);
+  const [imageHasFetched, setImageHasFetched] = useState(false);
 
   // State for filters
   const [filters, setFilters] = useState({
@@ -52,6 +58,14 @@ const HistoryPage = () => {
 
   const handleTabChange = (event, newValue) => {
     setTab(newValue);
+    if (newValue === 0) {
+      setHistory(videoHistoryCache.data);
+      setTotalRows(videoHistoryCache.total);
+    } else if (newValue === 1) {
+      setHistory(imageHistoryCache.data);
+      setTotalRows(imageHistoryCache.total);
+    }
+    setPage(0);
   };
 
   const clearFilters = () => {
@@ -92,19 +106,18 @@ const HistoryPage = () => {
 
   const {
     modalOpen: shareModalOpen,
-    selectedVideo: shareSelectedVideo,
+    selectedItem: shareSelectedItem,
     openModal: openShareModal,
     closeModal: closeShareModal,
     handleSubmit: handleShareSubmit,
   } = useShareModal(() => {
     // For now, just log and close
-    console.log("Video shared successfully");
+    console.log("Item shared successfully");
   });
 
   const fetchHistory = async (isCleared = false, newPage = 0, newRowsPerPage = 10) => {
     setLoading(true);
     setError(null);
-    setHasFetched(true);
 
     const activeFilters = isCleared ? {} : Object.entries(filters).reduce((acc, [key, value]) => {
       if (value) { // Only include non-empty/non-false values
@@ -117,21 +130,34 @@ const HistoryPage = () => {
       activeFilters.status = 'SUCCESS';
     }
 
+    const endpoint = tab === 0 ? '/api/videos/history' : '/api/images/history';
+
     try {
-      const response = await axios.get('/api/videos/history', { 
+      const response = await axios.get(endpoint, { 
         params: { 
           ...activeFilters,
           page: newPage + 1,
           page_size: newRowsPerPage
         } 
       });
-      setHistory(response.data.rows);
-      setTotalRows(response.data.total);
+      const newHistory = response.data.rows;
+      const newTotal = response.data.total;
+
+      if (tab === 0) {
+        setVideoHistoryCache({ data: newHistory, total: newTotal });
+        if (!videoHasFetched) setVideoHasFetched(true);
+      } else {
+        setImageHistoryCache({ data: newHistory, total: newTotal });
+        if (!imageHasFetched) setImageHasFetched(true);
+      }
+
+      setHistory(newHistory);
+      setTotalRows(newTotal);
       setPage(newPage);
       setRowsPerPage(newRowsPerPage);
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch history.');
-      setHistory([]); // Clear cache on error
+      setHistory([]);
     } finally {
       setLoading(false);
     }
@@ -148,7 +174,7 @@ const HistoryPage = () => {
     };
     const fetchModels = async () => {
       try {
-        const response = await axios.get('/api/models');
+        const response = await axios.get(tab === 0 ? '/api/models' : '/api/image-models');
         setModels(response.data.models || []);
       } catch (error) {
         console.error("Failed to fetch models:", error);
@@ -156,7 +182,7 @@ const HistoryPage = () => {
     };
     fetchConfig();
     fetchModels();
-  }, []);
+  }, [tab]);
 
   return (
     <Box>
@@ -176,7 +202,8 @@ const HistoryPage = () => {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={tab} onChange={handleTabChange} aria-label="history tabs">
-          <Tab label={t('history.tabs.history')} />
+          <Tab label={t('history.tabs.videoHistory')} />
+          <Tab label={t('history.tabs.imageHistory')} />
           {config.enable_upscale && <Tab label={t('history.tabs.upscaleJobs')} />}
         </Tabs>
       </Box>
@@ -251,9 +278,9 @@ const HistoryPage = () => {
             <CircularProgress />
           ) : error ? (
             <Alert severity="error">{error}</Alert>
-          ) : hasFetched && history.length === 0 ? (
+          ) : videoHasFetched && history.length === 0 ? (
             <Typography>{t('history.noResults')}</Typography>
-          ) : !hasFetched ? (
+          ) : !videoHasFetched ? (
             <Typography>{t('history.pressFetch')}</Typography>
           ) : (
             <Box>
@@ -285,7 +312,26 @@ const HistoryPage = () => {
         </Box>
       )}
 
-      {tab === 1 && config.enable_upscale && <UpscaleJobsTab />}
+      {tab === 1 && (
+        <ImageHistory 
+          user={user} 
+          history={history}
+          models={models}
+          loading={loading}
+          error={error}
+          hasFetched={imageHasFetched}
+          totalRows={totalRows}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          fetchHistory={fetchHistory}
+          setFilters={setFilters}
+          clearFilters={clearFilters}
+          filters={filters}
+          onUseAsFirstFrame={onUseAsFirstFrame}
+        />
+      )}
+
+      {tab === 2 && config.enable_upscale && <UpscaleJobsTab />}
 
       {selectedVideo && (
         <EditingModal
@@ -306,12 +352,12 @@ const HistoryPage = () => {
         />
       )}
 
-      {shareSelectedVideo && (
+      {shareSelectedItem && (
         <ShareModal
           open={shareModalOpen}
           onClose={closeShareModal}
           onSubmit={handleShareSubmit}
-          video={shareSelectedVideo}
+          item={shareSelectedItem}
         />
       )}
     </Box>

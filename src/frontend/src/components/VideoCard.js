@@ -67,9 +67,11 @@ const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareCl
         )}
       </Box>
       <CardContent sx={{ flexGrow: 1 }}>
-        <Typography gutterBottom variant="h6" component="div" noWrap>
-            {video.prompt || 'No prompt available'}
-        </Typography>
+        <Tooltip title={video.prompt || 'No prompt available'}>
+          <Typography gutterBottom variant="h6" component="div" noWrap>
+              {video.prompt || 'No prompt available'}
+          </Typography>
+        </Tooltip>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             {video.status && <Chip 
                 label={video.status} 

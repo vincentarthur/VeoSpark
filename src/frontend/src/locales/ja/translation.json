@@ -6,8 +6,9 @@
   },
   "nav": {
     "videoGenerator": "ビデオジェネレーター",
+    "imageGenerator": "画像ジェネレーター",
     "promptFromImages": "画像からプロンプト",
-    "generator": "ビデオジェネレーター",
+    "generator": "クリエイティブプロダクション",
     "history": "私の履歴",
     "analytics": "アナリティクス",
     "gallery": "プロンプトギャラリー",
@@ -77,7 +78,8 @@
       "share": "共有"
     },
     "tabs": {
-      "history": "生成履歴",
+      "videoHistory": "ビデオ履歴",
+      "imageHistory": "画像履歴",
       "upscaleJobs": "アップスケールジョブ"
     },
     "filters": {
@@ -88,13 +90,15 @@
       "all": "すべて",
       "editedOnly": "編集済みのみ",
       "onlySuccess": "成功のみ",
-      "apply": "フィルター適用",
-      "all": "すべて"
+      "apply": "フィルター適用"
     },
     "editingTools": {
       "clip": "クリッピングツール",
       "dub": "吹き替えツール"
     }
+  },
+  "imageHistory": {
+    "title": "画像生成履歴"
   },
   "editModal": {
     "clipTitle": "ビデオをクリップ",
@@ -138,17 +142,17 @@
     "confirmRemoveDescription": "本当に {{email}} をこのグループから削除しますか？",
     "memberRemovedSuccess": "メンバーを正常に削除しました。"
   },
-  "sharedVideos": {
+  "sharedItems": {
     "title": "チームギャラリー",
     "selectGroup": "グループを選択",
-    "noVideos": "このグループにはビデオが共有されていません。",
-    "confirmDeleteTitle": "共有ビデオを削除",
-    "confirmDeleteDescription": "この共有ビデオを完全に削除してもよろしいですか？この操作は元に戻せません。",
+    "noItems": "このグループにはアイテムが共有されていません。",
+    "confirmDeleteTitle": "共有アイテムを削除",
+    "confirmDeleteDescription": "この共有アイテムを完全に削除してもよろしいですか？この操作は元に戻せません。",
     "refresh": "更新",
     "refreshing": "更新中..."
   },
   "shareModal": {
-    "title": "ビデオを共有",
+    "title": "アイテムを共有",
     "selectGroup": "共有するグループを選択"
   },
   "common": {
@@ -171,10 +175,24 @@
     "costUSD": "コスト (USD)",
     "totalCostInRange": "総コスト（フィルター済み）"
   },
+  "imageCard": {
+    "useAsFirstFrame": "最初のフレームとして使用"
+  },
   "videoCard": {
     "sharedBy": "共有者",
     "generatedBy": "生成者",
     "deleteShare": "共有を削除"
+  },
+  "imageGenerator": {
+    "title": "画像生成",
+    "modelLabel": "モデル",
+    "promptLabel": "プロンプト",
+    "negativePromptLabel": "ネガティブプロンプト",
+    "aspectRatioLabel": "アスペクト比",
+    "sampleCountLabel": "画像数",
+    "generateButton": "画像を生成",
+    "generatingStatus": "生成中...",
+    "resultsTitle": "結果"
   },
   "imagePromptGenerator": {
     "title": "画像からプロンプトを生成",
