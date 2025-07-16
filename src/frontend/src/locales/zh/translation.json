@@ -8,6 +8,7 @@
     "videoGenerator": "视频生成器",
     "imageGenerator": "图片生成器",
     "promptFromImages": "从图片生成提示",
+    "imageImitation": "图像模仿",
     "generator": "创意生产",
     "history": "我的历史",
     "analytics": "分析",
@@ -242,6 +243,14 @@
     "pedestalUp": "镜头上升",
     "tiltDown": "镜头向下倾斜",
     "tiltUp": "镜头向上倾斜"
+  },
+  "imageImitation": {
+    "description": "上传一张图片，从Gemini获取描述，自定义提示并生成新图片。",
+    "uploadImage": "上传图片",
+    "subPromptLabel": "自定义输入",
+    "generateButton": "生成模仿图片",
+    "noImageError": "请先上传一张图片。",
+    "sampleCount": "样本数"
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"

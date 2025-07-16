@@ -37,6 +37,7 @@ import vertexai
 # Import the new video processing functions
 from video_processing import process_video_from_gcs, check_quota
 from config_manager import get_config, save_config, get_image_models
+from prompts import IMAGE_IMITATION_PROMPT_PREFIX, IMAGE_IMITATION_PROMPT_SUFFIX, IMAGE_IMITATION_PROMPT_COMBINATION
 
 
 # ==============================================================================
@@ -775,6 +776,135 @@ async def generate_image(request: Request, user: dict = Depends(get_user)):
 
         logger.error(f"Image generation failed for user {user_email}. Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
+
+
+@api_router.post("/images/imitate", tags=["Image Generation"])
+async def imitate_image(
+    user: dict = Depends(get_user),
+    file: UploadFile = File(...),
+    sub_prompt: str = Form(""),
+    model: str = Form(...),
+    sample_count: int = Form(1)
+):
+    if app_conf.get('ENABLE_OAUTH', False) and not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+
+
+    try:
+        # 1. Upload image to GCS
+        user_email = user.get('email', 'anonymous') if user else 'anonymous'
+        user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+        
+        storage_client = storage.Client(project=PROJECT)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        
+        file_extension = Path(file.filename).suffix
+        blob_name = f"image_uploads/{user_folder}/{uuid.uuid4().hex}{file_extension}"
+        blob = bucket.blob(blob_name)
+
+        img_bytes = await file.read()
+        blob.upload_from_string(img_bytes, content_type=file.content_type)
+        
+        gcs_uri = f"gs://{BUCKET_NAME}/{blob_name}"
+        logger.info(f"User {user_email} uploaded image to {gcs_uri}")
+
+        # 2. Describe the image with Gemini
+        gemini_client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
+        
+        image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=file.content_type)
+
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_text(text=IMAGE_IMITATION_PROMPT_PREFIX),
+                image_part,
+                types.Part.from_text(text=IMAGE_IMITATION_PROMPT_SUFFIX)
+            ],
+            config=generate_content_config
+        )
+        image_description = response.text
+
+        # 2. Combine with sub-prompt
+        combined_prompt_template = IMAGE_IMITATION_PROMPT_COMBINATION.format(image_description_json=image_description, cust_input_text=sub_prompt)
+
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_text(text=combined_prompt_template),
+            ],
+            config=generate_content_config
+        )
+
+        combined_prompt = response.text
+
+        # 3. Generate a new image
+        start_time = time.time()
+        images = imagen_client.models.generate_images(
+            model=model,
+            prompt=combined_prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=sample_count,
+                person_generation="allow_all",
+                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
+                add_watermark=True
+            )
+        )
+        op_duration = time.time() - start_time
+
+        gcs_paths = []
+        for generated_image in images.generated_images:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+                generated_image.image._pil_image.save(temp_file.name)
+                
+                user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+                blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
+                
+                storage_client = storage.Client(project=PROJECT)
+                bucket = storage_client.bucket(BUCKET_NAME)
+                blob = bucket.blob(blob_name)
+                blob.upload_from_filename(temp_file.name)
+                
+                gcs_paths.append(f"gs://{BUCKET_NAME}/{blob_name}")
+
+        # 4. Log and return
+        completion_time = datetime.now(timezone.utc)
+        
+        for path in gcs_paths:
+            log_generation_to_bq(
+                user_email=user_email,
+                trigger_time=datetime.now(timezone.utc),
+                completion_time=completion_time,
+                operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0,
+                prompt=combined_prompt,
+                negative_prompt=None,
+                model_used=model,
+                status="SUCCESS",
+                output_image_gcs_path=path
+            )
+
+        image_data = []
+        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+        for uri in gcs_paths:
+            signed_url = veo_client.generate_signed_gcs_url(uri)
+            if signed_url:
+                image_data.append({
+                    "gcs_uri": uri,
+                    "signed_url": signed_url
+                })
+        
+        return JSONResponse({
+            "message": "Image imitation successful.",
+            "images": image_data,
+            "duration": op_duration,
+            "revised_prompt": combined_prompt
+        }, status_code=200)
+
+    except Exception as e:
+        logger.error(f"Image imitation failed for user {user.get('email', 'anonymous')}. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Image imitation failed: {e}")
 
 
 @api_router.get("/gcs/videos", tags=["GCS"])

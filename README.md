@@ -20,6 +20,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 -   **Image-to-Video Workflow**: Seamlessly use any generated or shared image as the first frame for a new video generation, bridging the gap between image and video creation.
 -   **Dynamic Model Configuration**: Easily add, remove, or update Veo and Imagen models and their pricing through simple `.yaml` files without changing any code.
 -   **Image-to-Prompt Generation**: Upload a character, background, and/or prop image to generate a descriptive prompt using Gemini 2.5 Pro.
+-   **Image Imitation**: Upload an image, get a description from Gemini, customize the prompt, and generate a new image.
 -   **Prompt Translation**: Instantly translate generated prompts into different languages using Gemini 2.5 Flash.
 -   **Generation History & Caching**: Keep track of all your video and image generations. The history page now caches data for faster load times when switching between tabs.
 -   **Comprehensive Cost Analytics**: Monitor your spending with a detailed dashboard that provides a complete overview of both video and image creation costs.

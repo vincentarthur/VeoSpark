@@ -8,6 +8,7 @@ import NotificationBanner from '../components/NotificationBanner'; // Import the
 import Dashboard from '../components/Dashboard';
 import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import ImageGenerator from '../components/ImageGenerator';
+import ImageImitation from '../components/ImageImitation';
 import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage'; // Import the new page
 import ConfigurationsPage from '../components/ConfigurationsPage';
@@ -93,10 +94,12 @@ const HomePage = ({ user }) => {
                 <Tab label={t('nav.imageGenerator')} />
                 <Tab label={t('nav.videoGenerator')} />
                 <Tab label={t('nav.promptFromImages')} />
+                <Tab label={t('nav.imageImitation')} />
               </Tabs>
               {generatorTab === 0 && <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />}
               {generatorTab === 1 && <Dashboard initialFirstFrame={firstFrame} />}
               {generatorTab === 2 && <ImagePromptGenerator />}
+              {generatorTab === 3 && <ImageImitation user={user} />}
             </Box>
           } />
           <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />

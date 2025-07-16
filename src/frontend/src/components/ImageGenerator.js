@@ -125,10 +125,10 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography gutterBottom>{t('imageGenerator.sampleCountLabel')}: {formState.sample_count}</Typography>
+                <Typography gutterBottom>{t('imageGenerator.sampleCountLabel')}: {formState.model === 'imagen-4.0-ultra-generate-preview-06-06' ? 1 : formState.sample_count}</Typography>
                 <Slider
                   name="sample_count"
-                  value={formState.sample_count}
+                  value={formState.model === 'imagen-4.0-ultra-generate-preview-06-06' ? 1 : formState.sample_count}
                   onChange={handleSliderChange('sample_count')}
                   aria-labelledby="input-slider"
                   valueLabelDisplay="auto"
@@ -136,6 +136,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
                   marks
                   min={1}
                   max={4}
+                  disabled={formState.model === 'imagen-4.0-ultra-generate-preview-06-06'}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -164,7 +165,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
               <Typography variant="h5" gutterBottom sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>{t('imageGenerator.resultsTitle')}</Typography>
               <Grid container spacing={2}>
                 {generatedImages.map((image, index) => (
-                  <Grid item xs={12} sm={6} md={6} key={index}>
+                  <Grid item xs={12} sm={6} md={4} key={index}>
                     <ImageCard
                       image={image}
                       models={models}

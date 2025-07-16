@@ -8,6 +8,7 @@
     "videoGenerator": "ビデオジェネレーター",
     "imageGenerator": "画像ジェネレーター",
     "promptFromImages": "画像からプロンプト",
+    "imageImitation": "画像模倣",
     "generator": "クリエイティブプロダクション",
     "history": "私の履歴",
     "analytics": "アナリティクス",
@@ -240,6 +241,14 @@
     "pedestalUp": "カメラは上にペデスタルします",
     "tiltDown": "カメラは下にチルトします",
     "tiltUp": "カメラは上にチルトします"
+  },
+  "imageImitation": {
+    "description": "画像をアップロードし、Geminiから説明を取得し、プロンプトをカスタマイズして新しい画像を生成します。",
+    "uploadImage": "画像をアップロード",
+    "subPromptLabel": "入力をカスタマイズ",
+    "generateButton": "模倣を生成",
+    "noImageError": "最初に画像をアップロードしてください。",
+    "sampleCount": "サンプル数"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

@@ -8,6 +8,7 @@
     "videoGenerator": "Video Generator",
     "imageGenerator": "Image Generator",
     "promptFromImages": "Prompt from Images",
+    "imageImitation": "Image Imitation",
     "generator": "Creative Production",
     "history": "My History",
     "analytics": "Analytics",
@@ -243,6 +244,13 @@
     "pedestalUp": "The camera pedestals up",
     "tiltDown": "The camera tilts down",
     "tiltUp": "The camera tilts up"
+  },
+  "imageImitation": {
+    "description": "Upload an image, get a description from Gemini, customize the prompt, and generate a new image.",
+    "uploadImage": "Upload Image",
+    "subPromptLabel": "Custom Input",
+    "generateButton": "Generate Imitation",
+    "noImageError": "Please upload an image first."
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"
