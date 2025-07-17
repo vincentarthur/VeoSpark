@@ -216,7 +216,27 @@ You can create the required BigQuery dataset and table by running the provided s
     ```
     The script will create the dataset and the table with the correct schema defined in `schema.json`.
 
-### 7. Create a Service Account
+### 7. BigQuery for Imagen History
+
+You can create the required BigQuery table for Imagen history logging by running the provided setup script.
+
+1.  **Navigate to the backend directory**:
+    ```bash
+    cd src/backend
+    ```
+
+2.  **Make the script executable**:
+    ```bash
+    chmod +x setup_imagen_bigquery.sh
+    ```
+
+3.  **Run the script**:
+    ```bash
+    ./setup_imagen_bigquery.sh
+    ```
+    The script will automatically use the `PROJECT_ID` and `ANALYSIS_DATASET` from your `app-config.yaml` file and create the `imagen_history` table with the schema from `schema_imagen_history.json`.
+
+### 8. Create a Service Account
 
 It is recommended to create a dedicated service account for this application to follow the principle of least privilege.
 
@@ -239,7 +259,7 @@ It is recommended to create a dedicated service account for this application to 
     -   Cloud Tasks Enqueuer
 6.  Click **Done**.
 
-### 8. Authentication
+### 9. Authentication
 
 -   **OAuth 2.0 Client ID**:
     -   Go to "APIs & Services" > "Credentials".
