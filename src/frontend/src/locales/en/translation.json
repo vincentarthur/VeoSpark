@@ -73,6 +73,7 @@
     "fullPrompt": "Full Prompt",
     "genDuration": "Generation Duration",
     "completionTime": "Completion Time",
+    "resolution": "Resolution",
     "noPreview": "No video preview available.",
     "actions": {
       "preview": "Preview",

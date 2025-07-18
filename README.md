@@ -12,6 +12,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 - [Google Cloud Setup](#google-cloud-setup)
 - [Running the Application Locally](#running-the-application-locally)
 - [Usage](#usage)
+- [Change Log](#change-log)
 
 ## Features
 
@@ -357,3 +358,31 @@ It is recommended to create a dedicated service account for this application to 
 3.  Use the "Video Generator" tab to create new videos.
 4.  View your past creations in the "My History" tab.
 5.  Monitor your usage costs in the "Analytics" tab.
+
+## Change Log
+
+- **v1.5**
+    - Add feature - Image Imitation
+- **v1.4**
+    - Add Imagen4 feature, Consumption analysis
+- **v1.3**
+    - Add feature of Groups Management / Team Gallery / Prompt from Images
+- **v1.2**
+    - Change display to Gallery
+- **v1.1**
+    - Refactor frontend and backend logic
+- **v1.0**
+    - Add Resolution 1080p for Veo3
+    - Correct history.model display
+    - Add Veo3-fast and enhance VideoCard display
+    - Add Camera movement options
+    - Add missing i18n
+    - Add step to create veo-app-config firestore database.
+    - Add model filtering
+    - Add Service Account creation steps
+    - Refine step of creating Secret
+    - Fix firestore index issue
+    - Add Pagination
+    - Add Configuration Tabs
+    - Add Veo2 support
+    - Init Commit

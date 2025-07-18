@@ -487,8 +487,8 @@ const Dashboard = ({ initialFirstFrame }) => {
               label={t('dashboard.resolutionLabel')}
               onChange={(e) => setResolution(e.target.value)}
             >
-              <MenuItem value="720p">1280x720</MenuItem>
-              <MenuItem value="1080p">1920x1080</MenuItem>
+              <MenuItem value="720p">720p</MenuItem>
+              <MenuItem value="1080p">1080p</MenuItem>
             </Select>
           </FormControl>
         )}

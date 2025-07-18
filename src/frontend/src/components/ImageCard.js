@@ -39,6 +39,13 @@ const ExpandableCard = ({ children, title }) => {
 const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return isNaN(date) ? t('history.invalidDate') : date.toLocaleString();
+  };
+
   const isActionable = image.status === 'SUCCESS' && (image.output_image_gcs_path || image.gcs_uri);
   const canDelete = onShareDelete && user && image.shared_by_user_email === user.email;
   const modelName = models?.find(m => m.id === image.model_used)?.name || image.model_used;
@@ -72,7 +79,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
                 size="small" 
             />}
             <Typography variant="caption" color="text.secondary">
-                {new Date(image.trigger_time || image.shared_at).toLocaleString()}
+                {formatDate(image.trigger_time || image.shared_at)}
             </Typography>
         </Box>
         {image.shared_by_user_email && (
@@ -96,7 +103,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
                 <strong>{t('history.genDuration')}:</strong> {Math.round(image.operation_duration || 0)}s
             </Typography>
             <Typography variant="body2" component="p">
-                <strong>{t('history.completionTime')}:</strong> {new Date(image.completion_time).toLocaleString()}
+                <strong>{t('history.completionTime')}:</strong> {formatDate(image.completion_time)}
             </Typography>
         </ExpandableCard>
       </CardContent>

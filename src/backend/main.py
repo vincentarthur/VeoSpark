@@ -1084,6 +1084,7 @@ def get_image_history(
         SELECT
             user_email,
             CAST(trigger_time AS STRING) AS trigger_time,
+            CAST(completion_time AS STRING) AS completion_time,
             prompt,
             model_used,
             output_image_gcs_path,
@@ -1175,7 +1176,8 @@ def get_user_history(
             status,
             error_message,
             first_frame_gcs_uri,
-            last_frame_gcs_uri
+            last_frame_gcs_uri,
+            resolution
         FROM
             `{PROJECT}.{dataset_id}.{table_id}`
         WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC
@@ -1668,6 +1670,7 @@ async def share_video(request: Request, user: dict = Depends(get_user)):
         "operation_duration": video_data.get("operation_duration"),
         "status": video_data.get("status"),
         "model_used": video_data.get("model_used"),
+        "resolution": video_data.get("resolution"),
     }
     
     # Filter out any None values to keep the Firestore document clean

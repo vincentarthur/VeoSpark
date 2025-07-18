@@ -72,6 +72,7 @@
     "fullPrompt": "完整提示词",
     "genDuration": "生成耗时",
     "completionTime": "完成时间",
+    "resolution": "分辨率",
     "noPreview": "无视频预览。",
     "actions": {
       "preview": "预览",

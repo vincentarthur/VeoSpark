@@ -3,7 +3,17 @@ import { useTranslation } from 'react-i18next';
 import {
   Card, CardContent, CardMedia, Typography, IconButton, Tooltip, Box, Chip, Collapse
 } from '@mui/material';
-import { ContentCut, Mic, ExpandMore, ArrowUpward, Share, Delete } from '@mui/icons-material';
+import { ContentCut, Mic, ExpandMore, ArrowUpward, Share, Delete, Hd, FullHd, FourK } from '@mui/icons-material';
+
+const ResolutionIcon = ({ resolution }) => {
+  if (!resolution) return null;
+
+  if (resolution.includes('720')) return <Hd fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
+  if (resolution.includes('1080')) return <FullHd fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
+  if (resolution.toLowerCase().includes('4k')) return <FourK fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
+  
+  return null;
+};
 
 const ExpandableCard = ({ children, title }) => {
     const [expanded, setExpanded] = useState(false);
@@ -105,6 +115,11 @@ const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareCl
             <Typography variant="body2" component="p">
                 <strong>{t('history.completionTime')}:</strong> {new Date(video.completion_time).toLocaleString()}
             </Typography>
+            {video.resolution && (
+              <Typography variant="body2" component="p" sx={{ display: 'flex', alignItems: 'center' }}>
+                <strong>{t('history.resolution')}:</strong> {video.resolution} <ResolutionIcon resolution={video.resolution} />
+              </Typography>
+            )}
         </ExpandableCard>
       </CardContent>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>

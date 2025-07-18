@@ -71,6 +71,7 @@
     "fullPrompt": "完全なプロンプト",
     "genDuration": "生成時間",
     "completionTime": "完了時間",
+    "resolution": "解像度",
     "noPreview": "ビデオプレビューはありません。",
     "actions": {
       "preview": "プレビュー",
