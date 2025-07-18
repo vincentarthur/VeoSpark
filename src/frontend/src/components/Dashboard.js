@@ -97,6 +97,7 @@ const Dashboard = ({ initialFirstFrame }) => {
   const [generationMode, setGenerationMode] = useState('generate'); // 'generate' or 'extend'
   const [duration, setDuration] = useState(8);
   const [aspectRatio, setAspectRatio] = useState('16:9');
+  const [resolution, setResolution] = useState('1080p');
   const [generateAudio, setGenerateAudio] = useState(true);
   const [enhancePrompt, setEnhancePrompt] = useState(true);
   const [sampleCount, setSampleCount] = useState(1);
@@ -295,6 +296,7 @@ const Dashboard = ({ initialFirstFrame }) => {
         generateAudio: isV3Model ? generateAudio : undefined,
         enhancePrompt: isV3Model || isV2GenerateModel ? enhancePrompt : undefined,
         extend_duration: isExtending ? extendDuration : undefined,
+        resolution: isV3Model ? resolution : undefined,
       });
 
       setGeneratedVideos(response.data.videos);
@@ -475,6 +477,21 @@ const Dashboard = ({ initialFirstFrame }) => {
             <FormControlLabel value="16:9" control={<Radio />} label="16:9" />
             <FormControlLabel value="9:16" control={<Radio />} label="9:16" disabled={isV3Model} />
         </RadioGroup>
+
+        {isV3Model && (
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="resolution-select-label">{t('dashboard.resolutionLabel')}</InputLabel>
+            <Select
+              labelId="resolution-select-label"
+              value={resolution}
+              label={t('dashboard.resolutionLabel')}
+              onChange={(e) => setResolution(e.target.value)}
+            >
+              <MenuItem value="720p">1280x720</MenuItem>
+              <MenuItem value="1080p">1920x1080</MenuItem>
+            </Select>
+          </FormControl>
+        )}
 
         {(isV3Model || isVeo2Model) && (
           <Box sx={{ mt: 2, border: '1px solid rgba(0, 0, 0, 0.23)', borderRadius: '8px', p: 2 }}>

@@ -34,6 +34,7 @@
     "durationLabel": "長さ",
     "seconds": "{{count}} 秒",
     "aspectRatioLabel": "アスペクト比",
+    "resolutionLabel": "解像度",
     "videoCountLabel": "生成ビデオ数",
     "v3options": "Veo 3.0 オプション",
     "generateAudio": "オーディオを生成",

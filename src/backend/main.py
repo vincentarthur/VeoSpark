@@ -82,6 +82,7 @@ def log_generation_to_bq(**kwargs):
                 "error_message": str(kwargs.get("error_message", None)),
                 "video_duration": kwargs.get("video_duration"),
                 "with_audio": kwargs.get("with_audio"),
+                "resolution": kwargs.get("resolution"),
                 "first_frame_gcs_uri": kwargs.get("first_frame_gcs_uri"),
                 "last_frame_gcs_uri": kwargs.get("last_frame_gcs_uri"),
                 "output_video_gcs_paths": json.dumps(kwargs.get("output_video_gcs_paths", [])),
@@ -323,8 +324,10 @@ class VeoApiClient:
             if model_type == "veo-3.0":
                 if kwargs.get('generate_audio') is not None:
                     config.generate_audio = kwargs['generate_audio']
+                if kwargs.get('resolution') is not None:
+                    config.resolution = kwargs['resolution']
                 self.logger.info(
-                    f"Applying Veo 3.0 specifics: Audio={getattr(config, 'generate_audio', 'Default')}, Enhance={getattr(config, 'enhance_prompt', 'Default')}")
+                    f"Applying Veo 3.0 specifics: Audio={getattr(config, 'generate_audio', 'Default')}, Enhance={getattr(config, 'enhance_prompt', 'Default')}, Resolution={getattr(config, 'resolution', 'Default')}")
 
             # if model_id == self.exp_model_id:
             #     # This part is a placeholder based on anticipated SDK features.
@@ -598,6 +601,7 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
     image_gcs_uri = body.get('image_gcs_uri')
     final_frame_gcs_uri = body.get('final_frame_gcs_uri')
     with_audio = body.get('generateAudio', False)
+    resolution = body.get('resolution')
 
     try:
             # --- Call the generation function ---
@@ -612,7 +616,8 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
             final_frame_gcs_uri=final_frame_gcs_uri,
             generate_audio=body.get('generateAudio'),
             enhance_prompt=body.get('enhancePrompt'),
-            extend_duration=body.get('extend_duration')
+            extend_duration=body.get('extend_duration'),
+            resolution=body.get('resolution')
         )
 
         # --- Log SUCCESS to BigQuery for each generated video ---
@@ -630,6 +635,7 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
                 error_message=None,
                 video_duration=requested_duration,
                 with_audio=with_audio,
+                resolution=resolution,
                 first_frame_gcs_uri=image_gcs_uri,
                 last_frame_gcs_uri=final_frame_gcs_uri,
                 output_video_gcs_paths=[path]  # Log each path individually
@@ -665,6 +671,7 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
             error_message=e,
             video_duration=requested_duration,
             with_audio=with_audio,
+            resolution=resolution,
             first_frame_gcs_uri=image_gcs_uri,
             last_frame_gcs_uri=final_frame_gcs_uri,
             output_video_gcs_paths=[]
