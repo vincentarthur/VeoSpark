@@ -3,13 +3,13 @@ import { useTranslation } from 'react-i18next';
 import {
   Card, CardContent, CardMedia, Typography, IconButton, Tooltip, Box, Chip, Collapse
 } from '@mui/material';
-import { ContentCut, Mic, ExpandMore, ArrowUpward, Share, Delete, Hd, FullHd, FourK } from '@mui/icons-material';
+import { ContentCut, Mic, ExpandMore, ArrowUpward, Share, Delete, Hd, HighQuality, FourK } from '@mui/icons-material';
 
 const ResolutionIcon = ({ resolution }) => {
   if (!resolution) return null;
 
   if (resolution.includes('720')) return <Hd fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
-  if (resolution.includes('1080')) return <FullHd fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
+  if (resolution.includes('1080')) return <HighQuality fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
   if (resolution.toLowerCase().includes('4k')) return <FourK fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
   
   return null;

@@ -363,6 +363,7 @@ It is recommended to create a dedicated service account for this application to 
 
 - **v1.5**
     - Add feature - Image Imitation
+    - Add Resolution 1080p for Veo3
 - **v1.4**
     - Add Imagen4 feature, Consumption analysis
 - **v1.3**
@@ -372,7 +373,6 @@ It is recommended to create a dedicated service account for this application to 
 - **v1.1**
     - Refactor frontend and backend logic
 - **v1.0**
-    - Add Resolution 1080p for Veo3
     - Correct history.model display
     - Add Veo3-fast and enhance VideoCard display
     - Add Camera movement options
