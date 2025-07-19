@@ -269,5 +269,10 @@
     "save": "Save",
     "costLimitDescription": "Limit users based on the total cost of their generated videos (in USD).",
     "generationQuantityDescription": "Limit users based on the total number of videos they have generated."
+  },
+  "login": {
+    "title": "Veo Spark",
+    "subtitle": "Unleash Your Creativity with Google Cloud AI Capability",
+    "button": "Sign in with Google"
   }
 }

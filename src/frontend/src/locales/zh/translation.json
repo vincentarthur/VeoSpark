@@ -269,5 +269,10 @@
     "save": "保存",
     "costLimitDescription": "根据用户生成的视频总成本（美元）来限制用户。",
     "generationQuantityDescription": "根据用户生成的视频总数来限制用户。"
+  },
+  "login": {
+    "title": "Veo Spark",
+    "subtitle": "借助 Google Cloud AI 功能释放您的创造力",
+    "button": "使用 Google 登录"
   }
 }
