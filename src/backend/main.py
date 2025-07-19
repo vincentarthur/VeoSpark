@@ -211,12 +211,6 @@ except Exception as e:
     logger.error(f"Could not initialize Firestore client for shared videos. Error: {e}", exc_info=True)
     shared_videos_db = None
 
-try:
-    tasks_client = tasks_v2.CloudTasksClient()
-    task_queue_path = tasks_client.queue_path(PROJECT, LOCATION, app_conf.get('UPSCALE_QUEUE_ID'))
-    logger.info("Cloud Tasks client initialized successfully.")
-except Exception as e:
-    logger.error(f"Could not initialize Cloud Tasks client. Upscaling will be disabled. Error: {e}", exc_info=True)
     tasks_client = None
     task_queue_path = None
 
@@ -1372,92 +1366,6 @@ async def dub_video_endpoint(request: Request, user: dict = Depends(get_user)):
         raise HTTPException(status_code=500, detail=f"Video dubbing failed: {e}")
 
 
-@api_router.post("/videos/upscale", tags=["Video Editing"])
-async def upscale_video_endpoint(request: Request, user: dict = Depends(get_user)):
-    if not app_conf.get("ENABLE_UPSCALE", False):
-        raise HTTPException(status_code=404, detail="Not Found")
-    if not user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    if not tasks_client or not task_queue_path:
-        raise HTTPException(status_code=503, detail="Upscaling service is not available.")
-
-    body = await request.json()
-    gcs_uri = body.get('gcs_uri')
-    resolution = body.get('resolution')
-
-    if not gcs_uri or not resolution:
-        raise HTTPException(status_code=400, detail="gcs_uri and resolution are required.")
-
-    job_id = str(uuid.uuid4())
-    user_email = user.get('email', 'anonymous')
-
-    # Create a record in Firestore for the job
-    job_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).document(job_id)
-    job_ref.set({
-        'user_email': user_email,
-        'gcs_uri': gcs_uri,
-        'resolution': resolution,
-        'status': 'queued',
-        'created_at': firestore.SERVER_TIMESTAMP,
-    })
-
-    # Create a task in Cloud Tasks
-    task = {
-        'http_request': {
-            'http_method': tasks_v2.HttpMethod.POST,
-            'url': app_conf.get('UPSCALE_WORKER_URL'),
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'job_id': job_id,
-                'gcs_uri': gcs_uri,
-                'resolution': resolution,
-            }).encode(),
-        }
-    }
-    tasks_client.create_task(parent=task_queue_path, task=task)
-
-    return JSONResponse({"message": "Upscale job created successfully.", "job_id": job_id}, status_code=202)
-
-
-@api_router.get("/videos/upscale/status/{job_id}", tags=["Video Editing"])
-def get_upscale_job_status(job_id: str, user: dict = Depends(get_user)):
-    if not app_conf.get("ENABLE_UPSCALE", False):
-        raise HTTPException(status_code=404, detail="Not Found")
-    if not user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    job_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).document(job_id)
-    job = job_ref.get()
-
-    if not job.exists:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    return JSONResponse(job.to_dict())
-
-
-@api_router.get("/videos/upscale/jobs", tags=["Video Editing"])
-def get_upscale_jobs(user: dict = Depends(get_user)):
-    if not app_conf.get("ENABLE_UPSCALE", False):
-        raise HTTPException(status_code=404, detail="Not Found")
-    if not user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    user_email = user.get('email')
-    # jobs_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).where('user_email', '==', user_email).order_by('created_at', direction=firestore.Query.DESCENDING)
-    jobs_ref = db.collection(app_conf.get('UPSCALE_JOBS_COLLECTION')).where(filter=FieldFilter('user_email', '==', user_email)).order_by('created_at', direction=firestore.Query.DESCENDING)
-
-    jobs = []
-    veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
-    for doc in jobs_ref.stream():
-        job_data = doc.to_dict()
-        job_data["id"] = doc.id
-        if 'created_at' in job_data and hasattr(job_data['created_at'], 'isoformat'):
-            job_data['created_at'] = job_data['created_at'].isoformat()
-        if job_data.get('status') == 'completed' and job_data.get('upscaled_gcs_uri'):
-            job_data['signed_url'] = veo_client.generate_signed_gcs_url(job_data['upscaled_gcs_uri'])
-        jobs.append(job_data)
-
-    return JSONResponse(jobs)
 
 
 @api_router.post("/groups", tags=["Groups"])

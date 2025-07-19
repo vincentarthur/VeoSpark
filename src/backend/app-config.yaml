@@ -53,9 +53,3 @@ CONFIG_DB: "veo-app-config"
 # An empty list will hide the banner.
 BANNER_MESSAGES:
   - "Veo3 Fast & Imagen 4 series are ready to use."
-
-# Upscaling Configuration
-ENABLE_UPSCALE: False
-UPSCALE_QUEUE_ID: "veo-upscale-queue"
-UPSCALE_WORKER_URL: "https://your-upscale-worker-url.a.run.app" # Replace with your actual worker URL
-UPSCALE_JOBS_COLLECTION: "upscale-jobs"

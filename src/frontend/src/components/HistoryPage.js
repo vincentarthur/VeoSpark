@@ -11,9 +11,6 @@ import {
 import EditingModal from './EditingModal';
 import { useEditingModal } from '../hooks/useEditingModal';
 import VideoCard from './VideoCard';
-import UpscaleModal from './UpscaleModal';
-import { useUpscaleModal } from '../hooks/useUpscaleModal';
-import UpscaleJobsTab from './UpscaleJobsTab';
 import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
 import ImageHistory from './ImageHistory';
@@ -82,15 +79,6 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     fetchHistory();
   });
 
-  const {
-    modalOpen: upscaleModalOpen,
-    selectedVideo: upscaleSelectedVideo,
-    openModal: openUpscaleModal,
-    closeModal: closeUpscaleModal,
-    handleSubmit: handleUpscaleSubmit,
-  } = useUpscaleModal(() => {
-    fetchHistory();
-  });
 
   const {
     modalOpen: shareModalOpen,
@@ -211,7 +199,6 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
                         video={video}
                         models={models}
                         onEditClick={openModal}
-                        onUpscaleClick={config.enable_upscale ? openUpscaleModal : null}
                         onShareClick={openShareModal}
                       />
                     </Col>
@@ -246,7 +233,6 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
             onUseAsFirstFrame={onUseAsFirstFrame}
           />
         </TabPane>
-        {config.enable_upscale && <TabPane tab={t('history.tabs.upscaleJobs')} key="upscale"><UpscaleJobsTab /></TabPane>}
       </Tabs>
 
       {selectedVideo && (
@@ -259,14 +245,6 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
         />
       )}
 
-      {upscaleSelectedVideo && (
-        <UpscaleModal
-          open={upscaleModalOpen}
-          onClose={closeUpscaleModal}
-          onSubmit={handleUpscaleSubmit}
-          video={upscaleSelectedVideo}
-        />
-      )}
 
       {shareSelectedItem && (
         <ShareModal

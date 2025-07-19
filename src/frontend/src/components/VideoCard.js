@@ -16,7 +16,7 @@ const ResolutionIcon = ({ resolution }) => {
   return null;
 };
 
-const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareClick, onShareDelete }) => {
+const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete }) => {
   const { t } = useTranslation();
   const isActionable = video.status === 'SUCCESS' && (video.output_video_gcs_paths || video.video_gcs_uri);
   const canDelete = onShareDelete && user && video.shared_by_user_email === user.email;
@@ -40,13 +40,6 @@ const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareCl
     actions.push(
       <Tooltip title={t('history.actions.dub')}>
         <Button icon={<AudioOutlined />} onClick={() => onEditClick(video, 'dub')} disabled={!isActionable} />
-      </Tooltip>
-    );
-  }
-  if (onUpscaleClick) {
-    actions.push(
-      <Tooltip title={t('history.actions.upscale')}>
-        <Button icon={<ArrowUpOutlined />} onClick={() => onUpscaleClick(video)} disabled={!isActionable} />
       </Tooltip>
     );
   }
