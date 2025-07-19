@@ -27,18 +27,22 @@ const LoginPage = () => {
           <img src="/Google_Gemini_logo.svg" alt="Gemini" style={{ height: 40, position: 'relative', bottom: '5px' }} />
         </div>
         <Title level={1} style={{ color: 'white' }}>{t('login.title')}</Title>
-        <Text type="secondary" style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '1.2rem' }}>
-          {t('login.subtitle')}
-        </Text>
-        <Button
-          type="primary"
-          size="large"
-          icon={<GoogleOutlined />}
-          onClick={handleLogin}
-          style={{ marginTop: 24, width: '50%' }}
-        >
-          {t('login.button')}
-        </Button>
+        <div>
+          <Text type="secondary" style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '1.2rem' }}>
+            {t('login.subtitle')}
+          </Text>
+        </div>
+        <div style={{ marginTop: '24px' }}>
+          <Button
+            type="primary"
+            size="large"
+            icon={<GoogleOutlined />}
+            onClick={handleLogin}
+            style={{ width: '50%' }}
+          >
+            {t('login.button')}
+          </Button>
+        </div>
       </Card>
     </div>
   );
