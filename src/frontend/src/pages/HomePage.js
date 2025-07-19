@@ -1,125 +1,101 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Box, Tabs, Tab, Paper, Typography } from '@mui/material';
-
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Layout, Menu, Tabs, Typography } from 'antd';
 import Header from '../components/Header';
-import NotificationBanner from '../components/NotificationBanner'; // Import the new component
+import NotificationBanner from '../components/NotificationBanner';
 import Dashboard from '../components/Dashboard';
 import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import ImageGenerator from '../components/ImageGenerator';
 import ImageImitation from '../components/ImageImitation';
 import HistoryPage from '../components/HistoryPage';
-import AnalyticsPage from '../components/AnalyticsPage'; // Import the new page
+import AnalyticsPage from '../components/AnalyticsPage';
 import ConfigurationsPage from '../components/ConfigurationsPage';
 import PromptGalleryPage from './PromptGalleryPage';
 import GroupsPage from './GroupsPage';
 import SharedItemsPage from './SharedItemsPage';
 
+const { Content, Footer } = Layout;
+const { TabPane } = Tabs;
+
 const HomePage = ({ user }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const [currentTab, setCurrentTab] = useState(0);
-  const [generatorTab, setGeneratorTab] = useState(0);
+  const navigate = useNavigate();
   const [firstFrame, setFirstFrame] = useState(null);
 
   const handleUseAsFirstFrame = (frame) => {
     setFirstFrame(frame);
-    setCurrentTab(0);
-    setGeneratorTab(1); // 1 is for Video Generator (Dashboard)
+    navigate('/');
   };
 
-  useEffect(() => {
-    if (location.pathname === '/gallery') {
-      setCurrentTab(1);
-    } else if (location.pathname === '/history') {
-      setCurrentTab(2);
-    } else if (location.pathname === '/shared-items') {
-      setCurrentTab(3);
-    } else if (location.pathname === '/groups') {
-      setCurrentTab(4);
-    } else if (location.pathname === '/analytics') {
-      setCurrentTab(5);
-    } else if (location.pathname === '/configurations') {
-      setCurrentTab(6);
-    }
-    else {
-      setCurrentTab(0);
-    }
-  }, [location.pathname]);
-
-  const handleTabChange = (event, newValue) => {
-    setCurrentTab(newValue);
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path.startsWith('/gallery')) return 'gallery';
+    if (path.startsWith('/history')) return 'history';
+    if (path.startsWith('/shared-items')) return 'shared-items';
+    if (path.startsWith('/groups')) return 'groups';
+    if (path.startsWith('/analytics')) return 'analytics';
+    if (path.startsWith('/configurations')) return 'configurations';
+    return 'generator';
   };
+
+  const menuItems = [
+    { key: 'generator', label: t('nav.generator'), path: '/' },
+    { key: 'gallery', label: t('nav.gallery'), path: '/gallery' },
+    { key: 'history', label: t('nav.history'), path: '/history' },
+    { key: 'shared-items', label: t('nav.teamGallery'), path: '/shared-items' },
+    user?.role === 'APP_ADMIN' && { key: 'groups', label: t('nav.groups'), path: '/groups' },
+    user?.is_cost_manager && { key: 'analytics', label: t('nav.analytics'), path: '/analytics' },
+    user?.role === 'APP_ADMIN' && { key: 'configurations', label: t('nav.configurations'), path: '/configurations' },
+  ].filter(Boolean);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
+    <Layout style={{ minHeight: '100vh' }}>
       <Header user={user} />
       <NotificationBanner />
-      <Paper square elevation={1}>
-        <Tabs
-          value={currentTab}
-          onChange={handleTabChange}
-          indicatorColor="primary"
-          textColor="primary"
-          centered
-        >
-          <Tab label={t('nav.generator')} component={Link} to="/" />
-          <Tab label={t('nav.gallery')} component={Link} to="/gallery" />
-          <Tab label={t('nav.history')} component={Link} to="/history" />
-          <Tab label={t('nav.teamGallery')} component={Link} to="/shared-items" />
-          {user?.role === 'APP_ADMIN' && (
-            <Tab label={t('nav.groups')} component={Link} to="/groups" />
-          )}
-          {user?.is_cost_manager && (
-            <Tab label={t('nav.analytics')} component={Link} to="/analytics" />
-          )}
-          {user?.role === 'APP_ADMIN' && (
-            <Tab label={t('nav.configurations')} component={Link} to="/configurations" />
-          )}
-        </Tabs>
-      </Paper>
-      <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            overflowY: 'auto',
-            p: { xs: 2, sm: 3 },
-          }}
-        >
-        <Routes>
-          <Route path="/" element={
-            <Box>
-              <Tabs value={generatorTab} onChange={(e, newValue) => setGeneratorTab(newValue)} centered>
-                <Tab label={t('nav.imageGenerator')} />
-                <Tab label={t('nav.videoGenerator')} />
-                <Tab label={t('nav.promptFromImages')} />
-                <Tab label={t('nav.imageImitation')} />
+      <Menu
+        onClick={({ key }) => navigate(menuItems.find(item => item.key === key).path)}
+        selectedKeys={[getSelectedKey()]}
+        mode="horizontal"
+      >
+        {menuItems.map(item => (
+          <Menu.Item key={item.key}>{item.label}</Menu.Item>
+        ))}
+      </Menu>
+      <Content style={{ padding: '0 50px', marginTop: 16 }}>
+        <div style={{ padding: 24, minHeight: 280 }}>
+          <Routes>
+            <Route path="/" element={
+              <Tabs defaultActiveKey="1">
+                <TabPane tab={t('nav.imageGenerator')} key="1">
+                  <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />
+                </TabPane>
+                <TabPane tab={t('nav.videoGenerator')} key="2">
+                  <Dashboard initialFirstFrame={firstFrame} />
+                </TabPane>
+                <TabPane tab={t('nav.promptFromImages')} key="3">
+                  <ImagePromptGenerator />
+                </TabPane>
+                <TabPane tab={t('nav.imageImitation')} key="4">
+                  <ImageImitation user={user} />
+                </TabPane>
               </Tabs>
-              {generatorTab === 0 && <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />}
-              {generatorTab === 1 && <Dashboard initialFirstFrame={firstFrame} />}
-              {generatorTab === 2 && <ImagePromptGenerator />}
-              {generatorTab === 3 && <ImageImitation user={user} />}
-            </Box>
-          } />
-          <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
-          <Route path="/shared-items" element={<SharedItemsPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
-          {user?.role === 'APP_ADMIN' && (
-            <Route path="/groups" element={<GroupsPage />} />
-          )}
-          {user?.is_cost_manager && (
-            <Route path="/analytics" element={<AnalyticsPage />} />
-          )}
-          {user?.role === 'APP_ADMIN' && (
-            <Route path="/configurations" element={<ConfigurationsPage />} />
-          )}
-          <Route path="/gallery" element={<PromptGalleryPage user={user} />} />
-        </Routes>
-      </Box>
-      <Box component="footer" sx={{ p: 2, mt: 'auto', textAlign: 'center', color: 'grey.700' }}>
-        <Typography variant="body2">{t('footer.poweredBy')}</Typography>
-      </Box>
-    </Box>
+            } />
+            <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
+            <Route path="/shared-items" element={<SharedItemsPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
+            {user?.role === 'APP_ADMIN' && <Route path="/groups" element={<GroupsPage />} />}
+            {user?.is_cost_manager && <Route path="/analytics" element={<AnalyticsPage />} />}
+            {user?.role === 'APP_ADMIN' && <Route path="/configurations" element={<ConfigurationsPage />} />}
+            <Route path="/gallery" element={<PromptGalleryPage user={user} />} />
+          </Routes>
+        </div>
+      </Content>
+      <Footer style={{ textAlign: 'center' }}>
+        <Typography.Text type="secondary">{t('footer.poweredBy')}</Typography.Text>
+      </Footer>
+    </Layout>
   );
 };
+
 export default HomePage;

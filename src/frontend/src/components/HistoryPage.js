@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
-  Box, Typography, Paper, CircularProgress, Alert, Button,
-  TextField, Select, MenuItem, FormControl, InputLabel, Checkbox, FormControlLabel, Grid,
-  TablePagination, Tabs, Tab
-} from '@mui/material';
+  Row, Col, Typography, Spin, Alert, Button,
+  DatePicker, Select, Checkbox, Card, Pagination, Tabs
+} from 'antd';
 import { 
-  Refresh, FilterList, Clear
-} from '@mui/icons-material';
+  ReloadOutlined, FilterOutlined, ClearOutlined
+} from '@ant-design/icons';
 import EditingModal from './EditingModal';
-import { useEditingModal } from '../hooks/useEditingModal'; // Import the new hook
-import VideoCard from './VideoCard'; // Import the new VideoCard component
+import { useEditingModal } from '../hooks/useEditingModal';
+import VideoCard from './VideoCard';
 import UpscaleModal from './UpscaleModal';
 import { useUpscaleModal } from '../hooks/useUpscaleModal';
 import UpscaleJobsTab from './UpscaleJobsTab';
@@ -19,65 +18,57 @@ import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
 import ImageHistory from './ImageHistory';
 
+const { Title } = Typography;
+const { Option } = Select;
+const { TabPane } = Tabs;
 
 const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const [history, setHistory] = useState([]);
-  const [tab, setTab] = useState(0);
+  const [activeTab, setActiveTab] = useState("video");
   const [config, setConfig] = useState({ enable_upscale: false });
   const [totalRows, setTotalRows] = useState(0);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [models, setModels] = useState([]);
 
-  // Caching state
-  const [videoHistoryCache, setVideoHistoryCache] = useState({ data: [], total: 0 });
-  const [imageHistoryCache, setImageHistoryCache] = useState({ data: [], total: 0 });
-  const [videoHasFetched, setVideoHasFetched] = useState(false);
-  const [imageHasFetched, setImageHasFetched] = useState(false);
-
-  // State for filters
   const [filters, setFilters] = useState({
-    start_date: '',
-    end_date: '',
+    start_date: null,
+    end_date: null,
     status: '',
     model: '',
     is_edited: false,
     only_success: false,
   });
 
-  const handleFilterChange = (event) => {
-    const { name, value, type, checked } = event.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleTabChange = (event, newValue) => {
-    setTab(newValue);
-    if (newValue === 0) {
-      setHistory(videoHistoryCache.data);
-      setTotalRows(videoHistoryCache.total);
-    } else if (newValue === 1) {
-      setHistory(imageHistoryCache.data);
-      setTotalRows(imageHistoryCache.total);
+  const handleDateChange = (dates) => {
+    if (dates) {
+      setFilters(prev => ({
+        ...prev,
+        start_date: dates[0].format('YYYY-MM-DD'),
+        end_date: dates[1].format('YYYY-MM-DD'),
+      }));
+    } else {
+      setFilters(prev => ({ ...prev, start_date: null, end_date: null }));
     }
-    setPage(0);
   };
 
   const clearFilters = () => {
     setFilters({
-      start_date: '',
-      end_date: '',
+      start_date: null,
+      end_date: null,
       status: '',
       model: '',
       is_edited: false,
       only_success: false,
     });
-    fetchHistory(true); // Pass true to indicate clearing
+    fetchHistory(true);
   };
 
   const { 
@@ -88,7 +79,6 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     closeModal, 
     handleSubmit 
   } = useEditingModal(() => {
-    // onActionComplete: just refetch the history
     fetchHistory();
   });
 
@@ -98,9 +88,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     openModal: openUpscaleModal,
     closeModal: closeUpscaleModal,
     handleSubmit: handleUpscaleSubmit,
-  } = useUpscaleModal((originalVideo, data) => {
-    // For now, just log the job ID and refetch history
-    console.log("Upscale job started:", data.job_id);
+  } = useUpscaleModal(() => {
     fetchHistory();
   });
 
@@ -110,17 +98,14 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     openModal: openShareModal,
     closeModal: closeShareModal,
     handleSubmit: handleShareSubmit,
-  } = useShareModal(() => {
-    // For now, just log and close
-    console.log("Item shared successfully");
-  });
+  } = useShareModal(() => {});
 
-  const fetchHistory = async (isCleared = false, newPage = 0, newRowsPerPage = 10) => {
+  const fetchHistory = async (isCleared = false, newPage = 1, newRowsPerPage = 10) => {
     setLoading(true);
     setError(null);
 
     const activeFilters = isCleared ? {} : Object.entries(filters).reduce((acc, [key, value]) => {
-      if (value) { // Only include non-empty/non-false values
+      if (value) {
         acc[key] = value;
       }
       return acc;
@@ -130,29 +115,18 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
       activeFilters.status = 'SUCCESS';
     }
 
-    const endpoint = tab === 0 ? '/api/videos/history' : '/api/images/history';
+    const endpoint = activeTab === 'video' ? '/api/videos/history' : '/api/images/history';
 
     try {
       const response = await axios.get(endpoint, { 
         params: { 
           ...activeFilters,
-          page: newPage + 1,
+          page: newPage,
           page_size: newRowsPerPage
         } 
       });
-      const newHistory = response.data.rows;
-      const newTotal = response.data.total;
-
-      if (tab === 0) {
-        setVideoHistoryCache({ data: newHistory, total: newTotal });
-        if (!videoHasFetched) setVideoHasFetched(true);
-      } else {
-        setImageHistoryCache({ data: newHistory, total: newTotal });
-        if (!imageHasFetched) setImageHasFetched(true);
-      }
-
-      setHistory(newHistory);
-      setTotalRows(newTotal);
+      setHistory(response.data.rows);
+      setTotalRows(response.data.total);
       setPage(newPage);
       setRowsPerPage(newRowsPerPage);
     } catch (err) {
@@ -174,7 +148,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     };
     const fetchModels = async () => {
       try {
-        const response = await axios.get(tab === 0 ? '/api/models' : '/api/image-models');
+        const response = await axios.get(activeTab === 'video' ? '/api/models' : '/api/image-models');
         setModels(response.data.models || []);
       } catch (error) {
         console.error("Failed to fetch models:", error);
@@ -182,156 +156,98 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     };
     fetchConfig();
     fetchModels();
-  }, [tab]);
+    fetchHistory();
+  }, [activeTab]);
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h4" gutterBottom mb={0}>
-          {t('history.title')}
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
-          onClick={() => fetchHistory()}
-          disabled={loading}
-        >
-          {loading ? t('history.fetching') : t('history.fetchButton')}
-        </Button>
-      </Box>
+    <Card>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+        <Col>
+          <Title level={2}>{t('history.title')}</Title>
+        </Col>
+        <Col>
+          <Button
+            type="primary"
+            icon={<ReloadOutlined />}
+            onClick={() => fetchHistory()}
+            loading={loading}
+          >
+            {t('history.fetchButton')}
+          </Button>
+        </Col>
+      </Row>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={tab} onChange={handleTabChange} aria-label="history tabs">
-          <Tab label={t('history.tabs.videoHistory')} />
-          <Tab label={t('history.tabs.imageHistory')} />
-          {config.enable_upscale && <Tab label={t('history.tabs.upscaleJobs')} />}
-        </Tabs>
-      </Box>
-
-      {tab === 0 && (
-        <Box>
-          <Paper sx={{ p: 2, mb: 3, borderRadius: '12px' }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  name="start_date"
-                  label={t('history.filters.startDate')}
-                  type="date"
-                  fullWidth
-                  value={filters.start_date}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <TabPane tab={t('history.tabs.videoHistory')} key="video">
+          <Card>
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col><DatePicker.RangePicker onChange={handleDateChange} /></Col>
+              <Col>
+                <Select placeholder={t('history.filters.status')} style={{ width: 120 }} onChange={(value) => handleFilterChange('status', value)}>
+                  <Option value="">{t('history.filters.all')}</Option>
+                  <Option value="SUCCESS">Success</Option>
+                  <Option value="FAILURE">Failure</Option>
+                </Select>
+              </Col>
+              <Col>
+                <Select placeholder={t('history.filters.model')} style={{ width: 120 }} onChange={(value) => handleFilterChange('model', value)}>
+                  <Option value="">{t('history.filters.all')}</Option>
+                  {models.map((m) => (
+                    <Option key={m.id} value={m.id}>{m.name}</Option>
+                  ))}
+                </Select>
+              </Col>
+              <Col><Checkbox onChange={(e) => handleFilterChange('is_edited', e.target.checked)}>{t('history.filters.editedOnly')}</Checkbox></Col>
+              <Col><Checkbox onChange={(e) => handleFilterChange('only_success', e.target.checked)}>{t('history.filters.onlySuccess')}</Checkbox></Col>
+              <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory()}>{t('history.filters.apply')}</Button></Col>
+              <Col><Button icon={<ClearOutlined />} onClick={clearFilters} /></Col>
+            </Row>
+            {loading ? <Spin /> : error ? <Alert message={error} type="error" /> : (
+              <>
+                <Row gutter={[16, 16]}>
+                  {history.map((video) => (
+                    <Col xs={24} sm={12} md={8} key={video.trigger_time}>
+                      <VideoCard
+                        video={video}
+                        models={models}
+                        onEditClick={openModal}
+                        onUpscaleClick={config.enable_upscale ? openUpscaleModal : null}
+                        onShareClick={openShareModal}
+                      />
+                    </Col>
+                  ))}
+                </Row>
+                <Pagination
+                  current={page}
+                  pageSize={rowsPerPage}
+                  total={totalRows}
+                  onChange={(newPage, newRowsPerPage) => fetchHistory(false, newPage, newRowsPerPage)}
+                  style={{ marginTop: 16, textAlign: 'center' }}
                 />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  name="end_date"
-                  label={t('history.filters.endDate')}
-                  type="date"
-                  fullWidth
-                  value={filters.end_date}
-                  onChange={handleFilterChange}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('history.filters.status')}</InputLabel>
-                  <Select name="status" value={filters.status} label={t('history.filters.status')} onChange={handleFilterChange}>
-                    <MenuItem value=""><em>{t('history.filters.all')}</em></MenuItem>
-                    <MenuItem value="SUCCESS">Success</MenuItem>
-                    <MenuItem value="FAILURE">Failure</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('history.filters.model')}</InputLabel>
-                  <Select name="model" value={filters.model} label={t('history.filters.model')} onChange={handleFilterChange}>
-                    <MenuItem value=""><em>{t('history.filters.all')}</em></MenuItem>
-                    {models.map((m) => (
-                      <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
-                 <FormControlLabel
-                    control={<Checkbox name="is_edited" checked={filters.is_edited} onChange={handleFilterChange} />}
-                    label={t('history.filters.editedOnly')}
-                  />
-              </Grid>
-              <Grid item xs={12} sm={6} md={2}>
-                <FormControlLabel
-                  control={<Checkbox name="only_success" checked={filters.only_success} onChange={handleFilterChange} />}
-                  label={t('history.filters.onlySuccess')}
-                />
-              </Grid>
-              <Grid item xs={12} md={2} sx={{ display: 'flex', gap: 1 }}>
-                <Button variant="outlined" onClick={() => fetchHistory()} startIcon={<FilterList />}>{t('history.filters.apply')}</Button>
-                <Button onClick={clearFilters}><Clear size="small" /></Button>
-              </Grid>
-            </Grid>
-          </Paper>
-
-          {loading ? (
-            <CircularProgress />
-          ) : error ? (
-            <Alert severity="error">{error}</Alert>
-          ) : videoHasFetched && history.length === 0 ? (
-            <Typography>{t('history.noResults')}</Typography>
-          ) : !videoHasFetched ? (
-            <Typography>{t('history.pressFetch')}</Typography>
-          ) : (
-            <Box>
-              <Grid container spacing={3}>
-                {history.map((video) => (
-                  <Grid item xs={12} sm={6} md={4} key={video.trigger_time}>
-                    <VideoCard
-                      video={video}
-                      models={models}
-                      onEditClick={openModal}
-                      onUpscaleClick={config.enable_upscale ? openUpscaleModal : null}
-                      onShareClick={openShareModal}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25, 50]}
-                component="div"
-                count={totalRows}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(e, newPage) => fetchHistory(false, newPage, rowsPerPage)}
-                onRowsPerPageChange={(e) => fetchHistory(false, 0, parseInt(e.target.value, 10))}
-                sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
-              />
-            </Box>
-          )}
-        </Box>
-      )}
-
-      {tab === 1 && (
-        <ImageHistory 
-          user={user} 
-          history={history}
-          models={models}
-          loading={loading}
-          error={error}
-          hasFetched={imageHasFetched}
-          totalRows={totalRows}
-          page={page}
-          rowsPerPage={rowsPerPage}
-          fetchHistory={fetchHistory}
-          setFilters={setFilters}
-          clearFilters={clearFilters}
-          filters={filters}
-          onUseAsFirstFrame={onUseAsFirstFrame}
-        />
-      )}
-
-      {tab === 2 && config.enable_upscale && <UpscaleJobsTab />}
+              </>
+            )}
+          </Card>
+        </TabPane>
+        <TabPane tab={t('history.tabs.imageHistory')} key="image">
+          <ImageHistory 
+            user={user} 
+            history={history}
+            models={models}
+            loading={loading}
+            error={error}
+            hasFetched={true}
+            totalRows={totalRows}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            fetchHistory={fetchHistory}
+            setFilters={setFilters}
+            clearFilters={clearFilters}
+            filters={filters}
+            onUseAsFirstFrame={onUseAsFirstFrame}
+          />
+        </TabPane>
+        {config.enable_upscale && <TabPane tab={t('history.tabs.upscaleJobs')} key="upscale"><UpscaleJobsTab /></TabPane>}
+      </Tabs>
 
       {selectedVideo && (
         <EditingModal
@@ -360,7 +276,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
           item={shareSelectedItem}
         />
       )}
-    </Box>
+    </Card>
   );
 };
 export default HistoryPage;

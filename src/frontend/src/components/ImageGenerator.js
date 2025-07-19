@@ -2,63 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
-  Box, Typography, Paper, CircularProgress, Alert, Button,
-  TextField, Select, MenuItem, FormControl, InputLabel, Grid, Slider, Modal
-} from '@mui/material';
-import { PhotoCamera } from '@mui/icons-material';
+  Row, Col, Typography, Spin, Alert, Button,
+  Form, Input, Select, Slider, Card
+} from 'antd';
+import { CameraOutlined } from '@ant-design/icons';
 import ImageCard from './ImageCard';
+import ShareModal from './ShareModal';
+import { useShareModal } from '../hooks/useShareModal';
+
+const { Title } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
 
 const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
   const [models, setModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [sampleCount, setSampleCount] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
-  const [selectedImage, setSelectedImage] = useState(null);
-
-  const [formState, setFormState] = useState({
-    model: '',
-    prompt: '',
-    negative_prompt: '',
-    aspect_ratio: '1:1',
-    sample_count: 1,
-  });
+  const {
+    modalOpen: shareModalOpen,
+    selectedItem: shareSelectedItem,
+    openModal: openShareModal,
+    closeModal: closeShareModal,
+    handleSubmit: handleShareSubmit,
+  } = useShareModal(() => {});
 
   useEffect(() => {
     const fetchModels = async () => {
       try {
         const response = await axios.get('/api/image-models');
-        setModels(response.data.models || []);
-        if (response.data.models.length > 0) {
-          setFormState(prev => ({ ...prev, model: response.data.models[0].id }));
+        const fetchedModels = response.data.models || [];
+        setModels(fetchedModels);
+        if (fetchedModels.length > 0) {
+          const defaultModel = fetchedModels[0].id;
+          form.setFieldsValue({ model: defaultModel, sample_count: 1 });
+          setSelectedModel(defaultModel);
         }
       } catch (error) {
         console.error("Failed to fetch image models:", error);
       }
     };
     fetchModels();
-  }, []);
+  }, [form]);
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormState(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSliderChange = (name) => (event, value) => {
-    setFormState(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (values) => {
     setLoading(true);
     setError(null);
     setGeneratedImages([]);
 
     try {
-      const response = await axios.post('/api/images/generate', formState);
+      const response = await axios.post('/api/images/generate', { ...values, sample_count: sampleCount });
       const syntheticImages = response.data.images.map(img => ({
         ...img,
-        prompt: formState.prompt,
-        model_used: formState.model,
+        prompt: values.prompt,
+        model_used: values.model,
         status: 'SUCCESS',
         trigger_time: new Date().toISOString(),
         user_email: user.email,
@@ -72,132 +73,104 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
   };
 
   return (
-    <Box>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, borderRadius: '12px', height: '100%' }}>
-            <Typography variant="h5" gutterBottom>
-              {t('imageGenerator.title')}
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('imageGenerator.modelLabel')}</InputLabel>
-                  <Select name="model" value={formState.model} label={t('imageGenerator.modelLabel')} onChange={handleInputChange}>
-                    {models.map((m) => (
-                      <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="prompt"
-                  label={t('imageGenerator.promptLabel')}
-                  multiline
-                  rows={4}
-                  fullWidth
-                  value={formState.prompt}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="negative_prompt"
-                  label={t('imageGenerator.negativePromptLabel')}
-                  multiline
-                  rows={2}
-                  fullWidth
-                  value={formState.negative_prompt}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>{t('imageGenerator.aspectRatioLabel')}</InputLabel>
-                  <Select name="aspect_ratio" value={formState.aspect_ratio} label={t('imageGenerator.aspectRatioLabel')} onChange={handleInputChange}>
-                    <MenuItem value="1:1">1:1</MenuItem>
-                    <MenuItem value="16:9">16:9</MenuItem>
-                    <MenuItem value="9:16">9:16</MenuItem>
-                    <MenuItem value="4:3">4:3</MenuItem>
-                    <MenuItem value="3:4">3:4</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography gutterBottom>{t('imageGenerator.sampleCountLabel')}: {formState.model === 'imagen-4.0-ultra-generate-preview-06-06' ? 1 : formState.sample_count}</Typography>
-                <Slider
-                  name="sample_count"
-                  value={formState.model === 'imagen-4.0-ultra-generate-preview-06-06' ? 1 : formState.sample_count}
-                  onChange={handleSliderChange('sample_count')}
-                  aria-labelledby="input-slider"
-                  valueLabelDisplay="auto"
-                  step={1}
-                  marks
-                  min={1}
-                  max={4}
-                  disabled={formState.model === 'imagen-4.0-ultra-generate-preview-06-06'}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <PhotoCamera />}
-                  onClick={handleSubmit}
-                  disabled={loading || !formState.prompt}
-                  fullWidth
-                >
-                  {loading ? t('imageGenerator.generatingStatus') : t('imageGenerator.generateButton')}
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={8}>
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <CircularProgress />
-            </Box>
-          )}
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          {generatedImages.length > 0 && (
-            <Paper sx={{ p: 3, borderRadius: '12px', background: 'linear-gradient(to right, #ece9e6, #ffffff)', height: '100%' }}>
-              <Typography variant="h5" gutterBottom sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>{t('imageGenerator.resultsTitle')}</Typography>
-              <Grid container spacing={2}>
-                {generatedImages.map((image, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <ImageCard
-                      image={image}
-                      models={models}
-                      user={user}
-                      onUseAsFirstFrame={onUseAsFirstFrame}
-                    />
-                  </Grid>
+    <Row gutter={32}>
+      <Col xs={24} md={8}>
+        <Card>
+          <Title level={2}>{t('imageGenerator.title')}</Title>
+          <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{
+            aspect_ratio: '1:1',
+            sample_count: 1,
+          }}>
+            <Form.Item name="model" label={t('imageGenerator.modelLabel')} rules={[{ required: true }]}>
+              <Select onChange={(value) => {
+                setSelectedModel(value);
+                if (value === 'imagen-4.0-ultra-generate-preview-06-06') {
+                  form.setFieldsValue({ sample_count: 1 });
+                  setSampleCount(1);
+                }
+              }}>
+                {models.map((m) => (
+                  <Option key={m.id} value={m.id}>{m.name}</Option>
                 ))}
-              </Grid>
-            </Paper>
-          )}
-        </Grid>
-      </Grid>
-      <Modal
-        open={!!selectedImage}
-        onClose={() => setSelectedImage(null)}
-        aria-labelledby="image-modal-title"
-        aria-describedby="image-modal-description"
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          bgcolor: 'background.paper',
-          boxShadow: 24,
-          p: 4,
-        }}>
-          <img src={selectedImage?.signed_url} alt={selectedImage?.prompt} style={{ maxWidth: '90vw', maxHeight: '90vh' }} />
-        </Box>
-      </Modal>
-    </Box>
+              </Select>
+            </Form.Item>
+            <Form.Item name="prompt" label={t('imageGenerator.promptLabel')} rules={[{ required: true }]}>
+              <TextArea rows={4} />
+            </Form.Item>
+            <Form.Item name="negative_prompt" label={t('imageGenerator.negativePromptLabel')}>
+              <TextArea rows={2} />
+            </Form.Item>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="aspect_ratio" label={t('imageGenerator.aspectRatioLabel')}>
+                  <Select>
+                    <Option value="1:1">1:1</Option>
+                    <Option value="16:9">16:9</Option>
+                    <Option value="9:16">9:16</Option>
+                    <Option value="4:3">4:3</Option>
+                    <Option value="3:4">3:4</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label={`${t('imageGenerator.sampleCountLabel')}: ${sampleCount}`}>
+                  <Slider
+                    min={1}
+                    max={4}
+                    step={1}
+                    onChange={setSampleCount}
+                    value={sampleCount}
+                    disabled={selectedModel === 'imagen-4.0-ultra-generate-preview-06-06'}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                icon={<CameraOutlined />}
+                block
+                size="large"
+              >
+                {t('imageGenerator.generateButton')}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Col>
+      <Col xs={24} md={16}>
+        {loading && <Spin size="large" />}
+        {error && <Alert message={error} type="error" showIcon />}
+        {generatedImages.length > 0 && (
+          <Card>
+            <Title level={4}>{t('imageGenerator.resultsTitle')}</Title>
+            <Row gutter={[16, 16]}>
+              {generatedImages.map((image, index) => (
+                <Col xs={24} sm={12} md={8} key={index}>
+                  <ImageCard
+                    image={image}
+                    models={models}
+                    user={user}
+                    onShareClick={openShareModal}
+                    onUseAsFirstFrame={onUseAsFirstFrame}
+                  />
+                </Col>
+              ))}
+            </Row>
+          </Card>
+        )}
+      </Col>
+      {shareSelectedItem && (
+        <ShareModal
+          open={shareModalOpen}
+          onClose={closeShareModal}
+          onSubmit={handleShareSubmit}
+          item={shareSelectedItem}
+        />
+      )}
+    </Row>
   );
 };
 

@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; 
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-
-// Import Material-UI components
-import { CircularProgress, Box, CssBaseline } from '@mui/material';
+import { ConfigProvider, Spin } from 'antd';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { lightTheme, darkTheme } from './antdTheme';
 
 // Import Page & Component assets
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 
-function App() {
+function AppContent() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { theme } = useTheme();
 
   // Set withCredentials to true for all requests to handle session cookies
   axios.defaults.withCredentials = true;
@@ -34,35 +35,35 @@ function App() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
   return (
-    <>
-      <CssBaseline />
-      <Box sx={{
-          minHeight: '100vh',
-          width: '100%',
-          background: 'linear-gradient(to top right, #6a85b6 0%, #bac8e0 100%)',
-          overflow: 'auto',
-      }}>
-        <Router>
-          <Routes>
-            <Route
-              path="/login"
-              element={user ? <Navigate to="/" /> : <LoginPage />}
-            />
-            <Route
-              path="/*"
-              element={user ? <HomePage user={user} /> : <Navigate to="/login" />}
-            />
-          </Routes>
-        </Router>
-      </Box>
-    </>
+    <ConfigProvider theme={theme === 'light' ? lightTheme : darkTheme}>
+      <Router>
+        <Routes>
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/" /> : <LoginPage />}
+          />
+          <Route
+            path="/*"
+            element={user ? <HomePage user={user} /> : <Navigate to="/login" />}
+          />
+        </Routes>
+      </Router>
+    </ConfigProvider>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

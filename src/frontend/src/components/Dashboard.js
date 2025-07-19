@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, TextField, Typography, Slider, RadioGroup, FormControlLabel, Radio, Checkbox,
-  Paper, CircularProgress, Alert, Select, MenuItem, InputLabel, FormControl, IconButton, Tooltip
-} from '@mui/material';
-import { ContentCut, Mic, CloudUpload, Clear } from '@mui/icons-material';
+  Row, Col, Button, Input, Typography, Slider, Radio, Checkbox,
+  Card, Spin, Alert, Select, Upload, Tooltip, Form
+} from 'antd';
+import { ScissorOutlined, AudioOutlined, UploadOutlined, CloseOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useEditingModal } from '../hooks/useEditingModal';
 import EditingModal from './EditingModal';
 import CameraMovements from './CameraMovements';
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
 
 // A simple component for displaying the generated video
 const FilmStripPlayer = ({ video, onEditClick, title }) => {
@@ -17,79 +21,36 @@ const FilmStripPlayer = ({ video, onEditClick, title }) => {
     return null;
   }
   return (
-    <Box
-      sx={{
-        bgcolor: '#212121',
-        p: '10px',
-        pb: '20px',
-        borderRadius: '8px',
+    <Card
+      title={title}
+      bordered={false}
+      style={{
+        backgroundColor: '#212121',
+        color: 'white',
         boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
         display: 'inline-block',
       }}
+      bodyStyle={{ padding: 10 }}
+      headStyle={{ color: 'white', borderBottom: '1px solid #444' }}
     >
-      <Box sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '10px',
-      }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[...Array(8)].map((_, i) => (
-            <Box key={i} sx={{ width: '8px', height: '8px', bgcolor: 'rgba(255,255,255,0.2)', borderRadius: '2px' }} />
-          ))}
-        </Box>
-        <video src={video.signed_url} width="400" controls autoPlay loop muted style={{ borderRadius: '4px' }} />
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[...Array(8)].map((_, i) => (
-            <Box key={i} sx={{ width: '8px', height: '8px', bgcolor: 'rgba(255,255,255,0.2)', borderRadius: '2px' }} />
-          ))}
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: '10px', px: 1 }}>
-        <Typography variant="caption" sx={{ color: 'grey.500' }}>
-          {title}
-        </Typography>
-        {onEditClick && (
-          <Box>
-            <Tooltip title={t('history.actions.clip')}>
-              <IconButton size="small" onClick={() => onEditClick(video, 'clip')}>
-                <ContentCut sx={{ color: 'grey.400' }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={t('history.actions.dub')}>
-              <IconButton size="small" onClick={() => onEditClick(video, 'dub')}>
-                <Mic sx={{ color: 'grey.400' }} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        )}
-      </Box>
-    </Box>
+      <video src={video.signed_url} width="400" controls autoPlay loop muted style={{ borderRadius: '4px' }} />
+      {onEditClick && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Tooltip title={t('history.actions.clip')}>
+            <Button icon={<ScissorOutlined />} onClick={() => onEditClick(video, 'clip')} type="text" style={{ color: 'white' }} />
+          </Tooltip>
+          <Tooltip title={t('history.actions.dub')}>
+            <Button icon={<AudioOutlined />} onClick={() => onEditClick(video, 'dub')} type="text" style={{ color: 'white' }} />
+          </Tooltip>
+        </div>
+      )}
+    </Card>
   )
-};
-
-// Reusable component for a cleaner slider layout
-const LabeledSlider = ({ label, displayValue, ...sliderProps }) => {
-  return (
-    <Box sx={{ mt: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography id={`${label}-slider-label`} gutterBottom mb={0}>
-          {label}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {displayValue}
-        </Typography>
-      </Box>
-      <Slider
-        aria-labelledby={`${label}-slider-label`}
-        {...sliderProps}
-      />
-    </Box>
-  );
 };
 
 const Dashboard = ({ initialFirstFrame }) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   const [models, setModels] = useState([]);
   const [model, setModel] = useState('');
@@ -131,10 +92,10 @@ const Dashboard = ({ initialFirstFrame }) => {
 
   const {
     modalOpen,
-    selectedVideo: editingVideo, 
-    modalMode, 
-    openModal, 
-    closeModal, 
+    selectedVideo: editingVideo,
+    modalMode,
+    openModal,
+    closeModal,
     handleSubmit: handleModalSubmit
   } = useEditingModal((originalVideo, newVideoData) => {
     // onActionComplete: update the specific video in our local state
@@ -146,29 +107,12 @@ const Dashboard = ({ initialFirstFrame }) => {
   });
 
   const handleMovementClick = (promptText) => {
-    const textarea = promptInputRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const currentPrompt = prompt;
-    // Add a space if the current prompt is not empty and doesn't end with a space.
-    const separator = currentPrompt && !currentPrompt.endsWith(' ') ? ' ' : '';
-    const newPrompt = `${currentPrompt.substring(0, start)}${separator}${promptText}${currentPrompt.substring(end)}`;
-
-    setPrompt(newPrompt);
-
-    // Move cursor to after the inserted text
-    setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + separator.length + promptText.length;
-      textarea.focus();
-    }, 0);
+    const currentPrompt = form.getFieldValue('prompt') || '';
+    const newPrompt = `${currentPrompt} ${promptText}`;
+    form.setFieldsValue({ prompt: newPrompt });
   };
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
+  const handleImageUpload = async (file) => {
     setUploading(true);
     setUploadError(null);
     setImagePreview(URL.createObjectURL(file)); // Show instant preview
@@ -189,10 +133,7 @@ const Dashboard = ({ initialFirstFrame }) => {
     }
   };
 
-  const handleFinalFrameUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
+  const handleFinalFrameUpload = async (file) => {
     setFinalFrameUploading(true);
     setFinalFrameUploadError(null);
     setFinalFramePreview(URL.createObjectURL(file)); // Show instant preview
@@ -276,8 +217,7 @@ const Dashboard = ({ initialFirstFrame }) => {
     }
   }, [model, isV3Model, isV2GenerateModel, generationMode, aspectRatio, gcsPrefix]);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const onFinish = async (values) => {
     setLoading(true);
     setError(null);
     setGeneratedVideos([]);
@@ -286,17 +226,9 @@ const Dashboard = ({ initialFirstFrame }) => {
     try {
       const isExtending = isV2GenerateModel && generationMode === 'extend';
       const response = await axios.post('/api/videos/generate', {
-        model,
-        prompt,
-        duration,
-        aspectRatio,
-        sampleCount,
+        ...values,
         image_gcs_uri: isExtending ? selectedVideo : imageGcsUri,
         final_frame_gcs_uri: finalFrameGcsUri,
-        generateAudio: isV3Model ? generateAudio : undefined,
-        enhancePrompt: isV3Model || isV2GenerateModel ? enhancePrompt : undefined,
-        extend_duration: isExtending ? extendDuration : undefined,
-        resolution: isV3Model ? resolution : undefined,
       });
 
       setGeneratedVideos(response.data.videos);
@@ -312,240 +244,207 @@ const Dashboard = ({ initialFirstFrame }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
-      <Paper
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{
-          p: 3, width: { xs: '100%', md: '450px' }, flexShrink: 0,
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.3)', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <Typography variant="h5" gutterBottom>{t('dashboard.title')}</Typography>
-
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="model-select-label">{t('dashboard.modelLabel')}</InputLabel>
-          <Select
-            labelId="model-select-label"
-            value={model}
-            label={t('dashboard.modelLabel')}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            {models.map((m) => (
-              <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          label={t('dashboard.promptLabel')}
-          multiline
-          rows={4}
-          fullWidth
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          margin="normal"
-          required
-          inputRef={promptInputRef}
-        />
-
-        <CameraMovements onMovementClick={handleMovementClick} />
-
-        {isV2GenerateModel && (
-          <Box sx={{ my: 2 }}>
-            <RadioGroup row value={generationMode} onChange={(e) => setGenerationMode(e.target.value)}>
-              <FormControlLabel value="generate" control={<Radio />} label={t('dashboard.generateWithImage')} />
-              <FormControlLabel value="extend" control={<Radio />} label={t('dashboard.extendVideo')} />
-            </RadioGroup>
-          </Box>
-        )}
-
-        {(!isV2GenerateModel || generationMode === 'generate') && (
-          <>
-            <Box sx={{ my: 2, p: 2, border: '1px dashed grey', borderRadius: '8px', textAlign: 'center' }}>
-              {imagePreview ? (
-                <Box sx={{ position: 'relative' }}>
-                  <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
-                  <IconButton onClick={clearImage} size="small" sx={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255,255,255,0.7)' }}>
-                    <Clear />
-                  </IconButton>
-                </Box>
-              ) : (
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={uploading ? <CircularProgress size={20} /> : <CloudUpload />}
-                  disabled={uploading}
-                >
-                  {isV2GenerateModel ? t('dashboard.uploadFirstFrame') : t('dashboard.uploadImage')}
-                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-                </Button>
-              )}
-              {uploadError && <Alert severity="error" sx={{ mt: 1 }}>{uploadError}</Alert>}
-            </Box>
-
-            {isV2GenerateModel && (
-              <Box sx={{ my: 2, p: 2, border: '1px dashed grey', borderRadius: '8px', textAlign: 'center' }}>
-                {finalFramePreview ? (
-                  <Box sx={{ position: 'relative' }}>
-                    <img src={finalFramePreview} alt="Final Frame Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
-                    <IconButton onClick={clearFinalFrame} size="small" sx={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255,255,255,0.7)' }}>
-                      <Clear />
-                    </IconButton>
-                  </Box>
-                ) : (
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    startIcon={finalFrameUploading ? <CircularProgress size={20} /> : <CloudUpload />}
-                    disabled={finalFrameUploading}
-                  >
-                    {t('dashboard.uploadLastFrame')}
-                    <input type="file" hidden accept="image/*" onChange={handleFinalFrameUpload} />
-                  </Button>
-                )}
-                {finalFrameUploadError && <Alert severity="error" sx={{ mt: 1 }}>{finalFrameUploadError}</Alert>}
-              </Box>
-            )}
-          </>
-        )}
-
-        {isV2GenerateModel && generationMode === 'extend' && (
-          <Box sx={{ my: 2, p: 2, border: '1px solid grey', borderRadius: '8px' }}>
-            <Typography variant="h6" gutterBottom>{t('dashboard.extendVideoTitle')}</Typography>
-            <FormControl fullWidth margin="normal" disabled={isFetchingGcs}>
-              <InputLabel id="video-select-label">
-                {isFetchingGcs ? t('dashboard.loadingVideos') : t('dashboard.selectVideoLabel')}
-              </InputLabel>
-              <Select
-                labelId="video-select-label"
-                value={selectedVideo}
-                label={isFetchingGcs ? t('dashboard.loadingVideos') : t('dashboard.selectVideoLabel')}
-                onChange={(e) => setSelectedVideo(e.target.value)}
-                startAdornment={isFetchingGcs && <CircularProgress size={20} sx={{ mr: 1 }} />}
-              >
-                {userVideos.map((video) => (
-                  <MenuItem key={video.gcs_uri} value={video.gcs_uri}>{video.name}</MenuItem>
+    <Row gutter={32}>
+      <Col xs={24} md={8}>
+        <Card>
+          <Title level={2}>{t('dashboard.title')}</Title>
+          <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{
+            model: model,
+            prompt: prompt,
+            duration: duration,
+            aspectRatio: aspectRatio,
+            sampleCount: sampleCount,
+            generateAudio: generateAudio,
+            enhancePrompt: enhancePrompt,
+            resolution: resolution,
+          }}>
+            <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
+              <Select onChange={setModel}>
+                {models.map((m) => (
+                  <Option key={m.id} value={m.id}>{m.name}</Option>
                 ))}
               </Select>
-            </FormControl>
-            {gcsFetchError && <Alert severity="error" sx={{ mt: 1 }}>{gcsFetchError}</Alert>}
+            </Form.Item>
+            <Form.Item name="prompt" label={t('dashboard.promptLabel')} rules={[{ required: true }]}>
+              <TextArea rows={4} ref={promptInputRef} />
+            </Form.Item>
 
-            <LabeledSlider
-              label={t('dashboard.extendDurationLabel')}
-              displayValue={t('dashboard.seconds', { count: extendDuration })}
-              value={extendDuration}
-              onChange={(_, val) => setExtendDuration(val)}
-              valueLabelDisplay="auto"
-              step={1}
-              marks
-              min={5}
-              max={8}
-            />
-          </Box>
-        )}
+            <CameraMovements onMovementClick={handleMovementClick} />
 
-        <LabeledSlider
-          label={t('dashboard.durationLabel')}
-          displayValue={t('dashboard.seconds', { count: duration })}
-          value={duration}
-          onChange={(_, val) => setDuration(val)}
-          valueLabelDisplay="auto"
-          step={1}
-          marks
-          min={5}
-          max={8}
-          disabled={isV3Model || (isV2GenerateModel && generationMode === 'extend')}
-        />
-
-        <LabeledSlider
-          label={t('dashboard.videoCountLabel')}
-          displayValue={sampleCount}
-          value={sampleCount}
-          onChange={(_, val) => setSampleCount(val)}
-          valueLabelDisplay="auto"
-          step={1}
-          marks
-          min={1}
-          max={2}
-          disabled={isV2GenerateModel && generationMode === 'extend'}
-        />
-
-        <Typography gutterBottom sx={{ mt: 2 }}>{t('dashboard.aspectRatioLabel')}</Typography>
-        <RadioGroup row value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
-            <FormControlLabel value="16:9" control={<Radio />} label="16:9" />
-            <FormControlLabel value="9:16" control={<Radio />} label="9:16" disabled={isV3Model} />
-        </RadioGroup>
-
-        {isV3Model && (
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="resolution-select-label">{t('dashboard.resolutionLabel')}</InputLabel>
-            <Select
-              labelId="resolution-select-label"
-              value={resolution}
-              label={t('dashboard.resolutionLabel')}
-              onChange={(e) => setResolution(e.target.value)}
-            >
-              <MenuItem value="720p">720p</MenuItem>
-              <MenuItem value="1080p">1080p</MenuItem>
-            </Select>
-          </FormControl>
-        )}
-
-        {(isV3Model || isVeo2Model) && (
-          <Box sx={{ mt: 2, border: '1px solid rgba(0, 0, 0, 0.23)', borderRadius: '8px', p: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              {isV3Model ? t('dashboard.v3options') : t('dashboard.v2options')}
-            </Typography>
-            {isV3Model && (
-              <FormControlLabel control={<Checkbox checked={generateAudio} onChange={(e) => setGenerateAudio(e.target.checked)} />} label={t('dashboard.generateAudio')} />
+            {isV2GenerateModel && (
+              <Form.Item>
+                <Radio.Group value={generationMode} onChange={(e) => setGenerationMode(e.target.value)}>
+                  <Radio.Button value="generate">{t('dashboard.generateWithImage')}</Radio.Button>
+                  <Radio.Button value="extend">{t('dashboard.extendVideo')}</Radio.Button>
+                </Radio.Group>
+              </Form.Item>
             )}
-            <FormControlLabel
-              control={<Checkbox checked={enhancePrompt} onChange={(e) => setEnhancePrompt(e.target.checked)} />}
-              label={isV3Model ? t('dashboard.enhancePromptWithHint') : t('dashboard.enhancePrompt')}
-              disabled={isV3Model}
+
+            {(!isV2GenerateModel || generationMode === 'generate') && (
+              <>
+                <Form.Item label={isV2GenerateModel ? t('dashboard.uploadFirstFrame') : t('dashboard.uploadImage')}>
+                  <Upload
+                    beforeUpload={handleImageUpload}
+                    showUploadList={false}
+                    accept="image/*"
+                  >
+                    {imagePreview ? (
+                      <div style={{ position: 'relative' }}>
+                        <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
+                        <Button icon={<CloseOutlined />} onClick={clearImage} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
+                      </div>
+                    ) : (
+                      <Button icon={<UploadOutlined />} loading={uploading}>
+                        {t('dashboard.uploadImage')}
+                      </Button>
+                    )}
+                  </Upload>
+                  {uploadError && <Alert message={uploadError} type="error" showIcon />}
+                </Form.Item>
+
+                {isV2GenerateModel && (
+                  <Form.Item label={t('dashboard.uploadLastFrame')}>
+                    <Upload
+                      beforeUpload={handleFinalFrameUpload}
+                      showUploadList={false}
+                      accept="image/*"
+                    >
+                      {finalFramePreview ? (
+                        <div style={{ position: 'relative' }}>
+                          <img src={finalFramePreview} alt="Final Frame Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
+                          <Button icon={<CloseOutlined />} onClick={clearFinalFrame} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
+                        </div>
+                      ) : (
+                        <Button icon={<UploadOutlined />} loading={finalFrameUploading}>
+                          {t('dashboard.uploadLastFrame')}
+                        </Button>
+                      )}
+                    </Upload>
+                    {finalFrameUploadError && <Alert message={finalFrameUploadError} type="error" showIcon />}
+                  </Form.Item>
+                )}
+              </>
+            )}
+
+            {isV2GenerateModel && generationMode === 'extend' && (
+              <Card title={t('dashboard.extendVideoTitle')} size="small">
+                <Form.Item label={t('dashboard.selectVideoLabel')}>
+                  <Select
+                    value={selectedVideo}
+                    onChange={setSelectedVideo}
+                    loading={isFetchingGcs}
+                  >
+                    {userVideos.map((video) => (
+                      <Option key={video.gcs_uri} value={video.gcs_uri}>{video.name}</Option>
+                    ))}
+                  </Select>
+                  {gcsFetchError && <Alert message={gcsFetchError} type="error" showIcon />}
+                </Form.Item>
+                <Form.Item label={t('dashboard.extendDurationLabel')}>
+                  <Slider
+                    value={extendDuration}
+                    onChange={setExtendDuration}
+                    min={5}
+                    max={8}
+                    step={1}
+                    marks={{ 5: '5s', 8: '8s' }}
+                  />
+                </Form.Item>
+              </Card>
+            )}
+
+            <Form.Item label={t('dashboard.durationLabel')}>
+              <Slider
+                value={duration}
+                onChange={setDuration}
+                min={5}
+                max={8}
+                step={1}
+                marks={{ 5: '5s', 8: '8s' }}
+                disabled={isV3Model || (isV2GenerateModel && generationMode === 'extend')}
+              />
+            </Form.Item>
+
+            <Form.Item label={t('dashboard.videoCountLabel')}>
+              <Slider
+                value={sampleCount}
+                onChange={setSampleCount}
+                min={1}
+                max={2}
+                step={1}
+                marks={{ 1: '1', 2: '2' }}
+                disabled={isV2GenerateModel && generationMode === 'extend'}
+              />
+            </Form.Item>
+
+            <Form.Item label={t('dashboard.aspectRatioLabel')}>
+              <Radio.Group value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
+                <Radio.Button value="16:9">16:9</Radio.Button>
+                <Radio.Button value="9:16" disabled={isV3Model}>9:16</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+
+            {isV3Model && (
+              <Form.Item label={t('dashboard.resolutionLabel')}>
+                <Select value={resolution} onChange={setResolution}>
+                  <Option value="720p">720p</Option>
+                  <Option value="1080p">1080p</Option>
+                </Select>
+              </Form.Item>
+            )}
+
+            {(isV3Model || isVeo2Model) && (
+              <Card size="small" title={isV3Model ? t('dashboard.v3options') : t('dashboard.v2options')}>
+                {isV3Model && (
+                  <Form.Item name="generateAudio" valuePropName="checked">
+                    <Checkbox>{t('dashboard.generateAudio')}</Checkbox>
+                  </Form.Item>
+                )}
+                <Form.Item name="enhancePrompt" valuePropName="checked">
+                  <Checkbox disabled={isV3Model}>
+                    {isV3Model ? t('dashboard.enhancePromptWithHint') : t('dashboard.enhancePrompt')}
+                  </Checkbox>
+                </Form.Item>
+              </Card>
+            )}
+
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading} block size="large">
+                {t('dashboard.generateButton')}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Col>
+      <Col xs={24} md={16}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
+          {loading && <Spin size="large" tip={t('dashboard.generatingStatus')} />}
+          {error && <Alert message={error} type="error" showIcon />}
+          {revisedPrompt && (
+            <Alert
+              message={<Text strong>Enhanced Prompt</Text>}
+              description={<Text italic>"{revisedPrompt}"</Text>}
+              type="success"
+              showIcon
+              style={{ width: '100%' }}
             />
-          </Box>
-        )}
-
-        <Button type="submit" variant="contained" size="large" disabled={loading} fullWidth sx={{ mt: 3, py: 1.5 }}>
-            {loading ? <CircularProgress size={24} color="inherit" /> : t('dashboard.generateButton')}
-        </Button>
-      </Paper>
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 4, pt: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {loading && (
-          <Box sx={{ textAlign: 'center', width: '100%' }}>
-            <CircularProgress />
-            <Typography sx={{ mt: 2 }}>{t('dashboard.generatingStatus')}</Typography>
-          </Box>
-        )}
-        {error && <Alert severity="error" sx={{ width: '100%' }}>{error}</Alert>}
-
-        {revisedPrompt && (
-          <Paper sx={{ p: 2, background: 'rgba(232, 245, 233, 0.8)', width: '100%', maxWidth: '820px', border: '1px solid #4caf50' }}>
-            <Typography variant="h6" gutterBottom>Enhanced Prompt</Typography>
-            <Typography variant="body1" sx={{ fontStyle: 'italic' }}>"{revisedPrompt}"</Typography>
-          </Paper>
-        )}
-
-        {isV2GenerateModel && generationMode === 'extend' && selectedVideo && (
-          <FilmStripPlayer
-            title="EXTENDED VIDEO"
-            video={userVideos.find(v => v.gcs_uri === selectedVideo)}
-          />
-        )}
-
-        {generatedVideos.map((video, index) => (
-          <FilmStripPlayer
-            key={video.gcs_uri || index}
-            video={video}
-            onEditClick={openModal}
-            title={`PREVIEW VIDEO ${index + 1}`}
-          />
-        ))}
-      </Box>
-
+          )}
+          {isV2GenerateModel && generationMode === 'extend' && selectedVideo && (
+            <FilmStripPlayer
+              title="EXTENDED VIDEO"
+              video={userVideos.find(v => v.gcs_uri === selectedVideo)}
+            />
+          )}
+          {generatedVideos.map((video, index) => (
+            <FilmStripPlayer
+              key={video.gcs_uri || index}
+              video={video}
+              onEditClick={openModal}
+              title={`PREVIEW VIDEO ${index + 1}`}
+            />
+          ))}
+        </div>
+      </Col>
       {editingVideo && (
         <EditingModal
           open={modalOpen}
@@ -555,7 +454,7 @@ const Dashboard = ({ initialFirstFrame }) => {
           mode={modalMode}
         />
       )}
-    </Box>
+    </Row>
   );
 };
 export default Dashboard;

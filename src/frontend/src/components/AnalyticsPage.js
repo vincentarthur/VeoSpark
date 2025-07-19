@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Box, Typography, Paper, CircularProgress, Alert, Grid, TextField, Button } from '@mui/material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, PieChart, Pie, Cell } from 'recharts';
-import { FilterList } from '@mui/icons-material';
+import { Row, Col, Typography, Spin, Alert, DatePicker, Button, Card, Statistic } from 'antd';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { FilterOutlined, DownloadOutlined } from '@ant-design/icons';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+
+const { Title } = Typography;
+const { RangePicker } = DatePicker;
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1919'];
 
-const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }) => {
+const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
   const RADIAN = Math.PI / 180;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -20,20 +25,28 @@ const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, i
   );
 };
 
-
 const AnalyticsPage = () => {
   const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    start_date: '',
-    end_date: '',
+    start_date: null,
+    end_date: null,
   });
 
-  const handleFilterChange = (event) => {
-    const { name, value } = event.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+  const handleFilterChange = (dates) => {
+    if (dates) {
+      setFilters({
+        start_date: dates[0].format('YYYY-MM-DD'),
+        end_date: dates[1].format('YYYY-MM-DD'),
+      });
+    } else {
+      setFilters({
+        start_date: null,
+        end_date: null,
+      });
+    }
   };
 
   const fetchData = useCallback(async (isCleared = false) => {
@@ -55,8 +68,8 @@ const AnalyticsPage = () => {
 
   const clearFilters = () => {
     setFilters({
-      start_date: '',
-      end_date: '',
+      start_date: null,
+      end_date: null,
     });
     fetchData(true);
   };
@@ -65,12 +78,49 @@ const AnalyticsPage = () => {
     fetchData();
   }, [fetchData]);
 
+  const handleExport = (format) => {
+    if (!data) return;
+
+    const dailyData = data.daily_consumption.map(item => ({
+      Date: item.consumption_date,
+      'Video Cost': item.video_cost,
+      'Image Cost': item.image_cost,
+      'Total Cost': item.total_cost,
+    }));
+
+    const userData = data.top_users.map(item => ({
+      User: item.user_email,
+      'Video Cost': item.video_cost,
+      'Image Cost': item.image_cost,
+      'Total Cost': item.total_cost,
+    }));
+
+    if (format === 'csv') {
+      const dailyCsv = Papa.unparse(dailyData);
+      const userCsv = Papa.unparse(userData);
+      const blob = new Blob([`Daily Consumption\n${dailyCsv}\n\nTop Users\n${userCsv}`], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', 'analytics_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (format === 'excel') {
+      const dailyWs = XLSX.utils.json_to_sheet(dailyData);
+      const userWs = XLSX.utils.json_to_sheet(userData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, dailyWs, 'Daily Consumption');
+      XLSX.utils.book_append_sheet(wb, userWs, 'Top Users');
+      XLSX.writeFile(wb, 'analytics_export.xlsx');
+    }
+  };
+
   if (loading) {
-    return <CircularProgress />;
+    return <Spin />;
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return <Alert message={error} type="error" showIcon />;
   }
 
   if (!data) {
@@ -106,140 +156,124 @@ const AnalyticsPage = () => {
   }, []);
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        {t('analytics.title')}
-      </Typography>
+    <div>
+      <Title level={2}>{t('analytics.title')}</Title>
 
-      <Paper sx={{ p: 2, mb: 3, borderRadius: '12px' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={4}>
-            <TextField
-              name="start_date"
-              label={t('history.filters.startDate')}
-              type="date"
-              fullWidth
-              value={filters.start_date}
-              onChange={handleFilterChange}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              name="end_date"
-              label={t('history.filters.endDate')}
-              type="date"
-              fullWidth
-              value={filters.end_date}
-              onChange={handleFilterChange}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4} sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="contained" onClick={() => fetchData()} startIcon={<FilterList />}>
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={16} align="middle">
+          <Col>
+            <RangePicker onChange={handleFilterChange} />
+          </Col>
+          <Col>
+            <Button type="primary" onClick={() => fetchData()} icon={<FilterOutlined />}>
               {t('history.filters.apply')}
             </Button>
-            <Button variant="outlined" onClick={clearFilters}>
+          </Col>
+          <Col>
+            <Button onClick={clearFilters}>
               {t('history.filters.clear')}
             </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-      
-      <Grid container spacing={3}>
-        {/* Summary Cards */}
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', height: 150 }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.totalVideoCost', 'Video Cost')}</Typography>
-            <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', color: '#8884d8' }}>
-              {formatCurrency(data.summary.total_video_cost)}
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', height: 150 }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.totalImageCost', 'Image Cost')}</Typography>
-            <Typography variant="h4" component="p" sx={{ fontWeight: 'bold', color: '#82ca9d' }}>
-              {formatCurrency(data.summary.total_image_cost)}
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', borderRadius: '12px', height: 150, backgroundColor: 'primary.main', color: 'primary.contrastText' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.totalCostInRange')}</Typography>
-            <Typography variant="h4" component="p" sx={{ fontWeight: 'bold' }}>
-              {formatCurrency(data.summary.total_cost)}
-            </Typography>
-          </Paper>
-        </Grid>
+          </Col>
+          <Col>
+            <Button onClick={() => handleExport('csv')} icon={<DownloadOutlined />}>
+              Export CSV
+            </Button>
+          </Col>
+          <Col>
+            <Button onClick={() => handleExport('excel')} icon={<DownloadOutlined />}>
+              Export Excel
+            </Button>
+          </Col>
+        </Row>
+      </Card>
 
-        {/* Daily Consumption Chart */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, height: 350, borderRadius: '12px' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.dailyConsumption')}</Typography>
-            <ResponsiveContainer width="100%" height="85%">
-              <BarChart data={data.daily_consumption} margin={{ top: 20, right: 30, left: 30, bottom: 25 }}>
+      <Row gutter={16}>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic title={t('analytics.totalVideoCost', 'Video Cost')} value={data.summary.total_video_cost} precision={2} prefix="$" />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic title={t('analytics.totalImageCost', 'Image Cost')} value={data.summary.total_image_cost} precision={2} prefix="$" />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic title={t('analytics.totalCostInRange')} value={data.summary.total_cost} precision={2} prefix="$" />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <Card>
+            <Title level={4}>{t('analytics.dailyConsumption')}</Title>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.daily_consumption}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="consumption_date" angle={-30} textAnchor="end" height={60} />
-                <YAxis label={{ value: t('analytics.totalCost'), angle: -90, position: 'insideLeft' }} tickFormatter={formatCurrency} />
-                <Tooltip formatter={(value, name, props) => [formatCurrency(value), name]} />
-                <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '10px' }} />
+                <XAxis dataKey="consumption_date" />
+                <YAxis tickFormatter={formatCurrency} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
                 <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
                 <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
               </BarChart>
             </ResponsiveContainer>
-          </Paper>
-        </Grid>
+          </Card>
+        </Col>
+      </Row>
 
-        {/* Top Users Chart */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, height: 400, borderRadius: '12px' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.topUsers')}</Typography>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart layout="vertical" data={data.top_users} margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <Card>
+            <Title level={4}>{t('analytics.topUsers')}</Title>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart layout="vertical" data={data.top_users}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickFormatter={formatCurrency} />
                 <YAxis dataKey="user_email" type="category" width={200} />
-                <Tooltip formatter={(value, name, props) => [formatCurrency(value), name]} />
-                <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '10px' }} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
                 <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
                 <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
               </BarChart>
             </ResponsiveContainer>
-          </Paper>
-        </Grid>
+          </Card>
+        </Col>
+      </Row>
 
-        {/* Model Distribution Charts */}
-        <Grid item xs={12} md={6}>
-           <Paper sx={{ p: 2, height: 400, borderRadius: '12px' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.videoModelDistribution', 'Video Model Distribution')}</Typography>
-            <ResponsiveContainer width="100%" height="90%">
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col xs={24} md={12}>
+          <Card>
+            <Title level={4}>{t('analytics.videoModelDistribution', 'Video Model Distribution')}</Title>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={videoModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={120} fill="#8884d8" dataKey="value">
+                <Pie data={videoModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={100} fill="#8884d8" dataKey="value">
                   {videoModelDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(value, name) => [`${value} generations`, name]}/>
+                <Tooltip formatter={(value, name) => [`${value} generations`, name]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-           <Paper sx={{ p: 2, height: 400, borderRadius: '12px' }}>
-            <Typography variant="h6" gutterBottom>{t('analytics.imageModelDistribution', 'Image Model Distribution')}</Typography>
-            <ResponsiveContainer width="100%" height="90%">
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card>
+            <Title level={4}>{t('analytics.imageModelDistribution', 'Image Model Distribution')}</Title>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie data={imageModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={120} fill="#82ca9d" dataKey="value">
+                <Pie data={imageModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={100} fill="#82ca9d" dataKey="value">
                   {imageModelDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(value, name) => [`${value} generations`, name]}/>
+                <Tooltip formatter={(value, name) => [`${value} generations`, name]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

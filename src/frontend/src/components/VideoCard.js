@@ -1,56 +1,26 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Card, CardContent, CardMedia, Typography, IconButton, Tooltip, Box, Chip, Collapse
-} from '@mui/material';
-import { ContentCut, Mic, ExpandMore, ArrowUpward, Share, Delete, Hd, HighQuality, FourK } from '@mui/icons-material';
+import { Card, Typography, Button, Tooltip, Tag, Collapse } from 'antd';
+import { ScissorOutlined, AudioOutlined, ArrowUpOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined } from '@ant-design/icons';
+
+const { Title, Text } = Typography;
+const { Panel } = Collapse;
 
 const ResolutionIcon = ({ resolution }) => {
   if (!resolution) return null;
 
-  if (resolution.includes('720')) return <Hd fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
-  if (resolution.includes('1080')) return <HighQuality fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
-  if (resolution.toLowerCase().includes('4k')) return <FourK fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5 }} />;
-  
+  if (resolution.includes('720')) return <Tag>720p</Tag>;
+  if (resolution.includes('1080')) return <Tag>1080p</Tag>;
+  if (resolution.toLowerCase().includes('4k')) return <Tag>4K</Tag>;
+
   return null;
 };
-
-const ExpandableCard = ({ children, title }) => {
-    const [expanded, setExpanded] = useState(false);
-  
-    return (
-      <Box>
-        <Tooltip title={expanded ? "Show less" : "Show more"}>
-            <IconButton
-                onClick={() => setExpanded(!expanded)}
-                aria-expanded={expanded}
-                aria-label="show more"
-                sx={{
-                    transform: !expanded ? 'rotate(0deg)' : 'rotate(180deg)',
-                    transition: (theme) => theme.transitions.create('transform', {
-                        duration: theme.transitions.duration.shortest,
-                    }),
-                }}
-            >
-                <ExpandMore />
-            </IconButton>
-        </Tooltip>
-        <Collapse in={expanded} timeout="auto" unmountOnExit>
-          <CardContent>
-            <Typography variant="body2" color="text.secondary">
-                {children}
-            </Typography>
-          </CardContent>
-        </Collapse>
-      </Box>
-    );
-  };
 
 const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareClick, onShareDelete }) => {
   const { t } = useTranslation();
   const isActionable = video.status === 'SUCCESS' && (video.output_video_gcs_paths || video.video_gcs_uri);
   const canDelete = onShareDelete && user && video.shared_by_user_email === user.email;
-  
+
   const getModelName = (modelId) => {
     if (modelId === 'EDITING_TOOL_CLIP') return t('history.editingTools.clip', 'Clipping Tool');
     if (modelId === 'EDITING_TOOL_DUB') return t('history.editingTools.dub', 'Dubbing Tool');
@@ -60,113 +30,94 @@ const VideoCard = ({ video, models, user, onEditClick, onUpscaleClick, onShareCl
 
   const modelName = getModelName(video.model_used);
 
+  const actions = [];
+  if (onEditClick) {
+    actions.push(
+      <Tooltip title={t('history.actions.clip')}>
+        <Button icon={<ScissorOutlined />} onClick={() => onEditClick(video, 'clip')} disabled={!isActionable} />
+      </Tooltip>
+    );
+    actions.push(
+      <Tooltip title={t('history.actions.dub')}>
+        <Button icon={<AudioOutlined />} onClick={() => onEditClick(video, 'dub')} disabled={!isActionable} />
+      </Tooltip>
+    );
+  }
+  if (onUpscaleClick) {
+    actions.push(
+      <Tooltip title={t('history.actions.upscale')}>
+        <Button icon={<ArrowUpOutlined />} onClick={() => onUpscaleClick(video)} disabled={!isActionable} />
+      </Tooltip>
+    );
+  }
+  if (onShareClick) {
+    actions.push(
+      <Tooltip title={t('history.actions.share')}>
+        <Button icon={<ShareAltOutlined />} onClick={() => onShareClick(video)} disabled={!isActionable} />
+      </Tooltip>
+    );
+  }
+  if (canDelete) {
+    actions.push(
+      <Tooltip title={t('videoCard.deleteShare')}>
+        <Button icon={<DeleteOutlined />} onClick={() => onShareDelete(video)} danger />
+      </Tooltip>
+    );
+  }
+
   return (
-    <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%', borderRadius: '12px' }}>
-      <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 Aspect Ratio */ }}>
-        {video.signed_urls && video.signed_urls[0] ? (
-          <CardMedia
-            component="video"
+    <Card
+      hoverable
+      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      cover={
+        video.signed_urls && video.signed_urls[0] ? (
+          <video
             src={video.signed_urls[0]}
             controls
-            sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+            style={{ width: '100%', height: 200, objectFit: 'cover' }}
           />
         ) : (
-          <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <Typography variant="body2" color="white">{t('history.noPreview')}</Typography>
-          </Box>
-        )}
-      </Box>
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Tooltip title={video.prompt || 'No prompt available'}>
-          <Typography gutterBottom variant="h6" component="div" noWrap>
-              {video.prompt || 'No prompt available'}
-          </Typography>
-        </Tooltip>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            {video.status && <Chip 
-                label={video.status} 
-                color={video.status === 'SUCCESS' ? 'success' : 'error'} 
-                size="small" 
-            />}
-            <Typography variant="caption" color="text.secondary">
-                {new Date(video.trigger_time || video.shared_at).toLocaleString()}
-            </Typography>
-        </Box>
-        {video.shared_by_user_email && (
-            <Typography variant="caption" display="block" color="text.secondary">
-                {t('videoCard.sharedBy')}: {video.shared_by_user_email}
-            </Typography>
-        )}
-        {video.user_email && video.user_email !== video.shared_by_user_email && (
-             <Typography variant="caption" display="block" color="text.secondary">
-                {t('videoCard.generatedBy')}: {video.user_email}
-            </Typography>
-        )}
-        <ExpandableCard title={t('history.details')}>
-            <Typography variant="body2" component="p" sx={{ wordBreak: 'break-word' }}>
-                <strong>{t('history.fullPrompt')}:</strong> {video.prompt}
-            </Typography>
-            <Typography variant="body2" component="p">
-                <strong>{t('history.model')}:</strong> {modelName}
-            </Typography>
-            <Typography variant="body2" component="p">
-                <strong>{t('history.genDuration')}:</strong> {Math.round(video.operation_duration || 0)}s
-            </Typography>
-            <Typography variant="body2" component="p">
-                <strong>{t('history.completionTime')}:</strong> {new Date(video.completion_time).toLocaleString()}
-            </Typography>
-            {video.resolution && (
-              <Typography variant="body2" component="p" sx={{ display: 'flex', alignItems: 'center' }}>
-                <strong>{t('history.resolution')}:</strong> {video.resolution} <ResolutionIcon resolution={video.resolution} />
-              </Typography>
-            )}
-        </ExpandableCard>
-      </CardContent>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-        {onEditClick && (
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
+            <VideoCameraOutlined style={{ fontSize: 48, color: '#ccc' }} />
+          </div>
+        )
+      }
+      actions={actions}
+    >
+      <Card.Meta
+        title={<Tooltip title={video.prompt}><Title level={5} ellipsis>{video.prompt || 'No prompt available'}</Title></Tooltip>}
+        description={
           <>
-            <Tooltip title={t('history.actions.clip')}>
-              <span>
-                <IconButton color="secondary" onClick={() => onEditClick(video, 'clip')} disabled={!isActionable}>
-                  <ContentCut />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={t('history.actions.dub')}>
-              <span>
-                <IconButton color="secondary" onClick={() => onEditClick(video, 'dub')} disabled={!isActionable}>
-                  <Mic />
-                </IconButton>
-              </span>
-            </Tooltip>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Tag color={video.status === 'SUCCESS' ? 'success' : 'error'}>{video.status}</Tag>
+              <Text type="secondary">{new Date(video.trigger_time || video.shared_at).toLocaleString()}</Text>
+            </div>
+            {video.shared_by_user_email && (
+              <Text type="secondary" style={{ display: 'block' }}>
+                {t('videoCard.sharedBy')}: {video.shared_by_user_email}
+              </Text>
+            )}
+            {video.user_email && video.user_email !== video.shared_by_user_email && (
+              <Text type="secondary" style={{ display: 'block' }}>
+                {t('videoCard.generatedBy')}: {video.user_email}
+              </Text>
+            )}
           </>
-        )}
-        {onUpscaleClick && (
-          <Tooltip title={t('history.actions.upscale')}>
-            <span>
-              <IconButton color="primary" onClick={() => onUpscaleClick(video)} disabled={!isActionable}>
-                <ArrowUpward />
-              </IconButton>
-            </span>
-          </Tooltip>
-        )}
-        {onShareClick && (
-          <Tooltip title={t('history.actions.share')}>
-            <span>
-              <IconButton color="primary" onClick={() => onShareClick(video)} disabled={!isActionable}>
-                <Share />
-              </IconButton>
-            </span>
-          </Tooltip>
-        )}
-        {canDelete && (
-          <Tooltip title={t('videoCard.deleteShare')}>
-            <IconButton color="error" onClick={() => onShareDelete(video)}>
-              <Delete />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Box>
+        }
+      />
+      <Collapse ghost>
+        <Panel header={t('history.details')} key="1">
+          <Text strong>{t('history.fullPrompt')}:</Text> <Text>{video.prompt}</Text><br />
+          <Text strong>{t('history.model')}:</Text> <Text>{modelName}</Text><br />
+          <Text strong>{t('history.genDuration')}:</Text> <Text>{Math.round(video.operation_duration || 0)}s</Text><br />
+          <Text strong>{t('history.completionTime')}:</Text> <Text>{new Date(video.completion_time).toLocaleString()}</Text><br />
+          {video.resolution && (
+            <>
+              <Text strong>{t('history.resolution')}:</Text> <ResolutionIcon resolution={video.resolution} />
+            </>
+          )}
+        </Panel>
+      </Collapse>
     </Card>
   );
 };

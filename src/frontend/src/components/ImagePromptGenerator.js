@@ -1,10 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, Typography, Paper, CircularProgress, TextField, Select, MenuItem, FormControl, InputLabel, Alert
-} from '@mui/material';
-import { CloudUpload } from '@mui/icons-material';
+  Row, Col, Button, Typography, Spin, Input, Select, Alert, Upload, Card
+} from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import CameraMovements from './CameraMovements';
+
+const { Title } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
 
 const ImagePromptGenerator = () => {
   const { t, i18n } = useTranslation();
@@ -19,19 +23,17 @@ const ImagePromptGenerator = () => {
   const [isPreviewVisible, setPreviewVisible] = useState(false);
   const promptTextareaRef = useRef(null);
 
-  const handleImageChange = (e, setImage) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImage({
-        file: file,
-        preview: URL.createObjectURL(file),
-      });
-    }
+  const handleImageChange = (file, setImage) => {
+    setImage({
+      file: file,
+      preview: URL.createObjectURL(file),
+    });
+    return false; // Prevent upload
   };
 
   const handleSubmit = async () => {
     if (!characterImage && !backgroundImage && !propImage) {
-      alert(t('imagePromptGenerator.pleaseUploadAtLeastOne'));
+      Alert.error(t('imagePromptGenerator.pleaseUploadAtLeastOne'));
       return;
     }
 
@@ -58,30 +60,16 @@ const ImagePromptGenerator = () => {
       setTranslatedPrompt('');
     } catch (error) {
       console.error('Error generating prompt:', error);
-      alert(t('imagePromptGenerator.failedToGenerate'));
+      Alert.error(t('imagePromptGenerator.failedToGenerate'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleMovementClick = (promptText) => {
-    const textarea = promptTextareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
     const currentPrompt = generatedPrompt;
-    // Add a space if the current prompt is not empty and doesn't end with a space.
-    const separator = currentPrompt && !currentPrompt.endsWith(' ') ? ' ' : '';
-    const newText = `${currentPrompt.substring(0, start)}${separator}${promptText}${currentPrompt.substring(end)}`;
-
+    const newText = `${currentPrompt} ${promptText}`;
     setGeneratedPrompt(newText);
-
-    // Move cursor to after the inserted text
-    setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + separator.length + promptText.length;
-      textarea.focus();
-    }, 0);
   };
 
   const handleTranslate = async () => {
@@ -100,117 +88,103 @@ const ImagePromptGenerator = () => {
       setTranslatedPrompt(data.translated_text);
     } catch (error) {
       console.error('Error translating prompt:', error);
-      alert(t('imagePromptGenerator.failedToTranslate'));
+      Alert.error(t('imagePromptGenerator.failedToTranslate'));
     } finally {
       setTranslating(false);
     }
   };
 
   const ImageUpload = ({ title, image, onChange }) => (
-    <Box sx={{ textAlign: 'center' }}>
-      <Typography variant="h6" gutterBottom>{title}</Typography>
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 2,
-          border: '2px dashed',
-          borderColor: 'grey.400',
-          height: 220,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-          bgcolor: 'grey.50',
-          '&:hover': { borderColor: 'primary.main' },
-        }}
-      >
-        {image ? (
-          <img src={image.preview} alt={t('imagePromptGenerator.preview')} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
-        ) : (
-          <Button
-            variant="text"
-            component="label"
-            startIcon={<CloudUpload />}
-          >
-            {t('imagePromptGenerator.clickToUpload')}
-            <input type="file" hidden accept="image/*" onChange={onChange} />
-          </Button>
-        )}
-      </Paper>
-    </Box>
+    <Col xs={24} sm={8}>
+      <Card>
+        <Title level={5}>{title}</Title>
+        <Upload.Dragger
+          beforeUpload={(file) => onChange(file)}
+          showUploadList={false}
+          accept="image/*"
+          height={200}
+        >
+          {image ? (
+            <img src={image.preview} alt={t('imagePromptGenerator.preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <>
+              <p className="ant-upload-drag-icon">
+                <UploadOutlined />
+              </p>
+              <p className="ant-upload-text">{t('imagePromptGenerator.clickToUpload')}</p>
+            </>
+          )}
+        </Upload.Dragger>
+      </Card>
+    </Col>
   );
 
   return (
-    <Paper sx={{ p: 3, borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.3)', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)' }}>
-      <Typography variant="h5" gutterBottom align="center">{t('imagePromptGenerator.title')}</Typography>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { sm: 'repeat(3, 1fr)' }, gap: 3, my: 3 }}>
+    <Card>
+      <Title level={2} style={{ textAlign: 'center' }}>{t('imagePromptGenerator.title')}</Title>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
         <ImageUpload
           title={t('imagePromptGenerator.characterImage')}
           image={characterImage}
-          onChange={(e) => handleImageChange(e, setCharacterImage)}
+          onChange={(file) => handleImageChange(file, setCharacterImage)}
         />
         <ImageUpload
           title={t('imagePromptGenerator.backgroundImage')}
           image={backgroundImage}
-          onChange={(e) => handleImageChange(e, setBackgroundImage)}
+          onChange={(file) => handleImageChange(file, setBackgroundImage)}
         />
         <ImageUpload
           title={t('imagePromptGenerator.propImage')}
           image={propImage}
-          onChange={(e) => handleImageChange(e, setPropImage)}
+          onChange={(file) => handleImageChange(file, setPropImage)}
         />
-      </Box>
-      <Button onClick={handleSubmit} variant="contained" size="large" fullWidth disabled={loading} sx={{ mb: 2 }}>
-        {loading ? <CircularProgress size={24} color="inherit" /> : t('imagePromptGenerator.generatePrompt')}
+      </Row>
+      <Button onClick={handleSubmit} type="primary" size="large" block loading={loading} style={{ marginBottom: 16 }}>
+        {t('imagePromptGenerator.generatePrompt')}
       </Button>
 
       {generatedPrompt && (
-        <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
-          <Typography variant="h6" gutterBottom>{t('imagePromptGenerator.generatedPrompt')}</Typography>
-          <TextField
-            inputRef={promptTextareaRef}
+        <Card>
+          <Title level={5}>{t('imagePromptGenerator.generatedPrompt')}</Title>
+          <TextArea
+            ref={promptTextareaRef}
             value={generatedPrompt}
             onChange={(e) => setGeneratedPrompt(e.target.value)}
-            multiline
-            fullWidth
             rows={4}
-            variant="outlined"
           />
           <CameraMovements onMovementClick={handleMovementClick} />
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Button onClick={() => setPreviewVisible(!isPreviewVisible)} variant="outlined" size="small">
-              {isPreviewVisible ? t('Hide Preview') : t('Show Preview')}
-            </Button>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <FormControl size="small">
-                <InputLabel>{t('Translate')}</InputLabel>
-                <Select value={targetLanguage} label={t('Translate')} onChange={(e) => setTargetLanguage(e.target.value)}>
-                  <MenuItem value="en">English</MenuItem>
-                  <MenuItem value="ja">日本語</MenuItem>
-                  <MenuItem value="zh">中文</MenuItem>
-                </Select>
-              </FormControl>
-              <Button onClick={handleTranslate} variant="contained" size="small" disabled={translating}>
-                {translating ? <CircularProgress size={20} /> : t('imagePromptGenerator.translate')}
+          <Row justify="space-between" align="middle" style={{ marginTop: 16 }}>
+            <Col>
+              <Button onClick={() => setPreviewVisible(!isPreviewVisible)}>
+                {isPreviewVisible ? t('Hide Preview') : t('Show Preview')}
               </Button>
-            </Box>
-          </Box>
+            </Col>
+            <Col>
+              <Row gutter={8}>
+                <Col>
+                  <Select value={targetLanguage} onChange={setTargetLanguage}>
+                    <Option value="en">English</Option>
+                    <Option value="ja">日本語</Option>
+                    <Option value="zh">中文</Option>
+                  </Select>
+                </Col>
+                <Col>
+                  <Button onClick={handleTranslate} type="primary" loading={translating}>
+                    {t('imagePromptGenerator.translate')}
+                  </Button>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
           {isPreviewVisible && (
-            <Alert severity="info" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
-              <Typography variant="subtitle2" gutterBottom>{t('Final Prompt Preview')}</Typography>
-              {generatedPrompt}
-            </Alert>
+            <Alert message={t('Final Prompt Preview')} description={generatedPrompt} type="info" showIcon style={{ marginTop: 16 }} />
           )}
           {translatedPrompt && (
-            <Alert severity="success" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
-              <Typography variant="subtitle2" gutterBottom>{t('imagePromptGenerator.translatedPromptTitle')}</Typography>
-              {translatedPrompt}
-            </Alert>
+            <Alert message={t('imagePromptGenerator.translatedPromptTitle')} description={translatedPrompt} type="success" showIcon style={{ marginTop: 16 }} />
           )}
-        </Paper>
+        </Card>
       )}
-    </Paper>
+    </Card>
   );
 };
 

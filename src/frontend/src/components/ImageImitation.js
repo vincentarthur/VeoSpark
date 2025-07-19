@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, TextField, Typography, Paper, CircularProgress, Alert, Select, MenuItem, InputLabel, FormControl, IconButton, Accordion, AccordionSummary, AccordionDetails, Grid
-} from '@mui/material';
-import { CloudUpload, Clear, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+  Row, Col, Button, Input, Typography, Spin, Alert, Select, Upload, Card, Collapse, Form
+} from 'antd';
+import { UploadOutlined, CloseOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import ImageCard from './ImageCard';
 
+const { Title } = Typography;
+const { TextArea } = Input;
+const { Option } = Select;
+const { Panel } = Collapse;
+
 const ImageImitation = ({ user }) => {
   const { t } = useTranslation();
+  const [form] = Form.useForm();
 
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [subPrompt, setSubPrompt] = useState('');
-  const [sampleCount, setSampleCount] = useState(1);
   const [models, setModels] = useState([]);
-  const [model, setModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
@@ -28,21 +31,19 @@ const ImageImitation = ({ user }) => {
         const fetchedModels = response.data.models || [];
         setModels(fetchedModels);
         if (fetchedModels.length > 0) {
-          setModel(fetchedModels[0].id);
+          form.setFieldsValue({ model: fetchedModels[0].id });
         }
       } catch (error) {
         console.error("Failed to fetch models:", error);
       }
     };
     fetchModels();
-  }, []);
+  }, [form]);
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
+  const handleImageUpload = (file) => {
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+    return false; // Prevent upload
   };
 
   const clearImage = () => {
@@ -50,8 +51,7 @@ const ImageImitation = ({ user }) => {
     setImagePreview(null);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (values) => {
     if (!imageFile) {
       setError(t('imageImitation.noImageError'));
       return;
@@ -64,9 +64,9 @@ const ImageImitation = ({ user }) => {
 
     const formData = new FormData();
     formData.append('file', imageFile);
-    formData.append('sub_prompt', subPrompt);
-    formData.append('model', model);
-    formData.append('sample_count', sampleCount);
+    formData.append('sub_prompt', values.sub_prompt);
+    formData.append('model', values.model);
+    formData.append('sample_count', values.sample_count);
 
     try {
       const response = await axios.post('/api/images/imitate', formData, {
@@ -75,7 +75,7 @@ const ImageImitation = ({ user }) => {
       const syntheticImages = response.data.images.map(image => ({
         ...image,
         prompt: response.data.revised_prompt,
-        model_used: model,
+        model_used: values.model,
         status: 'SUCCESS',
         trigger_time: new Date().toISOString(),
         completion_time: new Date().toISOString(),
@@ -92,118 +92,75 @@ const ImageImitation = ({ user }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
-      <Paper
-        component="form"
-        onSubmit={handleSubmit}
-        sx={{
-          p: 3, width: { xs: '100%', md: '450px' }, flexShrink: 0,
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.3)', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        <Typography variant="h5" gutterBottom>{t('nav.imageImitation')}</Typography>
-
-        <Box sx={{ my: 2, p: 2, border: '1px dashed grey', borderRadius: '8px', textAlign: 'center' }}>
-          {imagePreview ? (
-            <Box sx={{ position: 'relative' }}>
-              <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
-              <IconButton onClick={clearImage} size="small" sx={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255,255,255,0.7)' }}>
-                <Clear />
-              </IconButton>
-            </Box>
-          ) : (
-            <Button
-              variant="outlined"
-              component="label"
-              startIcon={<CloudUpload />}
-            >
-              {t('imageImitation.uploadImage')}
-              <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-            </Button>
-          )}
-        </Box>
-
-        <TextField
-          label={t('imageImitation.subPromptLabel')}
-          multiline
-          rows={2}
-          fullWidth
-          value={subPrompt}
-          onChange={(e) => setSubPrompt(e.target.value)}
-          margin="normal"
-          required
-        />
-
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="model-select-label">{t('dashboard.modelLabel')}</InputLabel>
-          <Select
-            labelId="model-select-label"
-            value={model}
-            label={t('dashboard.modelLabel')}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            {models.map((m) => (
-              <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth margin="normal" disabled={model === 'imagen-4.0-ultra-generate-preview-06-06'}>
-          <InputLabel id="sample-count-select-label">{t('imageGenerator.sampleCountLabel')}</InputLabel>
-          <Select
-            labelId="sample-count-select-label"
-            value={model === 'imagen-4.0-ultra-generate-preview-06-06' ? 1 : sampleCount}
-            label={t('imageGenerator.sampleCountLabel')}
-            onChange={(e) => setSampleCount(e.target.value)}
-          >
-            {[1, 2, 3, 4].map(count => (
-              <MenuItem key={count} value={count}>{count}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Button type="submit" variant="contained" size="large" disabled={loading} fullWidth sx={{ mt: 3, py: 1.5 }}>
-          {loading ? <CircularProgress size={24} color="inherit" /> : t('imageImitation.generateButton')}
-        </Button>
-      </Paper>
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, pt: 4 }}>
-        {loading && (
-          <Box sx={{ textAlign: 'center', width: '100%' }}>
-            <CircularProgress />
-            <Typography sx={{ mt: 2 }}>{t('dashboard.generatingStatus')}</Typography>
-          </Box>
-        )}
-        {error && <Alert severity="error" sx={{ width: '100%' }}>{error}</Alert>}
-
+    <Row gutter={32}>
+      <Col xs={24} md={8}>
+        <Card>
+          <Title level={2}>{t('nav.imageImitation')}</Title>
+          <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ sample_count: 1 }}>
+            <Form.Item label={t('imageImitation.uploadImage')}>
+              <Upload
+                beforeUpload={handleImageUpload}
+                showUploadList={false}
+                accept="image/*"
+              >
+                {imagePreview ? (
+                  <div style={{ position: 'relative' }}>
+                    <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
+                    <Button icon={<CloseOutlined />} onClick={clearImage} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
+                  </div>
+                ) : (
+                  <Button icon={<UploadOutlined />}>
+                    {t('imageImitation.uploadImage')}
+                  </Button>
+                )}
+              </Upload>
+            </Form.Item>
+            <Form.Item name="sub_prompt" label={t('imageImitation.subPromptLabel')} rules={[{ required: true }]}>
+              <TextArea rows={2} />
+            </Form.Item>
+            <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
+              <Select>
+                {models.map((m) => (
+                  <Option key={m.id} value={m.id}>{m.name}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="sample_count" label={t('imageGenerator.sampleCountLabel')}>
+              <Select disabled={form.getFieldValue('model') === 'imagen-4.0-ultra-generate-preview-06-06'}>
+                {[1, 2, 3, 4].map(count => (
+                  <Option key={count} value={count}>{count}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading} block size="large">
+                {t('imageImitation.generateButton')}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+      </Col>
+      <Col xs={24} md={16}>
+        {loading && <Spin size="large" />}
+        {error && <Alert message={error} type="error" showIcon />}
         {revisedPrompt && (
-          <Accordion sx={{ width: '100%', maxWidth: '820px' }}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              aria-controls="panel1a-content"
-              id="panel1a-header"
-            >
-              <Typography>Consolidated Prompt</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography sx={{ fontStyle: 'italic' }}>
-                "{revisedPrompt}"
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
+          <Collapse>
+            <Panel header="Consolidated Prompt" key="1">
+              <Typography.Text italic>"{revisedPrompt}"</Typography.Text>
+            </Panel>
+          </Collapse>
         )}
-
         {generatedImages.length > 0 && (
-          <Grid container spacing={2}>
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             {generatedImages.map((image, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Col xs={24} sm={12} md={8} key={index}>
                 <ImageCard image={image} models={models} user={user} />
-              </Grid>
+              </Col>
             ))}
-          </Grid>
+          </Row>
         )}
-      </Box>
-    </Box>
+      </Col>
+    </Row>
   );
 };
 

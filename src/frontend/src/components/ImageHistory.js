@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 import {
-  Box, Typography, Paper, CircularProgress, Alert, Button,
-  TextField, Select, MenuItem, FormControl, InputLabel, Checkbox, FormControlLabel, Grid,
-  TablePagination
-} from '@mui/material';
+  Typography, Spin, Alert, Button,
+  DatePicker, Select, Row, Col, Pagination, Card
+} from 'antd';
 import { 
-  Refresh, FilterList, Clear
-} from '@mui/icons-material';
+  FilterOutlined, ClearOutlined
+} from '@ant-design/icons';
 import ImageCard from './ImageCard';
 import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
+
+const { Option } = Select;
 
 const ImageHistory = ({ user, history, models, loading, error, hasFetched, totalRows, page, rowsPerPage, fetchHistory, setFilters, clearFilters, filters, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
@@ -22,83 +22,59 @@ const ImageHistory = ({ user, history, models, loading, error, hasFetched, total
     closeModal: closeShareModal,
     handleSubmit: handleShareSubmit,
   } = useShareModal(() => {
-    // For now, just log and close
     console.log("Item shared successfully");
   });
 
-  const handleFilterChange = (event) => {
-    const { name, value } = event.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (dates) => {
+    if (dates) {
+      setFilters(prev => ({
+        ...prev,
+        start_date: dates[0].format('YYYY-MM-DD'),
+        end_date: dates[1].format('YYYY-MM-DD'),
+      }));
+    } else {
+      setFilters(prev => ({ ...prev, start_date: null, end_date: null }));
+    }
   };
 
   return (
-    <Box>
-      <Paper sx={{ p: 2, mb: 3, borderRadius: '12px' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              name="start_date"
-              label={t('history.filters.startDate')}
-              type="date"
-              fullWidth
-              value={filters.start_date}
-              onChange={handleFilterChange}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              name="end_date"
-              label={t('history.filters.endDate')}
-              type="date"
-              fullWidth
-              value={filters.end_date}
-              onChange={handleFilterChange}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>{t('history.filters.status')}</InputLabel>
-              <Select name="status" value={filters.status} label={t('history.filters.status')} onChange={handleFilterChange}>
-                <MenuItem value=""><em>{t('history.filters.all')}</em></MenuItem>
-                <MenuItem value="SUCCESS">Success</MenuItem>
-                <MenuItem value="FAILURE">Failure</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>{t('history.filters.model')}</InputLabel>
-              <Select name="model" value={filters.model} label={t('history.filters.model')} onChange={handleFilterChange}>
-                <MenuItem value=""><em>{t('history.filters.all')}</em></MenuItem>
-                {models.map((m) => (
-                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2} sx={{ display: 'flex', gap: 1 }}>
-            <Button variant="outlined" onClick={() => fetchHistory()} startIcon={<FilterList />}>{t('history.filters.apply')}</Button>
-            <Button onClick={clearFilters}><Clear size="small" /></Button>
-          </Grid>
-        </Grid>
-      </Paper>
+    <Card>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col><DatePicker.RangePicker onChange={handleDateChange} /></Col>
+        <Col>
+          <Select placeholder={t('history.filters.status')} style={{ width: 120 }} onChange={(value) => handleFilterChange('status', value)}>
+            <Option value="">{t('history.filters.all')}</Option>
+            <Option value="SUCCESS">Success</Option>
+            <Option value="FAILURE">Failure</Option>
+          </Select>
+        </Col>
+        <Col>
+          <Select placeholder={t('history.filters.model')} style={{ width: 120 }} onChange={(value) => handleFilterChange('model', value)}>
+            <Option value="">{t('history.filters.all')}</Option>
+            {models.map((m) => (
+              <Option key={m.id} value={m.id}>{m.name}</Option>
+            ))}
+          </Select>
+        </Col>
+        <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory()}>{t('history.filters.apply')}</Button></Col>
+        <Col><Button icon={<ClearOutlined />} onClick={clearFilters} /></Col>
+      </Row>
 
       {loading ? (
-        <CircularProgress />
+        <Spin />
       ) : error ? (
-        <Alert severity="error">{error}</Alert>
+        <Alert message={error} type="error" />
       ) : hasFetched && history.length === 0 ? (
-        <Typography>{t('history.noResults')}</Typography>
+        <Typography.Text>{t('history.noResults')}</Typography.Text>
       ) : (
-        <Box>
-          <Grid container spacing={3}>
+        <>
+          <Row gutter={[16, 16]}>
             {history.map((image) => (
-              <Grid item xs={12} sm={6} md={4} key={image.trigger_time}>
+              <Col xs={24} sm={12} md={8} key={image.trigger_time}>
                 <ImageCard
                   image={image}
                   models={models}
@@ -106,20 +82,17 @@ const ImageHistory = ({ user, history, models, loading, error, hasFetched, total
                   onShareClick={openShareModal}
                   onUseAsFirstFrame={onUseAsFirstFrame}
                 />
-              </Grid>
+              </Col>
             ))}
-          </Grid>
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            component="div"
-            count={totalRows}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={(e, newPage) => fetchHistory(false, newPage, rowsPerPage)}
-            onRowsPerPageChange={(e) => fetchHistory(false, 0, parseInt(e.target.value, 10))}
-            sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}
+          </Row>
+          <Pagination
+            current={page}
+            pageSize={rowsPerPage}
+            total={totalRows}
+            onChange={(newPage, newRowsPerPage) => fetchHistory(false, newPage, newRowsPerPage)}
+            style={{ marginTop: 16, textAlign: 'center' }}
           />
-        </Box>
+        </>
       )}
       {shareSelectedItem && (
         <ShareModal
@@ -129,7 +102,7 @@ const ImageHistory = ({ user, history, models, loading, error, hasFetched, total
           item={shareSelectedItem}
         />
       )}
-    </Box>
+    </Card>
   );
 };
 

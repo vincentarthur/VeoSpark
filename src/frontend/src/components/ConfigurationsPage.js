@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Button, Typography, RadioGroup, FormControlLabel, Radio, TextField,
-  Paper, CircularProgress, Alert, Select, MenuItem, InputLabel, FormControl
-} from '@mui/material';
+  Button, Typography, Radio, Input,
+  Spin, Alert, Select, Form, Card, Row, Col
+} from 'antd';
 import axios from 'axios';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 const ConfigurationsPage = () => {
   const { t } = useTranslation();
-  const [quotaType, setQuotaType] = useState('NO_LIMIT');
-  const [limit, setLimit] = useState('');
-  const [period, setPeriod] = useState('day');
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [quotaType, setQuotaType] = useState('NO_LIMIT');
 
   useEffect(() => {
     const fetchConfiguration = async () => {
@@ -21,11 +23,12 @@ const ConfigurationsPage = () => {
         setLoading(true);
         const response = await axios.get('/api/configurations');
         const { quota } = response.data;
+        form.setFieldsValue({
+          quotaType: quota.type,
+          limit: quota.limit,
+          period: quota.period,
+        });
         setQuotaType(quota.type);
-        if (quota.type !== 'NO_LIMIT') {
-          setLimit(quota.limit);
-          setPeriod(quota.period);
-        }
       } catch (err) {
         setError(err.response?.data?.detail || 'Failed to fetch configuration.');
       } finally {
@@ -33,10 +36,9 @@ const ConfigurationsPage = () => {
       }
     };
     fetchConfiguration();
-  }, []);
+  }, [form]);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (values) => {
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -44,9 +46,9 @@ const ConfigurationsPage = () => {
     try {
       const config = {
         quota: {
-          type: quotaType,
-          limit: quotaType !== 'NO_LIMIT' ? parseInt(limit, 10) : undefined,
-          period: quotaType !== 'NO_LIMIT' ? period : undefined,
+          type: values.quotaType,
+          limit: values.quotaType !== 'NO_LIMIT' ? parseInt(values.limit, 10) : undefined,
+          period: values.quotaType !== 'NO_LIMIT' ? values.period : undefined,
         }
       };
       await axios.post('/api/configurations', config);
@@ -59,60 +61,56 @@ const ConfigurationsPage = () => {
   };
 
   return (
-    <Paper component="form" onSubmit={handleSubmit} sx={{ p: 3, maxWidth: '600px', margin: 'auto' }}>
-      <Typography variant="h5" gutterBottom>{t('configurations.title')}</Typography>
-      
-      <FormControl component="fieldset" margin="normal">
-        <RadioGroup row value={quotaType} onChange={(e) => setQuotaType(e.target.value)}>
-          <FormControlLabel value="NO_LIMIT" control={<Radio />} label={t('configurations.noLimit')} />
-          <FormControlLabel value="COST_LIMIT" control={<Radio />} label={t('configurations.costLimit')} />
-          <FormControlLabel value="GENERATION_QUANTITY" control={<Radio />} label={t('configurations.generationQuantity')} />
-        </RadioGroup>
-      </FormControl>
+    <Card>
+      <Title level={2}>{t('configurations.title')}</Title>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} onValuesChange={(changedValues) => {
+        if (changedValues.quotaType) {
+          setQuotaType(changedValues.quotaType);
+        }
+      }}>
+        <Form.Item name="quotaType" label={t('configurations.quotaType')}>
+          <Radio.Group>
+            <Radio.Button value="NO_LIMIT">{t('configurations.noLimit')}</Radio.Button>
+            <Radio.Button value="COST_LIMIT">{t('configurations.costLimit')}</Radio.Button>
+            <Radio.Button value="GENERATION_QUANTITY">{t('configurations.generationQuantity')}</Radio.Button>
+          </Radio.Group>
+        </Form.Item>
 
-      {quotaType === 'COST_LIMIT' && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('configurations.costLimitDescription')}
-        </Typography>
-      )}
-      {quotaType === 'GENERATION_QUANTITY' && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {t('configurations.generationQuantityDescription')}
-        </Typography>
-      )}
+        {quotaType === 'COST_LIMIT' && (
+          <Text type="secondary">{t('configurations.costLimitDescription')}</Text>
+        )}
+        {quotaType === 'GENERATION_QUANTITY' && (
+          <Text type="secondary">{t('configurations.generationQuantityDescription')}</Text>
+        )}
 
-      {quotaType !== 'NO_LIMIT' && (
-        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-          <TextField
-            label={t('configurations.limit')}
-            type="number"
-            value={limit}
-            onChange={(e) => setLimit(e.target.value)}
-            required
-            fullWidth
-          />
-          <FormControl fullWidth>
-            <InputLabel id="period-select-label">{t('configurations.period')}</InputLabel>
-            <Select
-              labelId="period-select-label"
-              value={period}
-              label={t('configurations.period')}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <MenuItem value="day">{t('configurations.daily')}</MenuItem>
-              <MenuItem value="week">{t('configurations.weekly')}</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-      )}
+        {quotaType !== 'NO_LIMIT' && (
+          <Row gutter={16} style={{ marginTop: 16 }}>
+            <Col span={12}>
+              <Form.Item name="limit" label={t('configurations.limit')} rules={[{ required: true }]}>
+                <Input type="number" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="period" label={t('configurations.period')} rules={[{ required: true }]}>
+                <Select>
+                  <Option value="day">{t('configurations.daily')}</Option>
+                  <Option value="week">{t('configurations.weekly')}</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
 
-      <Button type="submit" variant="contained" disabled={loading} sx={{ mt: 3 }}>
-        {loading ? <CircularProgress size={24} /> : t('configurations.save')}
-      </Button>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            {t('configurations.save')}
+          </Button>
+        </Form.Item>
 
-      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
-    </Paper>
+        {error && <Alert message={error} type="error" showIcon />}
+        {success && <Alert message={success} type="success" showIcon />}
+      </Form>
+    </Card>
   );
 };
 

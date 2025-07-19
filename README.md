@@ -361,6 +361,13 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v1.6**
+    - Redesigned the entire frontend with Ant Design for a more modern and consistent look and feel.
+    - Implemented a theme switcher to allow users to toggle between light and dark modes.
+    - Added a "frosted glass" effect to the UI for a more premium feel.
+    - Added a feature to export consumption data from the Analytics Tab as a CSV or Excel file.
+    - Unified the title styles of all tabs.
+    - Fixed various UI/UX issues based on user feedback.
 - **v1.5**
     - Add feature - Image Imitation
     - Add Resolution 1080p for Veo3

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
-  Box, Typography, CircularProgress, Alert, Grid, Select, MenuItem, FormControl, InputLabel, Button, IconButton
-} from '@mui/material';
-import { Refresh } from '@mui/icons-material';
+  Typography, Spin, Alert, Row, Col, Select, Button, Card, Modal
+} from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import VideoCard from '../components/VideoCard';
 import ImageCard from '../components/ImageCard';
-import ConfirmationDialog from '../components/ConfirmationDialog';
+
+const { Title } = Typography;
+const { Option } = Select;
 
 const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
@@ -16,7 +18,6 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [itemToDelete, setItemToDelete] = useState(null);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -32,39 +33,6 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
     };
     fetchGroups();
   }, []);
-
-  useEffect(() => {
-    if (!selectedGroup) return;
-
-    const fetchItems = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await axios.get(`/api/groups/${selectedGroup}/items`);
-        setItems(response.data);
-      } catch (err) {
-        setError(err.response?.data?.detail || 'Could not fetch shared items.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchItems();
-  }, [selectedGroup]);
-
-  const handleDeleteClick = (item) => {
-    setItemToDelete(item);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
-    try {
-      await axios.delete(`/api/shared-items/${itemToDelete.id}`);
-      setItems(items.filter((v) => v.id !== itemToDelete.id));
-      setItemToDelete(null);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Could not delete item.');
-    }
-  };
 
   const fetchItems = async () => {
     if (!selectedGroup) return;
@@ -86,59 +54,72 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
     }
   }, [selectedGroup]);
 
-  return (
-    <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h4" gutterBottom>{t('sharedItems.title')}</Typography>
-            <Button
-                variant="contained"
-                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Refresh />}
-                onClick={fetchItems}
-                disabled={loading || !selectedGroup}
-            >
-                {loading ? t('sharedItems.refreshing') : t('sharedItems.refresh')}
-            </Button>
-        </Box>
-      
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <InputLabel>{t('sharedItems.selectGroup')}</InputLabel>
-        <Select value={selectedGroup} label={t('sharedItems.selectGroup')} onChange={(e) => setSelectedGroup(e.target.value)}>
-          {groups.map((group) => (
-            <MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+  const handleDeleteClick = (item) => {
+    Modal.confirm({
+      title: t('sharedItems.confirmDeleteTitle'),
+      content: t('sharedItems.confirmDeleteDescription'),
+      onOk: async () => {
+        try {
+          await axios.delete(`/api/shared-items/${item.id}`);
+          setItems(items.filter((v) => v.id !== item.id));
+        } catch (err) {
+          setError(err.response?.data?.detail || 'Could not delete item.');
+        }
+      }
+    });
+  };
 
-      {loading && <CircularProgress />}
-      {error && <Alert severity="error">{error}</Alert>}
+  return (
+    <Card>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+        <Col>
+          <Title level={2}>{t('sharedItems.title')}</Title>
+        </Col>
+        <Col>
+          <Button
+            type="primary"
+            icon={<ReloadOutlined />}
+            onClick={fetchItems}
+            loading={loading}
+            disabled={!selectedGroup}
+          >
+            {t('sharedItems.refresh')}
+          </Button>
+        </Col>
+      </Row>
+      
+      <Select
+        value={selectedGroup}
+        style={{ width: '100%', marginBottom: 16 }}
+        onChange={setSelectedGroup}
+        placeholder={t('sharedItems.selectGroup')}
+      >
+        {groups.map((group) => (
+          <Option key={group.id} value={group.id}>{group.name}</Option>
+        ))}
+      </Select>
+
+      {loading && <Spin />}
+      {error && <Alert message={error} type="error" />}
       
       {!loading && !error && items.length === 0 && (
-        <Typography>{t('sharedItems.noItems')}</Typography>
+        <Typography.Text>{t('sharedItems.noItems')}</Typography.Text>
       )}
 
       {!loading && !error && items.length > 0 && (
-        <Grid container spacing={3}>
+        <Row gutter={[16, 16]}>
           {items.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
+            <Col xs={24} sm={12} md={8} key={item.id}>
               {item.type === 'image' ? (
                 <ImageCard image={item} user={user} onShareDelete={handleDeleteClick} onUseAsFirstFrame={onUseAsFirstFrame} />
               ) : (
                 <VideoCard video={{...item, signed_urls: [item.signed_url]}} user={user} onShareDelete={handleDeleteClick} />
               )}
-            </Grid>
+            </Col>
           ))}
-        </Grid>
+        </Row>
       )}
-      {itemToDelete && (
-        <ConfirmationDialog
-          open={!!itemToDelete}
-          onClose={() => setItemToDelete(null)}
-          onConfirm={handleConfirmDelete}
-          title={t('sharedItems.confirmDeleteTitle')}
-          description={t('sharedItems.confirmDeleteDescription')}
-        />
-      )}
-    </Box>
+    </Card>
   );
 };
 
