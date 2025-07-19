@@ -12,6 +12,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 - [Google Cloud Setup](#google-cloud-setup)
 - [Running the Application Locally](#running-the-application-locally)
 - [Usage](#usage)
+- [Screenshots](#screenshots)
 - [Change Log](#change-log)
 
 ## Features
@@ -358,6 +359,20 @@ It is recommended to create a dedicated service account for this application to 
 3.  Use the "Video Generator" tab to create new videos.
 4.  View your past creations in the "My History" tab.
 5.  Monitor your usage costs in the "Analytics" tab.
+
+## Screenshots
+
+### Login Page
+![Login Page](screenshots/Login.png)
+
+### Home Page
+![Home Page](screenshots/HomePage.png)
+
+### History Page
+![History Page](screenshots/History.png)
+
+### Cost Analysis Page
+![Cost Analysis Page](screenshots/CostAnalysis.png)
 
 ## Change Log
 
