@@ -274,8 +274,8 @@ class VeoApiClient:
 
         model_id = kwargs.get('model', self.default_model_id)
         aspect_ratio = kwargs.get('aspect_ratio', '16:9')
-        duration_seconds = int(kwargs.get('duration_seconds', 8))
-        sample_count = int(kwargs.get('sample_count', 1))
+        duration_seconds = int(kwargs.get('duration_seconds') or 8)
+        sample_count = int(kwargs.get('sample_count') or 1)
         image_gcs_uri = kwargs.get('image_gcs_uri')
         final_frame_gcs_uri = kwargs.get('final_frame_gcs_uri')
 
