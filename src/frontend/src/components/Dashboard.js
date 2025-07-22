@@ -292,6 +292,7 @@ const Dashboard = ({ initialFirstFrame }) => {
             generateAudio: generateAudio,
             enhancePrompt: enhancePrompt,
             resolution: resolution,
+            extend_duration: extendDuration,
           }}>
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={setModel}>
@@ -375,10 +376,8 @@ const Dashboard = ({ initialFirstFrame }) => {
                   </Select>
                   {gcsFetchError && <Alert message={gcsFetchError} type="error" showIcon />}
                 </Form.Item>
-                <Form.Item label={t('dashboard.extendDurationLabel')}>
+                <Form.Item name="extend_duration" label={t('dashboard.extendDurationLabel')}>
                   <Slider
-                    value={extendDuration}
-                    onChange={setExtendDuration}
                     min={5}
                     max={8}
                     step={1}
@@ -388,10 +387,8 @@ const Dashboard = ({ initialFirstFrame }) => {
               </Card>
             )}
 
-            <Form.Item label={t('dashboard.durationLabel')}>
+            <Form.Item name="duration" label={t('dashboard.durationLabel')}>
               <Slider
-                value={duration}
-                onChange={setDuration}
                 min={5}
                 max={8}
                 step={1}
@@ -400,10 +397,8 @@ const Dashboard = ({ initialFirstFrame }) => {
               />
             </Form.Item>
 
-            <Form.Item label={t('dashboard.videoCountLabel')}>
+            <Form.Item name="sampleCount" label={t('dashboard.videoCountLabel')}>
               <Slider
-                value={sampleCount}
-                onChange={setSampleCount}
                 min={1}
                 max={2}
                 step={1}
@@ -412,16 +407,16 @@ const Dashboard = ({ initialFirstFrame }) => {
               />
             </Form.Item>
 
-            <Form.Item label={t('dashboard.aspectRatioLabel')}>
-              <Radio.Group value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
+            <Form.Item name="aspectRatio" label={t('dashboard.aspectRatioLabel')}>
+              <Radio.Group>
                 <Radio.Button value="16:9">16:9</Radio.Button>
                 <Radio.Button value="9:16" disabled={isV3Model}>9:16</Radio.Button>
               </Radio.Group>
             </Form.Item>
 
             {isV3Model && (
-              <Form.Item label={t('dashboard.resolutionLabel')}>
-                <Select value={resolution} onChange={setResolution}>
+              <Form.Item name="resolution" label={t('dashboard.resolutionLabel')}>
+                <Select>
                   <Option value="720p">720p</Option>
                   <Option value="1080p">1080p</Option>
                 </Select>

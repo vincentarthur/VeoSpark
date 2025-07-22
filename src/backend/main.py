@@ -1731,7 +1731,8 @@ def delete_shared_item(shared_item_id: str, user: dict = Depends(get_user)):
 def get_consumption_analytics(
     user: dict = Depends(get_user),
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    top_x: Optional[int] = 10
 ):
     """
     Provides aggregated consumption data for both video and image generation.
@@ -1846,7 +1847,7 @@ def get_consumption_analytics(
             ],
             key=lambda x: x["total_cost"],
             reverse=True
-        )[:10]
+        )[:top_x]
 
         # --- Model Usage Distribution ---
         video_dist_query = f"SELECT model_used, with_audio, COUNT(*) as generation_count FROM `{PROJECT}.{dataset_id}.{table_id}` WHERE {' AND '.join(video_where_clauses)} AND model_used LIKE 'veo-%' GROUP BY model_used, with_audio"
@@ -1872,6 +1873,105 @@ def get_consumption_analytics(
     except Exception as e:
         logger.error(f"Failed to execute analytics query. Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve analytics data.")
+
+
+@api_router.get("/analytics/top_users", tags=["Analytics"])
+def get_top_users_analytics(
+    user: dict = Depends(get_user),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    top_x: Optional[int] = 10
+):
+    """
+    Provides aggregated consumption data for the top X users.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    cost_managers = app_conf.get('COST_MANAGERS', [])
+    if user.get('email') not in cost_managers:
+        raise HTTPException(status_code=403, detail="You do not have permission to view analytics.")
+
+    if not app_conf.get('ENABLE_BIGQUERY_LOGGING', False) or not bq_client:
+        raise HTTPException(status_code=501, detail="Analytics are disabled (BigQuery not configured).")
+
+    def calculate_video_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
+        if not model_used or not video_duration: return 0.0
+        model_info = next((m for m in models_conf.get('models', []) if m['id'] == model_used), None)
+        if not model_info: return 0.0
+        pricing = model_info.get('pricing', {})
+        cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
+        return round(video_duration * cost_per_second, 4)
+
+    def calculate_image_cost(model_used: str) -> float:
+        if not model_used: return 0.0
+        model_info = next((m for m in image_models_conf.get('models', []) if m['id'] == model_used), None)
+        if not model_info: return 0.0
+        pricing = model_info.get('pricing', {})
+        return round(pricing.get('per_image', 0.0), 4)
+
+    try:
+        query_params = []
+        video_where_clauses = ["status = 'SUCCESS'", "video_duration > 0"]
+        image_where_clauses = ["status = 'SUCCESS'"]
+
+        if start_date:
+            video_where_clauses.append("trigger_time >= @start_date")
+            image_where_clauses.append("trigger_time >= @start_date")
+            query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
+        if end_date:
+            end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
+            video_where_clauses.append("trigger_time < @end_date")
+            image_where_clauses.append("trigger_time < @end_date")
+            query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
+
+        video_query = f"""
+            SELECT user_email, model_used, video_duration, with_audio
+            FROM `{PROJECT}.{dataset_id}.{table_id}`
+            WHERE {" AND ".join(video_where_clauses)}
+        """
+        image_query = f"""
+            SELECT user_email, model_used
+            FROM `{PROJECT}.{dataset_id}.imagen_history`
+            WHERE {" AND ".join(image_where_clauses)}
+        """
+        job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+
+        video_rows = bq_client.query(video_query, job_config=job_config).result()
+        image_rows = bq_client.query(image_query, job_config=job_config).result()
+
+        user_costs = {}
+        for row in video_rows:
+            cost = calculate_video_cost(row.model_used, row.video_duration, row.with_audio)
+            if cost > 0:
+                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
+                user_entry['video'] += cost
+        
+        for row in image_rows:
+            cost = calculate_image_cost(row.model_used)
+            if cost > 0:
+                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
+                user_entry['image'] += cost
+
+        top_users_chart_data = sorted(
+            [
+                {
+                    "user_email": email, 
+                    "video_cost": round(costs['video'], 2),
+                    "image_cost": round(costs['image'], 2),
+                    "total_cost": round(costs['video'] + costs['image'], 2)
+                } 
+                for email, costs in user_costs.items()
+            ],
+            key=lambda x: x["total_cost"],
+            reverse=True
+        )[:top_x]
+
+        return JSONResponse(top_users_chart_data)
+
+    except Exception as e:
+        logger.error(f"Failed to execute top users analytics query. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve top users analytics data.")
 
 
 # ==============================================================================

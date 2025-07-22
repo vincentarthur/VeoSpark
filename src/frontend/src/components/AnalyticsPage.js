@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Row, Col, Typography, Spin, Alert, DatePicker, Button, Card, Statistic } from 'antd';
+import { Row, Col, Typography, Spin, Alert, DatePicker, Button, Card, Statistic, InputNumber } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FilterOutlined, DownloadOutlined } from '@ant-design/icons';
 import Papa from 'papaparse';
@@ -28,11 +28,14 @@ const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent })
 const AnalyticsPage = () => {
   const { t } = useTranslation();
   const [data, setData] = useState(null);
+  const [topUsers, setTopUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [topUsersLoading, setTopUsersLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     start_date: null,
     end_date: null,
+    top_x: 10,
   });
 
   const handleFilterChange = (dates) => {
@@ -42,10 +45,7 @@ const AnalyticsPage = () => {
         end_date: dates[1].format('YYYY-MM-DD'),
       });
     } else {
-      setFilters({
-        start_date: null,
-        end_date: null,
-      });
+      setFilters(prev => ({ ...prev, start_date: null, end_date: null }));
     }
   };
 
@@ -59,6 +59,7 @@ const AnalyticsPage = () => {
 
       const response = await axios.get('/api/analytics/consumption', { params });
       setData(response.data);
+      setTopUsers(response.data.top_users);
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch analytics data.');
     } finally {
@@ -70,13 +71,31 @@ const AnalyticsPage = () => {
     setFilters({
       start_date: null,
       end_date: null,
+      top_x: 10,
     });
     fetchData(true);
   };
 
+  const fetchTopUsers = async () => {
+    setTopUsersLoading(true);
+    try {
+      const params = { ...filters };
+      if (!params.start_date) delete params.start_date;
+      if (!params.end_date) delete params.end_date;
+
+      const response = await axios.get('/api/analytics/top_users', { params });
+      setTopUsers(response.data);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not fetch top users data.');
+    } finally {
+      setTopUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleExport = (format) => {
     if (!data) return;
@@ -227,9 +246,31 @@ const AnalyticsPage = () => {
       <Row gutter={16} style={{ marginTop: 16 }}>
         <Col xs={24}>
           <Card>
-            <Title level={4}>{t('analytics.topUsers')}</Title>
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Title level={4}>{t('analytics.topUsers')}</Title>
+              </Col>
+              <Col>
+                <Row gutter={8} align="middle">
+                  <Col>
+                    <InputNumber
+                      min={1}
+                      max={50}
+                      value={filters.top_x}
+                      onChange={(value) => setFilters(prev => ({ ...prev, top_x: value }))}
+                      addonBefore={t('analytics.topUsersLimit', 'Top')}
+                    />
+                  </Col>
+                  <Col>
+                    <Button type="primary" onClick={fetchTopUsers} icon={<FilterOutlined />} loading={topUsersLoading}>
+                      {t('history.filters.apply')}
+                    </Button>
+                  </Col>
+                </Row>
+              </Col>
+            </Row>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart layout="vertical" data={data.top_users}>
+              <BarChart layout="vertical" data={topUsers}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickFormatter={formatCurrency} />
                 <YAxis dataKey="user_email" type="category" width={200} />
