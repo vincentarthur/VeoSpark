@@ -31,3 +31,4 @@ moviepy==1.0.3
 google-cloud-texttospeech
 
 python-multipart
+futures

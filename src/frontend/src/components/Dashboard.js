@@ -88,6 +88,7 @@ const Dashboard = ({ initialFirstFrame }) => {
   const [error, setError] = useState(null);
   const [generatedVideos, setGeneratedVideos] = useState([]); // Now stores array of video objects
   const [revisedPrompt, setRevisedPrompt] = useState('');
+  const [pollingTaskId, setPollingTaskId] = useState(null);
   const promptInputRef = useRef(null);
 
   const {
@@ -217,6 +218,39 @@ const Dashboard = ({ initialFirstFrame }) => {
     }
   }, [model, isV3Model, isV2GenerateModel, generationMode, aspectRatio, gcsPrefix]);
 
+  useEffect(() => {
+    if (!pollingTaskId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await axios.get(`/api/tasks/${pollingTaskId}`);
+        const { status, result, error } = response.data;
+
+        if (status === 'completed') {
+          setGeneratedVideos(result.videos);
+          if (result.revisedPrompt) {
+            setRevisedPrompt(result.revisedPrompt);
+          }
+          setLoading(false);
+          setPollingTaskId(null);
+          clearInterval(interval);
+        } else if (status === 'failed') {
+          setError(error || 'An unexpected error occurred during generation.');
+          setLoading(false);
+          setPollingTaskId(null);
+          clearInterval(interval);
+        }
+      } catch (err) {
+        setError('Failed to get task status.');
+        setLoading(false);
+        setPollingTaskId(null);
+        clearInterval(interval);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [pollingTaskId]);
+
   const onFinish = async (values) => {
     setLoading(true);
     setError(null);
@@ -231,14 +265,15 @@ const Dashboard = ({ initialFirstFrame }) => {
         final_frame_gcs_uri: finalFrameGcsUri,
       });
 
-      setGeneratedVideos(response.data.videos);
-      if (response.data.revisedPrompt) {
-        setRevisedPrompt(response.data.revisedPrompt);
+      if (response.data.task_id) {
+        setPollingTaskId(response.data.task_id);
+      } else {
+        setError('Failed to start generation task.');
+        setLoading(false);
       }
 
     } catch (err) {
       setError(err.response?.data?.detail || 'An unexpected error occurred.');
-    } finally {
       setLoading(false);
     }
   };

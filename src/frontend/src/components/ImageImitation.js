@@ -24,6 +24,7 @@ const ImageImitation = ({ user }) => {
   const [generatedImages, setGeneratedImages] = useState([]);
   const [revisedPrompt, setRevisedPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
+  const [pollingTaskId, setPollingTaskId] = useState(null);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -42,6 +43,47 @@ const ImageImitation = ({ user }) => {
     };
     fetchModels();
   }, [form]);
+
+  useEffect(() => {
+    if (!pollingTaskId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await axios.get(`/api/tasks/${pollingTaskId}`);
+        const { status, result, error } = response.data;
+
+        if (status === 'completed') {
+          const syntheticImages = result.images.map(image => ({
+            ...image,
+            prompt: result.revised_prompt,
+            model_used: result.model,
+            status: 'SUCCESS',
+            trigger_time: new Date().toISOString(),
+            completion_time: new Date().toISOString(),
+            operation_duration: result.duration,
+            user_email: user.email,
+          }));
+          setGeneratedImages(syntheticImages);
+          setRevisedPrompt(result.revised_prompt);
+          setLoading(false);
+          setPollingTaskId(null);
+          clearInterval(interval);
+        } else if (status === 'failed') {
+          setError(error || 'An unexpected error occurred during generation.');
+          setLoading(false);
+          setPollingTaskId(null);
+          clearInterval(interval);
+        }
+      } catch (err) {
+        setError('Failed to get task status.');
+        setLoading(false);
+        setPollingTaskId(null);
+        clearInterval(interval);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [pollingTaskId, user.email]);
 
   const handleImageUpload = (file) => {
     setImageFile(file);
@@ -75,21 +117,14 @@ const ImageImitation = ({ user }) => {
       const response = await axios.post('/api/images/imitate', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const syntheticImages = response.data.images.map(image => ({
-        ...image,
-        prompt: response.data.revised_prompt,
-        model_used: values.model,
-        status: 'SUCCESS',
-        trigger_time: new Date().toISOString(),
-        completion_time: new Date().toISOString(),
-        operation_duration: response.data.duration,
-        user_email: user.email,
-      }));
-      setGeneratedImages(syntheticImages);
-      setRevisedPrompt(response.data.revised_prompt);
+      if (response.data.task_id) {
+        setPollingTaskId(response.data.task_id);
+      } else {
+        setError('Failed to start generation task.');
+        setLoading(false);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'An unexpected error occurred.');
-    } finally {
       setLoading(false);
     }
   };

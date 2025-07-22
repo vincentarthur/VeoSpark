@@ -23,6 +23,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
+  const [pollingTaskId, setPollingTaskId] = useState(null);
   const {
     modalOpen: shareModalOpen,
     selectedItem: shareSelectedItem,
@@ -49,6 +50,44 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
     fetchModels();
   }, [form]);
 
+  useEffect(() => {
+    if (!pollingTaskId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await axios.get(`/api/tasks/${pollingTaskId}`);
+        const { status, result, error } = response.data;
+
+        if (status === 'completed') {
+          const syntheticImages = result.images.map(img => ({
+            ...img,
+            prompt: result.prompt,
+            model_used: result.model_used,
+            status: 'SUCCESS',
+            trigger_time: new Date().toISOString(),
+            user_email: user.email,
+          }));
+          setGeneratedImages(syntheticImages);
+          setLoading(false);
+          setPollingTaskId(null);
+          clearInterval(interval);
+        } else if (status === 'failed') {
+          setError(error || 'An unexpected error occurred during generation.');
+          setLoading(false);
+          setPollingTaskId(null);
+          clearInterval(interval);
+        }
+      } catch (err) {
+        setError('Failed to get task status.');
+        setLoading(false);
+        setPollingTaskId(null);
+        clearInterval(interval);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [pollingTaskId, user.email]);
+
   const handleSubmit = async (values) => {
     setLoading(true);
     setError(null);
@@ -56,18 +95,14 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
 
     try {
       const response = await axios.post('/api/images/generate', { ...values, sample_count: sampleCount });
-      const syntheticImages = response.data.images.map(img => ({
-        ...img,
-        prompt: values.prompt,
-        model_used: values.model,
-        status: 'SUCCESS',
-        trigger_time: new Date().toISOString(),
-        user_email: user.email,
-      }));
-      setGeneratedImages(syntheticImages);
+      if (response.data.task_id) {
+        setPollingTaskId(response.data.task_id);
+      } else {
+        setError('Failed to start generation task.');
+        setLoading(false);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not generate images.');
-    } finally {
       setLoading(false);
     }
   };

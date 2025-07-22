@@ -38,6 +38,7 @@ import vertexai
 from video_processing import process_video_from_gcs, check_quota
 from config_manager import get_config, save_config, get_image_models
 from prompts import IMAGE_IMITATION_PROMPT_PREFIX, IMAGE_IMITATION_PROMPT_SUFFIX, IMAGE_IMITATION_PROMPT_COMBINATION
+from task_manager import create_task, get_task_status
 
 
 # ==============================================================================
@@ -565,53 +566,37 @@ async def set_configurations(request: Request, user: dict = Depends(get_user)):
     return {"message": "Configuration saved successfully."}
 
 
-@api_router.post("/videos/generate", tags=["Video Generation"])
-async def generate_video_endpoint(request: Request, user: dict = Depends(get_user)):
-    if app_conf.get('ENABLE_OAUTH', False) and not user:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    body = await request.json()
-
-    if not body.get('prompt'):
-        raise HTTPException(status_code=400, detail="Prompt is required.")
-
+def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]], body: Dict[str, Any]):
+    """
+    A wrapper function to run the video generation in the background.
+    """
     try:
         veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to initialize Veo client: {e}")
+        
+        # --- Prepare logging data ---
+        trigger_time = datetime.now(timezone.utc)
+        user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
+        model_used = body.get('model')
+        requested_duration = body.get('duration')
+        image_gcs_uri = body.get('image_gcs_uri')
+        final_frame_gcs_uri = body.get('final_frame_gcs_uri')
+        with_audio = body.get('generateAudio', False)
+        resolution = body.get('resolution')
 
-    # Check quota
-    user_email = user.get('email', 'anonymous') if user else 'anonymous'
-    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf)
-    if quota_exceeded:
-        raise HTTPException(status_code=429, detail=message)
-
-    # --- Prepare logging data ---
-    trigger_time = datetime.now(timezone.utc)
-    user_email = user.get('email', 'anonymous') if user else 'anonymous'
-    model_used = body.get('model')
-    prompt = body.get('prompt')
-    requested_duration = body.get('duration')
-    image_gcs_uri = body.get('image_gcs_uri')
-    final_frame_gcs_uri = body.get('final_frame_gcs_uri')
-    with_audio = body.get('generateAudio', False)
-    resolution = body.get('resolution')
-
-    try:
-            # --- Call the generation function ---
+        # --- Call the generation function ---
         _, gcs_paths, op_duration, revised_prompt = veo_client.generate_video(
             prompt=prompt,
-            user_info=user,
+            user_info=user_info,
             model=model_used,
             aspect_ratio=body.get('aspectRatio'),
             duration_seconds=requested_duration,
             sample_count=body.get('sampleCount'),
-            image_gcs_uri=image_gcs_uri, # Pass image URI to the client
+            image_gcs_uri=image_gcs_uri,
             final_frame_gcs_uri=final_frame_gcs_uri,
-            generate_audio=body.get('generateAudio'),
+            generate_audio=with_audio,
             enhance_prompt=body.get('enhancePrompt'),
             extend_duration=body.get('extend_duration'),
-            resolution=body.get('resolution')
+            resolution=resolution
         )
 
         # --- Log SUCCESS to BigQuery for each generated video ---
@@ -622,7 +607,7 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=completion_time,
-                operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0, # Apportion duration
+                operation_duration=op_duration / len(gcs_paths) if gcs_paths else 0,
                 prompt=prompt,
                 model_used=model_used,
                 status="SUCCESS",
@@ -632,10 +617,10 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
                 resolution=resolution,
                 first_frame_gcs_uri=image_gcs_uri,
                 last_frame_gcs_uri=final_frame_gcs_uri,
-                output_video_gcs_paths=[path]  # Log each path individually
+                output_video_gcs_paths=[path]
             )
 
-        # --- Return response to frontend ---
+        # --- Prepare successful result ---
         video_data = []
         for uri in gcs_paths:
             signed_url = veo_client.generate_signed_gcs_url(uri)
@@ -645,57 +630,81 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
                     "signed_url": signed_url
                 })
         
-        return JSONResponse({
+        return {
             "message": "Video generation successful.",
             "videos": video_data,
             "duration": op_duration,
             "revisedPrompt": revised_prompt
-        }, status_code=200)
+        }
 
     except Exception as e:
         # --- Log FAILURE to BigQuery ---
         log_generation_to_bq(
-            user_email=user_email,
-            trigger_time=trigger_time,
+            user_email=user_info.get('email', 'anonymous') if user_info else 'anonymous',
+            trigger_time=datetime.now(timezone.utc),
             completion_time=datetime.now(timezone.utc),
-            operation_duration=time.monotonic() - trigger_time.timestamp(),  # Approximate duration until failure
+            operation_duration=0,
             prompt=prompt,
-            model_used=model_used,
+            model_used=body.get('model'),
             status="FAILURE",
-            error_message=e,
-            video_duration=requested_duration,
-            with_audio=with_audio,
-            resolution=resolution,
-            first_frame_gcs_uri=image_gcs_uri,
-            last_frame_gcs_uri=final_frame_gcs_uri,
+            error_message=str(e),
+            video_duration=body.get('duration'),
+            with_audio=body.get('generateAudio', False),
+            resolution=body.get('resolution'),
+            first_frame_gcs_uri=body.get('image_gcs_uri'),
+            last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
             output_video_gcs_paths=[]
         )
+        logger.error(f"Video generation failed in background. Error: {e}", exc_info=True)
+        # This exception will be caught by the task_wrapper and stored in the task store
+        raise
 
-        logger.error(f"Video generation failed for user {user_email}. Error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Video generation failed: {e}")
-
-
-@api_router.post("/images/generate", tags=["Image Generation"])
-async def generate_image(request: Request, user: dict = Depends(get_user)):
+@api_router.post("/videos/generate", tags=["Video Generation"])
+async def generate_video_endpoint(request: Request, user: dict = Depends(get_user)):
     if app_conf.get('ENABLE_OAUTH', False) and not user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     body = await request.json()
+    prompt = body.get('prompt')
 
-    if not body.get('prompt'):
+    if not prompt:
         raise HTTPException(status_code=400, detail="Prompt is required.")
 
-    # --- Prepare logging data ---
-    trigger_time = datetime.now(timezone.utc)
+    # Check quota
     user_email = user.get('email', 'anonymous') if user else 'anonymous'
-    model_used = body.get('model')
-    prompt = body.get('prompt')
-    negative_prompt = body.get('negative_prompt')
-    aspect_ratio = body.get('aspect_ratio')
-    sample_count = body.get('sample_count')
+    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf)
+    if quota_exceeded:
+        raise HTTPException(status_code=429, detail=message)
 
+    # Create a background task
+    task_id = create_task(background_video_generation, prompt=prompt, user_info=user, body=body)
+
+    return JSONResponse({"task_id": task_id}, status_code=202)
+
+
+@api_router.get("/tasks/{task_id}", tags=["Tasks"])
+def get_task_status_endpoint(task_id: str):
+    """
+    Retrieves the status of a background task.
+    """
+    status = get_task_status(task_id)
+    return JSONResponse(status)
+
+
+def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[str, Any]):
+    """
+    A wrapper function to run the image generation in the background.
+    """
     try:
-        
+        # --- Prepare logging data ---
+        trigger_time = datetime.now(timezone.utc)
+        user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
+        model_used = body.get('model')
+        prompt = body.get('prompt')
+        negative_prompt = body.get('negative_prompt')
+        aspect_ratio = body.get('aspect_ratio')
+        sample_count = body.get('sample_count')
+
         start_time = time.time()
         images = imagen_client.models.generate_images(
             model=model_used,
@@ -754,60 +763,62 @@ async def generate_image(request: Request, user: dict = Depends(get_user)):
                     "signed_url": signed_url
                 })
         
-        return JSONResponse({
+        return {
             "message": "Image generation successful.",
             "images": image_data,
-            "duration": op_duration
-        }, status_code=200)
+            "duration": op_duration,
+            "prompt": prompt,
+            "model_used": model_used
+        }
 
     except Exception as e:
         # --- Log FAILURE to BigQuery ---
         log_generation_to_bq(
-            user_email=user_email,
-            trigger_time=trigger_time,
+            user_email=user_info.get('email', 'anonymous') if user_info else 'anonymous',
+            trigger_time=datetime.now(timezone.utc),
             completion_time=datetime.now(timezone.utc),
-            operation_duration=time.time() - trigger_time.timestamp(),
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            model_used=model_used,
+            operation_duration=0,
+            prompt=body.get('prompt'),
+            negative_prompt=body.get('negative_prompt'),
+            model_used=body.get('model'),
             status="FAILURE",
             error_message=str(e),
-            aspect_ratio=aspect_ratio
+            aspect_ratio=body.get('aspect_ratio')
         )
+        logger.error(f"Image generation failed in background. Error: {e}", exc_info=True)
+        raise
 
-        logger.error(f"Image generation failed for user {user_email}. Error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
-
-
-@api_router.post("/images/imitate", tags=["Image Generation"])
-async def imitate_image(
-    user: dict = Depends(get_user),
-    file: UploadFile = File(...),
-    sub_prompt: str = Form(""),
-    model: str = Form(...),
-    sample_count: int = Form(1)
-):
+@api_router.post("/images/generate", tags=["Image Generation"])
+async def generate_image(request: Request, user: dict = Depends(get_user)):
     if app_conf.get('ENABLE_OAUTH', False) and not user:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+    body = await request.json()
+
+    if not body.get('prompt'):
+        raise HTTPException(status_code=400, detail="Prompt is required.")
+
+    task_id = create_task(background_image_generation, user_info=user, body=body)
+    return JSONResponse({"task_id": task_id}, status_code=202)
 
 
+def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: bytes, file_content_type: str, file_filename: str, sub_prompt: str, model: str, sample_count: int):
+    """
+    A wrapper function to run the image imitation in the background.
+    """
     try:
         # 1. Upload image to GCS
-        user_email = user.get('email', 'anonymous') if user else 'anonymous'
+        user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
         user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
         
         storage_client = storage.Client(project=PROJECT)
         bucket = storage_client.bucket(BUCKET_NAME)
         
-        file_extension = Path(file.filename).suffix
+        file_extension = Path(file_filename).suffix
         blob_name = f"image_uploads/{user_folder}/{uuid.uuid4().hex}{file_extension}"
         blob = bucket.blob(blob_name)
 
-        img_bytes = await file.read()
-        blob.upload_from_string(img_bytes, content_type=file.content_type)
+        blob.upload_from_string(file_bytes, content_type=file_content_type)
         
         gcs_uri = f"gs://{BUCKET_NAME}/{blob_name}"
         logger.info(f"User {user_email} uploaded image to {gcs_uri}")
@@ -815,7 +826,7 @@ async def imitate_image(
         # 2. Describe the image with Gemini
         gemini_client = genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
         
-        image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=file.content_type)
+        image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=file_content_type)
 
         response = gemini_client.models.generate_content(
             model="gemini-2.5-flash",
@@ -896,16 +907,45 @@ async def imitate_image(
                     "signed_url": signed_url
                 })
         
-        return JSONResponse({
+        return {
             "message": "Image imitation successful.",
             "images": image_data,
             "duration": op_duration,
-            "revised_prompt": combined_prompt
-        }, status_code=200)
+            "revised_prompt": combined_prompt,
+            "model": model
+        }
 
     except Exception as e:
-        logger.error(f"Image imitation failed for user {user.get('email', 'anonymous')}. Error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Image imitation failed: {e}")
+        logger.error(f"Image imitation failed in background. Error: {e}", exc_info=True)
+        raise
+
+@api_router.post("/images/imitate", tags=["Image Generation"])
+async def imitate_image(
+    user: dict = Depends(get_user),
+    file: UploadFile = File(...),
+    sub_prompt: str = Form(""),
+    model: str = Form(...),
+    sample_count: int = Form(1)
+):
+    if app_conf.get('ENABLE_OAUTH', False) and not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+
+    file_bytes = await file.read()
+    
+    task_id = create_task(
+        background_image_imitation,
+        user_info=user,
+        file_bytes=file_bytes,
+        file_content_type=file.content_type,
+        file_filename=file.filename,
+        sub_prompt=sub_prompt,
+        model=model,
+        sample_count=sample_count
+    )
+    return JSONResponse({"task_id": task_id}, status_code=202)
 
 
 @api_router.get("/gcs/videos", tags=["GCS"])
