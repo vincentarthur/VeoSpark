@@ -172,7 +172,7 @@
     "title": "模型成本分析",
     "noData": "暂无分析数据。",
     "dailyConsumption": "每日成本趋势",
-    "topUsers": "用户成本排行 (Top 5)",
+    "topUsers": "用户成本排行",
     "modelDistribution": "模型使用分布",
     "totalSeconds": "总秒数",
     "secondsGenerated": "生成秒数",

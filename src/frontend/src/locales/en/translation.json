@@ -173,7 +173,7 @@
     "title": "Model Cost Analytics",
     "noData": "No analytics data available yet.",
     "dailyConsumption": "Daily Cost Trend",
-    "topUsers": "Top 5 Users by Cost",
+    "topUsers": "Top Users by Cost",
     "modelDistribution": "Model Usage Distribution",
     "totalSeconds": "Total Seconds",
     "secondsGenerated": "Seconds Generated",

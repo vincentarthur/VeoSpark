@@ -170,7 +170,7 @@
     "title": "モデルコスト分析",
     "noData": "分析データはまだありません。",
     "dailyConsumption": "毎日のコスト傾向",
-    "topUsers": "ユーザーコストランキング (トップ5)",
+    "topUsers": "コスト別のトップユーザー",
     "modelDistribution": "モデル使用分布",
     "totalSeconds": "合計秒数",
     "secondsGenerated": "生成された秒数",
