@@ -259,6 +259,7 @@
   },
   "configurations": {
     "title": "配置",
+    "quotaType": "配额类型",
     "noLimit": "无限制",
     "costLimit": "成本限制",
     "generationQuantity": "生成数量",

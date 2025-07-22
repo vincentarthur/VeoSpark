@@ -259,6 +259,7 @@
   },
   "configurations": {
     "title": "Configurations",
+    "quotaType": "Quota Type",
     "noLimit": "No Limit",
     "costLimit": "Cost Limit",
     "generationQuantity": "Generation Quantity",

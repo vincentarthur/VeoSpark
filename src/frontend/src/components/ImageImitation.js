@@ -23,6 +23,7 @@ const ImageImitation = ({ user }) => {
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
   const [revisedPrompt, setRevisedPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState(null);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -31,7 +32,9 @@ const ImageImitation = ({ user }) => {
         const fetchedModels = response.data.models || [];
         setModels(fetchedModels);
         if (fetchedModels.length > 0) {
-          form.setFieldsValue({ model: fetchedModels[0].id });
+          const initialModel = fetchedModels[0].id;
+          form.setFieldsValue({ model: initialModel });
+          setSelectedModel(initialModel);
         }
       } catch (error) {
         console.error("Failed to fetch models:", error);
@@ -119,14 +122,19 @@ const ImageImitation = ({ user }) => {
               <TextArea rows={2} />
             </Form.Item>
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
-              <Select>
+              <Select onChange={(value) => {
+                setSelectedModel(value);
+                if (value === 'imagen-4.0-ultra-generate-preview-06-06') {
+                  form.setFieldsValue({ sample_count: 1 });
+                }
+              }}>
                 {models.map((m) => (
                   <Option key={m.id} value={m.id}>{m.name}</Option>
                 ))}
               </Select>
             </Form.Item>
             <Form.Item name="sample_count" label={t('imageGenerator.sampleCountLabel')}>
-              <Select disabled={form.getFieldValue('model') === 'imagen-4.0-ultra-generate-preview-06-06'}>
+              <Select disabled={selectedModel === 'imagen-4.0-ultra-generate-preview-06-06'}>
                 {[1, 2, 3, 4].map(count => (
                   <Option key={count} value={count}>{count}</Option>
                 ))}

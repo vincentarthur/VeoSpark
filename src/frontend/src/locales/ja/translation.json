@@ -257,6 +257,7 @@
   },
   "configurations": {
     "title": "設定",
+    "quotaType": "クォータタイプ",
     "noLimit": "制限なし",
     "costLimit": "コスト制限",
     "generationQuantity": "生成数量",
