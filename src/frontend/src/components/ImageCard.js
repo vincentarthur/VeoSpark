@@ -57,11 +57,11 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
             <img
               alt={image.prompt}
               src={image.signed_url}
-              style={{ height: 200, objectFit: 'cover', cursor: 'pointer' }}
+              style={{ height: 300, objectFit: 'contain', cursor: 'pointer' }}
               onClick={() => setIsModalVisible(true)}
             />
           ) : (
-            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
+            <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
               <Text type="secondary">{t('history.noPreview')}</Text>
             </div>
           )

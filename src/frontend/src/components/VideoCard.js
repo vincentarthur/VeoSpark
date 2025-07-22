@@ -67,10 +67,10 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
           <video
             src={video.signed_urls[0]}
             controls
-            style={{ width: '100%', height: 200, objectFit: 'cover' }}
+            style={{ width: '100%', height: 300, objectFit: 'contain' }}
           />
         ) : (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
+          <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f2f5' }}>
             <VideoCameraOutlined style={{ fontSize: 48, color: '#ccc' }} />
           </div>
         )
