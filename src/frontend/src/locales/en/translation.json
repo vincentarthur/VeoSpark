@@ -195,6 +195,7 @@
     "promptLabel": "Prompt",
     "negativePromptLabel": "Negative Prompt",
     "aspectRatioLabel": "Aspect Ratio",
+    "imageResolutionLabel": "Image Resolution",
     "sampleCountLabel": "Number of Images",
     "generateButton": "Generate Images",
     "generatingStatus": "Generating...",

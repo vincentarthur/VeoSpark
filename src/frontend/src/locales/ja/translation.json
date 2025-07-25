@@ -192,6 +192,7 @@
     "promptLabel": "プロンプト",
     "negativePromptLabel": "ネガティブプロンプト",
     "aspectRatioLabel": "アスペクト比",
+    "imageResolutionLabel": "画像解像度",
     "sampleCountLabel": "画像数",
     "generateButton": "画像を生成",
     "generatingStatus": "生成中...",

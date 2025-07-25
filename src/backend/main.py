@@ -70,6 +70,7 @@ def log_generation_to_bq(**kwargs):
                 "error_message": str(kwargs.get("error_message", None)),
                 "aspect_ratio": kwargs.get("aspect_ratio"),
                 "output_image_gcs_path": kwargs.get("output_image_gcs_path"),
+                "resolution": kwargs.get("resolution"),
             }
         else:
             row_to_insert = {
@@ -704,6 +705,7 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
         negative_prompt = body.get('negative_prompt')
         aspect_ratio = body.get('aspect_ratio')
         sample_count = body.get('sample_count')
+        image_size = body.get('image_size')
 
         start_time = time.time()
         images = imagen_client.models.generate_images(
@@ -715,7 +717,8 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                 negative_prompt=negative_prompt,
                 person_generation="allow_all",
                 safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
-                add_watermark=True
+                add_watermark=True,
+                image_size=image_size
             )
         )
         op_duration = time.time() - start_time
@@ -749,7 +752,8 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                 model_used=model_used,
                 status="SUCCESS",
                 aspect_ratio=aspect_ratio,
-                output_image_gcs_path=path
+                output_image_gcs_path=path,
+                resolution=image_size
             )
 
         # --- Return response to frontend ---
@@ -768,7 +772,8 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
             "images": image_data,
             "duration": op_duration,
             "prompt": prompt,
-            "model_used": model_used
+            "model_used": model_used,
+            "resolution": image_size
         }
 
     except Exception as e:
@@ -783,7 +788,8 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
             model_used=body.get('model'),
             status="FAILURE",
             error_message=str(e),
-            aspect_ratio=body.get('aspect_ratio')
+            aspect_ratio=body.get('aspect_ratio'),
+            resolution=body.get('image_size')
         )
         logger.error(f"Image generation failed in background. Error: {e}", exc_info=True)
         raise
@@ -1122,7 +1128,8 @@ def get_image_history(
             prompt,
             model_used,
             output_image_gcs_path,
-            status
+            status,
+            resolution
         FROM
             `{PROJECT}.{dataset_id}.imagen_history`
         WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC

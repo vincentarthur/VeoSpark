@@ -93,6 +93,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
           <Panel header={t('history.details')} key="1">
             <Text strong>{t('history.fullPrompt')}:</Text> <Text>{image.prompt}</Text><br />
             <Text strong>{t('history.model')}:</Text> <Text>{modelName}</Text><br />
+            <Text strong>{t('history.resolution')}:</Text> <Text>{image.resolution}</Text><br />
             <Text strong>{t('history.genDuration')}:</Text> <Text>{Math.round(image.operation_duration || 0)}s</Text><br />
             <Text strong>{t('history.completionTime')}:</Text> <Text>{formatDate(image.completion_time)}</Text><br />
           </Panel>

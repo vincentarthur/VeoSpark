@@ -194,6 +194,7 @@
     "promptLabel": "提示",
     "negativePromptLabel": "负面提示",
     "aspectRatioLabel": "长宽比",
+    "imageResolutionLabel": "图片分辨率",
     "sampleCountLabel": "图片数量",
     "generateButton": "生成图片",
     "generatingStatus": "生成中...",

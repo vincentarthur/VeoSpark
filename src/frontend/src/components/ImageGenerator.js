@@ -66,6 +66,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
             status: 'SUCCESS',
             trigger_time: new Date().toISOString(),
             user_email: user.email,
+            resolution: result.resolution,
           }));
           setGeneratedImages(syntheticImages);
           setLoading(false);
@@ -115,6 +116,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
           <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{
             aspect_ratio: '1:1',
             sample_count: 1,
+            image_size: '1K',
           }}>
             <Form.Item name="model" label={t('imageGenerator.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={(value) => {
@@ -144,6 +146,14 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
                     <Option value="9:16">9:16</Option>
                     <Option value="4:3">4:3</Option>
                     <Option value="3:4">3:4</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="image_size" label={t('imageGenerator.imageResolutionLabel')}>
+                  <Select>
+                    <Option value="1K">1K</Option>
+                    <Option value="2K">2K</Option>
                   </Select>
                 </Form.Item>
               </Col>
