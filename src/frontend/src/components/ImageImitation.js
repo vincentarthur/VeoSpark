@@ -62,6 +62,7 @@ const ImageImitation = ({ user }) => {
             completion_time: new Date().toISOString(),
             operation_duration: result.duration,
             user_email: user.email,
+            resolution: result.resolution,
           }));
           setGeneratedImages(syntheticImages);
           setRevisedPrompt(result.revised_prompt);
@@ -112,6 +113,7 @@ const ImageImitation = ({ user }) => {
     formData.append('sub_prompt', values.sub_prompt);
     formData.append('model', values.model);
     formData.append('sample_count', values.sample_count);
+    formData.append('image_size', values.image_size);
 
     try {
       const response = await axios.post('/api/images/imitate', formData, {
@@ -134,7 +136,7 @@ const ImageImitation = ({ user }) => {
       <Col xs={24} md={8}>
         <Card>
           <Title level={2}>{t('nav.imageImitation')}</Title>
-          <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ sample_count: 1 }}>
+          <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ sample_count: 1, image_size: '1K' }}>
             <Form.Item label={t('imageImitation.uploadImage')}>
               <Upload
                 beforeUpload={handleImageUpload}
@@ -173,6 +175,12 @@ const ImageImitation = ({ user }) => {
                 {[1, 2, 3, 4].map(count => (
                   <Option key={count} value={count}>{count}</Option>
                 ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="image_size" label={t('imageGenerator.imageResolutionLabel')}>
+              <Select>
+                <Option value="1K">1K</Option>
+                <Option value="2K">2K</Option>
               </Select>
             </Form.Item>
             <Form.Item>

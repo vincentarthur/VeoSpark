@@ -808,7 +808,7 @@ async def generate_image(request: Request, user: dict = Depends(get_user)):
     return JSONResponse({"task_id": task_id}, status_code=202)
 
 
-def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: bytes, file_content_type: str, file_filename: str, sub_prompt: str, model: str, sample_count: int):
+def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: bytes, file_content_type: str, file_filename: str, sub_prompt: str, model: str, sample_count: int, image_size: str):
     """
     A wrapper function to run the image imitation in the background.
     """
@@ -867,7 +867,8 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
                 number_of_images=sample_count,
                 person_generation="allow_all",
                 safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
-                add_watermark=True
+                add_watermark=True,
+                image_size=image_size
             )
         )
         op_duration = time.time() - start_time
@@ -900,7 +901,8 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
                 negative_prompt=None,
                 model_used=model,
                 status="SUCCESS",
-                output_image_gcs_path=path
+                output_image_gcs_path=path,
+                resolution=image_size
             )
 
         image_data = []
@@ -918,7 +920,8 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
             "images": image_data,
             "duration": op_duration,
             "revised_prompt": combined_prompt,
-            "model": model
+            "model": model,
+            "resolution": image_size
         }
 
     except Exception as e:
@@ -931,7 +934,8 @@ async def imitate_image(
     file: UploadFile = File(...),
     sub_prompt: str = Form(""),
     model: str = Form(...),
-    sample_count: int = Form(1)
+    sample_count: int = Form(1),
+    image_size: str = Form("1K")
 ):
     if app_conf.get('ENABLE_OAUTH', False) and not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -949,7 +953,8 @@ async def imitate_image(
         file_filename=file.filename,
         sub_prompt=sub_prompt,
         model=model,
-        sample_count=sample_count
+        sample_count=sample_count,
+        image_size=image_size
     )
     return JSONResponse({"task_id": task_id}, status_code=202)
 
