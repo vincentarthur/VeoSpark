@@ -53,7 +53,12 @@
     "selectVideoLabel": "Select a video to extend",
     "extendDurationLabel": "Extend Duration",
     "gcsPrefixLabel": "GCS Prefix",
-    "loadingVideos": "Loading Videos..."
+    "loadingVideos": "Loading Videos...",
+    "raiFilterTitle": "Content Moderation",
+    "raiFilterErrorCode": "Error Code",
+    "raiFilterCategory": "Category",
+    "raiFilterDescription": "Description",
+    "raiFilterFilteredContent": "Filtered Content"
   },
   "history": {
     "title": "My Generation History",

@@ -126,6 +126,14 @@ except (FileNotFoundError, yaml.YAMLError) as e:
     logger.critical(f"Could not load or parse 'models.yaml'. Error: {e}")
     sys.exit(1)
 
+try:
+    with open('./safety_filters.yaml', 'r') as f:
+        SAFETY_FILTER_REASONS = yaml.safe_load(f)
+    logger.info("Successfully loaded safety_filters.yaml.")
+except (FileNotFoundError, yaml.YAMLError) as e:
+    logger.critical(f"Could not load or parse 'safety_filters.yaml'. Error: {e}")
+    SAFETY_FILTER_REASONS = {}
+
 image_models_conf = get_image_models()
 
 # Overwrite with environment variables if they exist, for cloud deployments
@@ -265,12 +273,35 @@ class VeoApiClient:
             self.logger.error(f"Failed to generate signed URL for {gcs_uri}: {e}", exc_info=True)
             return ""
 
+    def _parse_rai_reason_from_error(self, error_message: str) -> Optional[Dict[str, str]]:
+        """
+        Parses the support code from a video generation error message and returns the mapped reason.
+        """
+        match = re.search(r"Support codes: (\d+)", error_message)
+        if match:
+            support_code = match.group(1)
+            reason_details = SAFETY_FILTER_REASONS.get(support_code)
+            if reason_details:
+                return {
+                    "code": support_code,
+                    "category": reason_details.get("category", "Unknown"),
+                    "description": reason_details.get("description", "An unknown safety filter was triggered."),
+                    "filtered": reason_details.get("filtered", "N/A")
+                }
+            return {
+                "code": support_code,
+                "category": "Unknown",
+                "description": "An unknown safety filter was triggered.",
+                "filtered": "N/A"
+            }
+        return None
+
     def generate_video(
             self,
             prompt: str,
             user_info: Optional[Dict[str, Any]],
             **kwargs
-    ) -> Tuple[List[str], List[str], float, str]:
+    ) -> Tuple[List[str], List[str], float, str, Optional[List[str]]]:
         self.logger.info(f"Starting video generation for prompt: '{prompt[:100]}...'")
         start_time = time.time()
 
@@ -372,17 +403,33 @@ class VeoApiClient:
                 self.logger.info(f"Captured enhanced prompt: '{revised_prompt}'")
 
             generated_videos = operation.result.generated_videos
+            rai_reasons = None
             if not generated_videos:
                 self.logger.warning("Operation completed but no videos were returned.")
-                return [], [], time.time() - start_time, revised_prompt
+                if hasattr(result, 'rai_media_filtered_reasons') and result.rai_media_filtered_reasons:
+                    raw_reasons = result.rai_media_filtered_reasons
+                    self.logger.warning(f"RAI filtering detected: {raw_reasons}")
+                    parsed_reasons = []
+                    for reason_str in raw_reasons:
+                        parsed = self._parse_rai_reason_from_error(reason_str)
+                        if parsed:
+                            parsed_reasons.append(parsed)
+                        else:
+                            parsed_reasons.append(reason_str)
+                    rai_reasons = parsed_reasons
+                return [], [], time.time() - start_time, revised_prompt, rai_reasons
 
             generated_gcs_uris = [v.video.uri for v in generated_videos if v.video and v.video.uri]
             self.logger.info(f"Found {len(generated_gcs_uris)} generated video GCS URIs.")
             total_time = time.time() - start_time
-            return [], generated_gcs_uris, total_time, revised_prompt
+            return [], generated_gcs_uris, total_time, revised_prompt, None
 
         except Exception as e:
             self.logger.error(f"An error occurred during the generate_video process: {e}", exc_info=True)
+            rai_reason_str = self._parse_rai_reason_from_error(str(e))
+            if rai_reason_str:
+                self.logger.warning(f"Video generation blocked by RAI filter: {rai_reason_str}")
+                return [], [], time.time() - start_time, None, [rai_reason_str]
             raise
 
 
@@ -585,7 +632,7 @@ def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]]
         resolution = body.get('resolution')
 
         # --- Call the generation function ---
-        _, gcs_paths, op_duration, revised_prompt = veo_client.generate_video(
+        _, gcs_paths, op_duration, revised_prompt, rai_reasons = veo_client.generate_video(
             prompt=prompt,
             user_info=user_info,
             model=model_used,
@@ -635,7 +682,8 @@ def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]]
             "message": "Video generation successful.",
             "videos": video_data,
             "duration": op_duration,
-            "revisedPrompt": revised_prompt
+            "revisedPrompt": revised_prompt,
+            "rai_reasons": rai_reasons
         }
 
     except Exception as e:

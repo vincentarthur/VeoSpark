@@ -1,0 +1,88 @@
+"58061214":
+  category: "Child"
+  description: "Detects child content where it isn't allowed due to the API request settings or allowlisting."
+  filtered: "input (prompt)"
+"17301594":
+  category: "Child"
+  description: "Detects child content where it isn't allowed due to the API request settings or allowlisting."
+  filtered: "output (image)"
+"29310472":
+  category: "Celebrity"
+  description: "Detects a photorealistic representation of a celebrity in the request."
+  filtered: "input (prompt)"
+"15236754":
+  category: "Celebrity"
+  description: "Detects a photorealistic representation of a celebrity in the request."
+  filtered: "output (image)"
+"62263041":
+  category: "Dangerous content"
+  description: "Detects content that's potentially dangerous in nature."
+  filtered: "input (prompt)"
+"57734940":
+  category: "Hate"
+  description: "Detects hate-related topics or content."
+  filtered: "input (prompt)"
+"22137204":
+  category: "Hate"
+  description: "Detects hate-related topics or content."
+  filtered: "output (image)"
+"74803281":
+  category: "Other"
+  description: "Detects other miscellaneous safety issues with the request."
+  filtered: "output (image)"
+"29578790":
+  category: "Other"
+  description: "Detects other miscellaneous safety issues with the request."
+  filtered: "output (image)"
+"42876398":
+  category: "Other"
+  description: "Detects other miscellaneous safety issues with the request."
+  filtered: "input (prompt)"
+"39322892":
+  category: "People/Face"
+  description: "Detects a person or face when it isn't allowed due to the request safety settings."
+  filtered: "output (image)"
+"92201652":
+  category: "Personal information"
+  description: "Detects Personally Identifiable Information (PII) in the text, such as the mentioning a credit card number, home addresses, or other such information."
+  filtered: "input (prompt)"
+"89371032":
+  category: "Prohibited content"
+  description: "Detects the request of prohibited content in the request."
+  filtered: "input (prompt)"
+"49114662":
+  category: "Prohibited content"
+  description: "Detects the request of prohibited content in the request."
+  filtered: "output (image)"
+"72817394":
+  category: "Prohibited content"
+  description: "Detects the request of prohibited content in the request."
+  filtered: "output (image)"
+"90789179":
+  category: "Sexual"
+  description: "Detects content that's sexual in nature."
+  filtered: "input (prompt)"
+"63429089":
+  category: "Sexual"
+  description: "Detects content that's sexual in nature."
+  filtered: "output (image)"
+"43188360":
+  category: "Sexual"
+  description: "Detects content that's sexual in nature."
+  filtered: "output (image)"
+"78610348":
+  category: "Toxic"
+  description: "Detects toxic topics or content in the text."
+  filtered: "input (prompt)"
+"61493863":
+  category: "Violence"
+  description: "Detects violence-related content from the image or text."
+  filtered: "input (prompt)"
+"56562880":
+  category: "Violence"
+  description: "Detects violence-related content from the image or text."
+  filtered: "output (image)"
+"32635315":
+  category: "Vulgar"
+  description: "Detects vulgar topics or content from the text."
+  filtered: "input (prompt)"

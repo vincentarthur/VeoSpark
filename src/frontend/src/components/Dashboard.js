@@ -88,6 +88,7 @@ const Dashboard = ({ initialFirstFrame }) => {
   const [error, setError] = useState(null);
   const [generatedVideos, setGeneratedVideos] = useState([]); // Now stores array of video objects
   const [revisedPrompt, setRevisedPrompt] = useState('');
+  const [raiReasons, setRaiReasons] = useState([]);
   const [pollingTaskId, setPollingTaskId] = useState(null);
   const promptInputRef = useRef(null);
 
@@ -227,9 +228,12 @@ const Dashboard = ({ initialFirstFrame }) => {
         const { status, result, error } = response.data;
 
         if (status === 'completed') {
-          setGeneratedVideos(result.videos);
+          setGeneratedVideos(result.videos || []);
           if (result.revisedPrompt) {
             setRevisedPrompt(result.revisedPrompt);
+          }
+          if (result.rai_reasons) {
+            setRaiReasons(result.rai_reasons);
           }
           setLoading(false);
           setPollingTaskId(null);
@@ -256,6 +260,7 @@ const Dashboard = ({ initialFirstFrame }) => {
     setError(null);
     setGeneratedVideos([]);
     setRevisedPrompt('');
+    setRaiReasons([]);
 
     try {
       const isExtending = isV2GenerateModel && generationMode === 'extend';
@@ -450,6 +455,26 @@ const Dashboard = ({ initialFirstFrame }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
           {loading && <Spin size="large" tip={t('dashboard.generatingStatus')} />}
           {error && <Alert message={error} type="error" showIcon />}
+          {raiReasons && raiReasons.length > 0 && (
+            <Alert
+              message={t('dashboard.raiFilterTitle')}
+              description={
+                <div>
+                  {raiReasons.map((reason, index) => (
+                    <div key={index} style={{ marginBottom: '10px' }}>
+                      <Text strong>{t('dashboard.raiFilterErrorCode')}:</Text> {reason.code}<br />
+                      <Text strong>{t('dashboard.raiFilterCategory')}:</Text> {reason.category}<br />
+                      <Text strong>{t('dashboard.raiFilterDescription')}:</Text> {reason.description}<br />
+                      <Text strong>{t('dashboard.raiFilterFilteredContent')}:</Text> {reason.filtered}
+                    </div>
+                  ))}
+                </div>
+              }
+              type="warning"
+              showIcon
+              style={{ width: '100%' }}
+            />
+          )}
           {revisedPrompt && (
             <Alert
               message={<Text strong>Enhanced Prompt</Text>}

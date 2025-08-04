@@ -52,7 +52,12 @@
     "extendVideoTitle": "扩展视频",
     "selectVideoLabel": "选择要扩展的视频",
     "extendDurationLabel": "扩展时长",
-    "loadingVideos": "正在加载视频..."
+    "loadingVideos": "正在加载视频...",
+    "raiFilterTitle": "内容审核",
+    "raiFilterErrorCode": "错误代码",
+    "raiFilterCategory": "类别",
+    "raiFilterDescription": "描述",
+    "raiFilterFilteredContent": "过滤内容"
   },
   "history": {
     "title": "我的生成历史",
