@@ -10,7 +10,7 @@ import ImageCard from './ImageCard';
 import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 

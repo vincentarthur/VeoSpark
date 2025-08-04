@@ -7,7 +7,7 @@ import { UploadOutlined, CloseOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import ImageCard from './ImageCard';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 const { Panel } = Collapse;
