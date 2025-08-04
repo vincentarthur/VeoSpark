@@ -23,6 +23,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
+  const [raiReasons, setRaiReasons] = useState([]);
   const [pollingTaskId, setPollingTaskId] = useState(null);
   const {
     modalOpen: shareModalOpen,
@@ -69,6 +70,9 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
             resolution: result.resolution,
           }));
           setGeneratedImages(syntheticImages);
+          if (result.rai_reasons) {
+            setRaiReasons(result.rai_reasons);
+          }
           setLoading(false);
           setPollingTaskId(null);
           clearInterval(interval);
@@ -93,6 +97,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
     setLoading(true);
     setError(null);
     setGeneratedImages([]);
+    setRaiReasons([]);
 
     try {
       const response = await axios.post('/api/images/generate', { ...values, sample_count: sampleCount });
@@ -188,6 +193,26 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
       <Col xs={24} md={16}>
         {loading && <Spin size="large" />}
         {error && <Alert message={error} type="error" showIcon />}
+        {raiReasons && raiReasons.length > 0 && (
+            <Alert
+              message={t('dashboard.raiFilterTitle')}
+              description={
+                <div>
+                  {raiReasons.map((reason, index) => (
+                    <div key={index} style={{ marginBottom: '10px' }}>
+                      <Text strong>{t('dashboard.raiFilterErrorCode')}:</Text> {reason.code}<br />
+                      <Text strong>{t('dashboard.raiFilterCategory')}:</Text> {reason.category}<br />
+                      <Text strong>{t('dashboard.raiFilterDescription')}:</Text> {reason.description}<br />
+                      <Text strong>{t('dashboard.raiFilterFilteredContent')}:</Text> {reason.filtered}
+                    </div>
+                  ))}
+                </div>
+              }
+              type="warning"
+              showIcon
+              style={{ width: '100%', marginBottom: 16 }}
+            />
+        )}
         {generatedImages.length > 0 && (
           <Card>
             <Title level={4}>{t('imageGenerator.resultsTitle')}</Title>

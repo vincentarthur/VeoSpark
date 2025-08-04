@@ -744,18 +744,19 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
     """
     A wrapper function to run the image generation in the background.
     """
+    trigger_time = datetime.now(timezone.utc)
+    user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
+    model_used = body.get('model')
+    prompt = body.get('prompt')
+    
     try:
-        # --- Prepare logging data ---
-        trigger_time = datetime.now(timezone.utc)
-        user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
-        model_used = body.get('model')
-        prompt = body.get('prompt')
         negative_prompt = body.get('negative_prompt')
         aspect_ratio = body.get('aspect_ratio')
         sample_count = body.get('sample_count')
         image_size = body.get('image_size')
 
         start_time = time.time()
+        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
         images = imagen_client.models.generate_images(
             model=model_used,
             prompt=prompt,
@@ -766,13 +767,23 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                 person_generation="allow_all",
                 safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
                 add_watermark=True,
-                image_size=image_size
+                image_size=image_size,
+                include_rai_reason=True
             )
         )
         op_duration = time.time() - start_time
 
         gcs_paths = []
+        rai_reasons = []
         for generated_image in images.generated_images:
+            if generated_image.rai_filtered_reason:
+                reason = veo_client._parse_rai_reason_from_error(f"Support codes: {generated_image.rai_filtered_reason}")
+                if reason:
+                    rai_reasons.append(reason)
+                else:
+                    rai_reasons.append({"code": generated_image.rai_filtered_reason, "description": "Unknown reason"})
+                continue
+
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
                 generated_image.image._pil_image.save(temp_file.name)
                 
@@ -786,7 +797,6 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                 
                 gcs_paths.append(f"gs://{BUCKET_NAME}/{blob_name}")
 
-        # --- Log SUCCESS to BigQuery for each generated image ---
         completion_time = datetime.now(timezone.utc)
         
         for path in gcs_paths:
@@ -804,9 +814,7 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                 resolution=image_size
             )
 
-        # --- Return response to frontend ---
         image_data = []
-        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
         for uri in gcs_paths:
             signed_url = veo_client.generate_signed_gcs_url(uri)
             if signed_url:
@@ -821,10 +829,23 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
             "duration": op_duration,
             "prompt": prompt,
             "model_used": model_used,
-            "resolution": image_size
+            "resolution": image_size,
+            "rai_reasons": rai_reasons if rai_reasons else None
         }
 
     except Exception as e:
+        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+        rai_reason = veo_client._parse_rai_reason_from_error(str(e))
+        if rai_reason:
+            return {
+                "message": "Image generation failed due to safety filters.",
+                "images": [],
+                "duration": 0,
+                "prompt": prompt,
+                "model_used": model_used,
+                "resolution": body.get('image_size'),
+                "rai_reasons": [rai_reason]
+            }
         # --- Log FAILURE to BigQuery ---
         log_generation_to_bq(
             user_email=user_info.get('email', 'anonymous') if user_info else 'anonymous',
@@ -860,9 +881,11 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
     """
     A wrapper function to run the image imitation in the background.
     """
+    user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
+    veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+    
     try:
         # 1. Upload image to GCS
-        user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
         user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
         
         storage_client = storage.Client(project=PROJECT)
@@ -893,7 +916,6 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
         )
         image_description = response.text
 
-        # 2. Combine with sub-prompt
         combined_prompt_template = IMAGE_IMITATION_PROMPT_COMBINATION.format(image_description_json=image_description, cust_input_text=sub_prompt)
 
         response = gemini_client.models.generate_content(
@@ -916,13 +938,23 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
                 person_generation="allow_all",
                 safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
                 add_watermark=True,
-                image_size=image_size
+                image_size=image_size,
+                include_rai_reason=True
             )
         )
         op_duration = time.time() - start_time
 
         gcs_paths = []
+        rai_reasons = []
         for generated_image in images.generated_images:
+            if generated_image.rai_filtered_reason:
+                reason = veo_client._parse_rai_reason_from_error(f"Support codes: {generated_image.rai_filtered_reason}")
+                if reason:
+                    rai_reasons.append(reason)
+                else:
+                    rai_reasons.append({"code": generated_image.rai_filtered_reason, "description": "Unknown reason"})
+                continue
+
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
                 generated_image.image._pil_image.save(temp_file.name)
                 
@@ -936,7 +968,6 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
                 
                 gcs_paths.append(f"gs://{BUCKET_NAME}/{blob_name}")
 
-        # 4. Log and return
         completion_time = datetime.now(timezone.utc)
         
         for path in gcs_paths:
@@ -954,7 +985,6 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
             )
 
         image_data = []
-        veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
         for uri in gcs_paths:
             signed_url = veo_client.generate_signed_gcs_url(uri)
             if signed_url:
@@ -969,10 +999,22 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
             "duration": op_duration,
             "revised_prompt": combined_prompt,
             "model": model,
-            "resolution": image_size
+            "resolution": image_size,
+            "rai_reasons": rai_reasons if rai_reasons else None
         }
 
     except Exception as e:
+        rai_reason = veo_client._parse_rai_reason_from_error(str(e))
+        if rai_reason:
+            return {
+                "message": "Image imitation failed due to safety filters.",
+                "images": [],
+                "duration": 0,
+                "revised_prompt": None,
+                "model": model,
+                "resolution": image_size,
+                "rai_reasons": [rai_reason]
+            }
         logger.error(f"Image imitation failed in background. Error: {e}", exc_info=True)
         raise
 

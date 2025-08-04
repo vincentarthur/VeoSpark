@@ -23,6 +23,7 @@ const ImageImitation = ({ user }) => {
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
   const [revisedPrompt, setRevisedPrompt] = useState('');
+  const [raiReasons, setRaiReasons] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const [pollingTaskId, setPollingTaskId] = useState(null);
 
@@ -66,6 +67,9 @@ const ImageImitation = ({ user }) => {
           }));
           setGeneratedImages(syntheticImages);
           setRevisedPrompt(result.revised_prompt);
+          if (result.rai_reasons) {
+            setRaiReasons(result.rai_reasons);
+          }
           setLoading(false);
           setPollingTaskId(null);
           clearInterval(interval);
@@ -107,6 +111,7 @@ const ImageImitation = ({ user }) => {
     setError(null);
     setGeneratedImages([]);
     setRevisedPrompt('');
+    setRaiReasons([]);
 
     const formData = new FormData();
     formData.append('file', imageFile);
@@ -194,6 +199,26 @@ const ImageImitation = ({ user }) => {
       <Col xs={24} md={16}>
         {loading && <Spin size="large" />}
         {error && <Alert message={error} type="error" showIcon />}
+        {raiReasons && raiReasons.length > 0 && (
+            <Alert
+              message={t('dashboard.raiFilterTitle')}
+              description={
+                <div>
+                  {raiReasons.map((reason, index) => (
+                    <div key={index} style={{ marginBottom: '10px' }}>
+                      <Text strong>{t('dashboard.raiFilterErrorCode')}:</Text> {reason.code}<br />
+                      <Text strong>{t('dashboard.raiFilterCategory')}:</Text> {reason.category}<br />
+                      <Text strong>{t('dashboard.raiFilterDescription')}:</Text> {reason.description}<br />
+                      <Text strong>{t('dashboard.raiFilterFilteredContent')}:</Text> {reason.filtered}
+                    </div>
+                  ))}
+                </div>
+              }
+              type="warning"
+              showIcon
+              style={{ width: '100%', marginBottom: 16 }}
+            />
+        )}
         {revisedPrompt && (
           <Collapse>
             <Panel header="Consolidated Prompt" key="1">
