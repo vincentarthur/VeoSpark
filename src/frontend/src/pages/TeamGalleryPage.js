@@ -11,7 +11,7 @@ import ImageCard from '../components/ImageCard';
 const { Title } = Typography;
 const { Option } = Select;
 
-const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
+const TeamGalleryPage = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -39,7 +39,7 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`/api/groups/${selectedGroup}/items`);
+      const response = await axios.get(`/api/teamgallery/${selectedGroup}/items`);
       setItems(response.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch shared items.');
@@ -56,11 +56,11 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
 
   const handleDeleteClick = (item) => {
     Modal.confirm({
-      title: t('sharedItems.confirmDeleteTitle'),
-      content: t('sharedItems.confirmDeleteDescription'),
+      title: t('teamGallery.confirmDeleteTitle'),
+      content: t('teamGallery.confirmDeleteDescription'),
       onOk: async () => {
         try {
-          await axios.delete(`/api/shared-items/${item.id}`);
+          await axios.delete(`/api/teamgallery/${item.id}`);
           setItems(items.filter((v) => v.id !== item.id));
         } catch (err) {
           setError(err.response?.data?.detail || 'Could not delete item.');
@@ -73,7 +73,7 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
     <Card>
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
-          <Title level={2}>{t('sharedItems.title')}</Title>
+          <Title level={2}>{t('teamGallery.title')}</Title>
         </Col>
         <Col>
           <Button
@@ -83,7 +83,7 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
             loading={loading}
             disabled={!selectedGroup}
           >
-            {t('sharedItems.refresh')}
+            {t('teamGallery.refresh')}
           </Button>
         </Col>
       </Row>
@@ -92,7 +92,7 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
         value={selectedGroup}
         style={{ width: '100%', marginBottom: 16 }}
         onChange={setSelectedGroup}
-        placeholder={t('sharedItems.selectGroup')}
+        placeholder={t('teamGallery.selectGroup')}
       >
         {groups.map((group) => (
           <Option key={group.id} value={group.id}>{group.name}</Option>
@@ -103,7 +103,7 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
       {error && <Alert message={error} type="error" />}
       
       {!loading && !error && items.length === 0 && (
-        <Typography.Text>{t('sharedItems.noItems')}</Typography.Text>
+        <Typography.Text>{t('teamGallery.noItems')}</Typography.Text>
       )}
 
       {!loading && !error && items.length > 0 && (
@@ -123,4 +123,4 @@ const SharedItemsPage = ({ user, onUseAsFirstFrame }) => {
   );
 };
 
-export default SharedItemsPage;
+export default TeamGalleryPage;

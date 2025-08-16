@@ -146,8 +146,16 @@ app.include_router(images_router, prefix="/api/images", tags=["Image Generation"
 # ==============================================================================
 # This must be placed at the end, after all other API and auth routes have been defined.
 # It acts as a catch-all to serve the React application.
+@app.middleware("http")
+async def catch_all_middleware(request: Request, call_next):
+    response = await call_next(request)
+    if response.status_code == 404 and not request.url.path.startswith('/api/') and '.' not in request.url.path:
+        return FileResponse("static/index.html")
+    return response
+
 app.mount("/static", StaticFiles(directory="static/static"), name="static_assets")
 app.mount("/", StaticFiles(directory="static", html=True), name="app")
+
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", "7860"))

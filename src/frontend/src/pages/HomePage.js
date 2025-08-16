@@ -14,7 +14,7 @@ import ConfigurationsPage from '../components/ConfigurationsPage';
 import PromptGalleryPage from './PromptGalleryPage';
 import CreativeProjectsPage from './CreativeProjectsPage';
 import GroupsPage from './GroupsPage';
-import SharedItemsPage from './SharedItemsPage';
+import TeamGalleryPage from './TeamGalleryPage';
 
 const { Content, Footer } = Layout;
 const { TabPane } = Tabs;
@@ -34,7 +34,7 @@ const HomePage = ({ user }) => {
     const path = location.pathname;
     if (path.startsWith('/gallery')) return 'gallery';
     if (path.startsWith('/history')) return 'history';
-    if (path.startsWith('/shared-items')) return 'shared-items';
+    if (path.startsWith('/teamgallery')) return 'teamgallery';
     if (path.startsWith('/creative-projects')) return 'creative-projects';
     if (path.startsWith('/groups')) return 'groups';
     if (path.startsWith('/analytics')) return 'analytics';
@@ -46,7 +46,7 @@ const HomePage = ({ user }) => {
     { key: 'generator', label: t('nav.generator'), path: '/' },
     { key: 'gallery', label: t('nav.gallery'), path: '/gallery' },
     { key: 'history', label: t('nav.history'), path: '/history' },
-    { key: 'shared-items', label: t('nav.teamGallery'), path: '/shared-items' },
+    { key: 'teamgallery', label: t('nav.teamGallery'), path: '/teamgallery' },
     { key: 'creative-projects', label: t('nav.creativeProjects'), path: '/creative-projects' },
     user?.role === 'APP_ADMIN' && { key: 'groups', label: t('nav.groups'), path: '/groups' },
     user?.is_cost_manager && { key: 'analytics', label: t('nav.analytics'), path: '/analytics' },
@@ -86,7 +86,7 @@ const HomePage = ({ user }) => {
               </Tabs>
             } />
             <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
-            <Route path="/shared-items" element={<SharedItemsPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
+            <Route path="/teamgallery" element={<TeamGalleryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
             <Route path="/creative-projects" element={<CreativeProjectsPage user={user} />} />
             {user?.role === 'APP_ADMIN' && <Route path="/groups" element={<GroupsPage />} />}
             {user?.is_cost_manager && <Route path="/analytics" element={<AnalyticsPage />} />}

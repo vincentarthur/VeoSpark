@@ -734,7 +734,7 @@ async def import_groups(request: Request, user: dict = Depends(get_user), groups
         raise HTTPException(status_code=500, detail=f"Group import failed: {e}")
 
 
-@router.post("/videos/share", tags=["Sharing"])
+@router.post("/teamgallery/share", tags=["Team Gallery"])
 async def share_video(request: Request, user: dict = Depends(get_user), shared_videos_db: firestore.Client = Depends(get_shared_videos_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -785,7 +785,7 @@ async def share_video(request: Request, user: dict = Depends(get_user), shared_v
     return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
 
 
-@router.post("/images/share", tags=["Sharing"])
+@router.post("/teamgallery/share", tags=["Team Gallery"])
 async def share_image(request: Request, user: dict = Depends(get_user), shared_videos_db: firestore.Client = Depends(get_shared_videos_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -828,7 +828,7 @@ async def share_image(request: Request, user: dict = Depends(get_user), shared_v
     return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
 
 
-@router.get("/groups/{group_id}/items", tags=["Sharing"])
+@router.get("/teamgallery/{group_id}/items", tags=["Team Gallery"])
 def get_shared_items(group_id: str, user: dict = Depends(get_user), groups_db: firestore.Client = Depends(get_groups_db), shared_videos_db: firestore.Client = Depends(get_shared_videos_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -861,7 +861,7 @@ def get_shared_items(group_id: str, user: dict = Depends(get_user), groups_db: f
     return JSONResponse(items)
 
 
-@router.delete("/shared-items/{shared_item_id}", tags=["Sharing"])
+@router.delete("/teamgallery/{shared_item_id}", tags=["Team Gallery"])
 def delete_shared_item(shared_item_id: str, user: dict = Depends(get_user), shared_videos_db: firestore.Client = Depends(get_shared_videos_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")

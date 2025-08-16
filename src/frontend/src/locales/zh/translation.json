@@ -182,7 +182,7 @@
     "assets": "资产",
     "loadAssets": "加载资产"
   },
-  "sharedItems": {
+  "teamGallery": {
     "title": "团队画廊",
     "selectGroup": "选择一个群组",
     "noItems": "没有项目被分享到这个群组。",

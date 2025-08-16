@@ -183,7 +183,7 @@
     "assets": "Assets",
     "loadAssets": "Load Assets"
   },
-  "sharedItems": {
+  "teamGallery": {
     "title": "Team Gallery",
     "selectGroup": "Select a group",
     "noItems": "No items have been shared with this group.",

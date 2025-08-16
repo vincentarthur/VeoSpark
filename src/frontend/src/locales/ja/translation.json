@@ -180,7 +180,7 @@
     "assets": "アセット",
     "loadAssets": "アセットを読み込む"
   },
-  "sharedItems": {
+  "teamGallery": {
     "title": "チームギャラリー",
     "selectGroup": "グループを選択",
     "noItems": "このグループにはアイテムが共有されていません。",
