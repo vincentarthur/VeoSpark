@@ -101,7 +101,7 @@ graph TD
         B -- "API Calls (REST)" --> C[FastAPI Backend]
         C -- "Serves Static Files" --> B
         C -- "Authentication" --> D[Google OAuth]
-        C -- "AI Models" --> E[Vertex AI API (Veo, Imagen, Gemini)]
+        C -- "AI Models" --> E[Vertex AI API - Veo, Imagen, Gemini]
         C -- "File Storage" --> F[Google Cloud Storage]
         C -- "History & Analytics" --> G[BigQuery]
         C -- "Secrets" --> H[Secret Manager]
@@ -448,6 +448,12 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v2.0**
+    - Refactored the backend to log image and video generation history to separate BigQuery tables (`imagen_history` and `veo_history`).
+    - Fixed a bug that caused a "Not Found" error when refreshing the browser on a frontend route.
+    - Fixed an issue with the Mermaid diagram in the README.
+    - Changed the "Shared Items" page to "Team Gallery" and updated the URL to `/teamgallery`.
+    - Fixed various bugs related to BigQuery schema mismatches and attribute errors.
 - **v1.8**
     - Added project-specific cost limitation settings, including a "total cost" option.
 - **v1.7**
