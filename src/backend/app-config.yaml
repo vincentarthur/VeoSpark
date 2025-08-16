@@ -1,6 +1,4 @@
-# Configuration YAML for APP
-
-# Enable OAuth
+## Enable OAuth
 ENABLE_OAUTH: True
 
 # App metadata
@@ -29,6 +27,7 @@ APP_ADMINS:
 ENABLE_BIGQUERY_LOGGING: True
 ANALYSIS_DATASET: marketing_materials_analysis
 HISTORY_TABLE: veo_history
+IMAGEN_HISTORY_TABLE: imagen_history
 
 # Logging
 LOGGER_NAME: veo.service

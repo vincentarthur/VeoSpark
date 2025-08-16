@@ -8,6 +8,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
+- [Project Structure](#project-structure)
 - [Model Configuration](#model-configuration)
 - [Google Cloud Setup](#google-cloud-setup)
 - [Running the Application Locally](#running-the-application-locally)
@@ -63,22 +64,83 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 
 ## Architecture
 
-The application runs as a single FastAPI service that serves the React frontend and provides the backend API. This simplifies deployment and eliminates CORS issues.
+The application is designed as a monolithic service, where a single FastAPI backend serves both the API and the React frontend. This architecture simplifies deployment and avoids Cross-Origin Resource Sharing (CORS) issues.
+
+### Backend
+
+The backend is built with FastAPI and is responsible for handling all business logic, including user authentication, video and image generation, and communication with Google Cloud services.
+
+-   **`main.py`**: The entry point of the FastAPI application. It sets up the middleware, mounts the static frontend files, and includes the API routers.
+-   **`routers/`**: This directory contains the API endpoints, organized by functionality:
+    -   `api.py`: General-purpose endpoints for user management, configuration, and analytics.
+    -   `videos.py`: Endpoints for video generation, history, and editing.
+    -   `images.py`: Endpoints for image generation, history, and sharing.
+-   **`services.py`**: Contains the core business logic. The `GenerationService` class orchestrates the interaction with Google's AI models, while the `VeoApiClient` handles communication with the Vertex AI API.
+-   **`dependencies.py`**: Manages dependencies for the application, such as database clients and the `GenerationService`.
+-   **`config_manager.py`**: Handles loading and saving of application and model configurations from `.yaml` files.
+-   **`task_manager.py`**: Manages asynchronous tasks, such as video upscaling, using Google Cloud Tasks.
+
+### Frontend
+
+The frontend is a single-page application (SPA) built with React. It provides a user-friendly interface for interacting with the backend services.
+
+-   **`src/App.js`**: The main component that sets up the application's routing and layout.
+-   **`src/components/`**: Contains reusable React components used throughout the application.
+-   **`src/pages/`**: Contains the main pages of the application, such as the Home Page, History Page, and Analytics Page.
+-   **`src/contexts/`**: Contains React contexts for managing global state, such as the current user and theme.
+
+### Mermaid Diagram
 
 ```mermaid
 graph TD
-    subgraph "Browser"
-        A[User] --> B[React App]
+    subgraph "User's Browser"
+        A[User] --> B{React App}
     end
 
-    subgraph "FastAPI Server (Single Container)"
-        B -- "HTTP Requests" --> C{API Routes}
-        B -- "Initial Load" --> D{Static Files}
-        C -- "Google Cloud" --> E[Vertex AI API]
-        C -- "Google Cloud" --> F[Cloud Storage]
-        C -- "Google Cloud" --> G[BigQuery]
-        C -- "Google Cloud" --> H[Secret Manager]
+    subgraph "FastAPI Server (Single Docker Container)"
+        B -- "API Calls (REST)" --> C[FastAPI Backend]
+        C -- "Serves Static Files" --> B
+        C -- "Authentication" --> D[Google OAuth]
+        C -- "AI Models" --> E[Vertex AI API (Veo, Imagen, Gemini)]
+        C -- "File Storage" --> F[Google Cloud Storage]
+        C -- "History & Analytics" --> G[BigQuery]
+        C -- "Secrets" --> H[Secret Manager]
+        C -- "App Config & Prompts" --> I[Firestore]
+        C -- "Async Tasks" --> J[Google Cloud Tasks]
     end
+```
+
+## Project Structure
+
+```
+.
+├── src
+│   ├── backend
+│   │   ├── routers
+│   │   │   ├── api.py
+│   │   │   ├── images.py
+│   │   │   └── videos.py
+│   │   ├── static
+│   │   ├── app-config.yaml
+│   │   ├── config_manager.py
+│   │   ├── config.py
+│   │   ├── dependencies.py
+│   │   ├── main.py
+│   │   ├── models.yaml
+│   │   ├── prompts.py
+│   │   ├── requirements.txt
+│   │   ├── schemas.py
+│   │   ├── services.py
+│   │   └── task_manager.py
+│   └── frontend
+│       ├── public
+│       └── src
+│           ├── components
+│           ├── contexts
+│           ├── hooks
+│           ├── locales
+│           └── pages
+└── README.md
 ```
 
 ## Model Configuration
