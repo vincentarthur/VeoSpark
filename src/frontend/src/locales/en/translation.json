@@ -14,8 +14,9 @@
     "analytics": "Analytics",
     "gallery": "Prompt Gallery",
     "configurations": "Configurations",
-    "groups": "Groups Management",
-    "teamGallery": "Team Gallery"
+    "groups": "Group Management",
+    "teamGallery": "Team Gallery",
+    "creativeProjects": "Creative Project"
   },
   "gallery": {
     "search": "Search",
@@ -58,7 +59,8 @@
     "raiFilterErrorCode": "Error Code",
     "raiFilterCategory": "Category",
     "raiFilterDescription": "Description",
-    "raiFilterFilteredContent": "Filtered Content"
+    "raiFilterFilteredContent": "Filtered Content",
+    "dedicatedProjectLabel": "Dedicated Project"
   },
   "history": {
     "title": "My Generation History",
@@ -85,7 +87,7 @@
       "clip": "Clip",
       "dub": "Dub",
       "upscale": "Upscale",
-      "share": "Share"
+      "share": "Share to Group"
     },
     "tabs": {
       "videoHistory": "Video History",
@@ -151,7 +153,35 @@
     "manageMembersDescription": "Add or remove members from this group.",
     "confirmRemoveTitle": "Confirm Removal",
     "confirmRemoveDescription": "Are you sure you want to remove {{email}} from this group?",
-    "memberRemovedSuccess": "Member removed successfully."
+    "memberRemovedSuccess": "Member removed successfully.",
+    "memberList": "Member List"
+  },
+  "creativeProjects": {
+    "title": "Creative Project",
+    "importFromFile": "Import from File",
+    "importHint": "The file should contain 'project' and 'member' (or 'email') columns.",
+    "selectFile": "Select File",
+    "confirmImport": "Confirm Import",
+    "createProject": "Create New Project",
+    "projectName": "Project Name",
+    "addMember": "Add Member",
+    "memberEmail": "Member Email",
+    "bulkActions": "Bulk Actions",
+    "bulkPlaceholder": "Enter comma-separated emails",
+    "bulkAdd": "Bulk Add",
+    "bulkRemove": "Bulk Remove",
+    "manageMembers": "Manage Members",
+    "manageMembersFor": "Manage Members for",
+    "membersCount": "{{count}} members",
+    "manageMembersDescription": "Add or remove members from this project.",
+    "confirmRemoveTitle": "Confirm Removal",
+    "confirmRemoveDescription": "Are you sure you want to remove {{email}} from this project?",
+    "memberRemovedSuccess": "Member removed successfully.",
+    "memberList": "Member List",
+    "addToProject": "Add to Project",
+    "selectProject": "Select a project",
+    "assets": "Assets",
+    "loadAssets": "Load Assets"
   },
   "sharedItems": {
     "title": "Team Gallery",
@@ -163,7 +193,7 @@
     "refreshing": "Refreshing..."
   },
   "shareModal": {
-    "title": "Share Item",
+    "title": "Share to Group",
     "selectGroup": "Select a group to share with"
   },
   "common": {
@@ -172,7 +202,8 @@
     "add": "Add",
     "close": "Close",
     "actions": "Actions",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "refresh": "Refresh"
   },
   "analytics": {
     "title": "Model Cost Analytics",
@@ -184,7 +215,8 @@
     "secondsGenerated": "Seconds Generated",
     "totalCost": "Total Cost (USD)",
     "costUSD": "Cost (USD)",
-    "totalCostInRange": "Total Cost (Filtered)"
+    "totalCostInRange": "Total Cost (Filtered)",
+    "projectConsumption": "Cost by Creative Project"
   },
   "imageCard": {
     "useAsFirstFrame": "Use as First Frame"
@@ -204,7 +236,8 @@
     "sampleCountLabel": "Number of Images",
     "generateButton": "Generate Images",
     "generatingStatus": "Generating...",
-    "resultsTitle": "Results"
+    "resultsTitle": "Results",
+    "dedicatedProjectLabel": "Dedicated Project"
   },
   "imagePromptGenerator": {
     "title": "Generate Prompt from Images",
@@ -258,7 +291,8 @@
     "uploadImage": "Upload Image",
     "subPromptLabel": "Custom Input",
     "generateButton": "Generate Imitation",
-    "noImageError": "Please upload an image first."
+    "noImageError": "Please upload an image first.",
+    "dedicatedProjectLabel": "Dedicated Project"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

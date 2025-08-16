@@ -28,6 +28,7 @@ const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent })
 const AnalyticsPage = () => {
   const { t } = useTranslation();
   const [data, setData] = useState(null);
+  const [projectConsumption, setProjectConsumption] = useState([]);
   const [topUsers, setTopUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [topUsersLoading, setTopUsersLoading] = useState(false);
@@ -57,9 +58,13 @@ const AnalyticsPage = () => {
       if (!params.start_date) delete params.start_date;
       if (!params.end_date) delete params.end_date;
 
-      const response = await axios.get('/api/analytics/consumption', { params });
-      setData(response.data);
-      setTopUsers(response.data.top_users);
+      const consumptionResponse = await axios.get('/api/analytics/consumption', { params });
+      setData(consumptionResponse.data);
+      setTopUsers(consumptionResponse.data.top_users);
+
+      const projectConsumptionResponse = await axios.get('/api/analytics/consumption_by_project', { params });
+      setProjectConsumption(projectConsumptionResponse.data.project_consumption);
+
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch analytics data.');
     } finally {
@@ -107,32 +112,42 @@ const AnalyticsPage = () => {
       'Total Cost': item.total_cost,
     }));
 
-    const userData = data.top_users.map(item => ({
-      User: item.user_email,
-      'Video Cost': item.video_cost,
-      'Image Cost': item.image_cost,
-      'Total Cost': item.total_cost,
-    }));
+      const userData = data.top_users.map(item => ({
+        User: item.user_email,
+        'Video Cost': item.video_cost,
+        'Image Cost': item.image_cost,
+        'Total Cost': item.total_cost,
+      }));
 
-    if (format === 'csv') {
-      const dailyCsv = Papa.unparse(dailyData);
-      const userCsv = Papa.unparse(userData);
-      const blob = new Blob([`Daily Consumption\n${dailyCsv}\n\nTop Users\n${userCsv}`], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', 'analytics_export.csv');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else if (format === 'excel') {
-      const dailyWs = XLSX.utils.json_to_sheet(dailyData);
-      const userWs = XLSX.utils.json_to_sheet(userData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, dailyWs, 'Daily Consumption');
-      XLSX.utils.book_append_sheet(wb, userWs, 'Top Users');
-      XLSX.writeFile(wb, 'analytics_export.xlsx');
-    }
-  };
+      const projectData = projectConsumption.map(item => ({
+        'Project Name': item.project_name,
+        'Video Cost': item.video_cost,
+        'Image Cost': item.image_cost,
+        'Total Cost': item.total_cost,
+      }));
+
+      if (format === 'csv') {
+        const dailyCsv = Papa.unparse(dailyData);
+        const userCsv = Papa.unparse(userData);
+        const projectCsv = Papa.unparse(projectData);
+        const blob = new Blob([`Daily Consumption\n${dailyCsv}\n\nTop Users\n${userCsv}\n\nProject Consumption\n${projectCsv}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', 'analytics_export.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (format === 'excel') {
+        const dailyWs = XLSX.utils.json_to_sheet(dailyData);
+        const userWs = XLSX.utils.json_to_sheet(userData);
+        const projectWs = XLSX.utils.json_to_sheet(projectData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, dailyWs, 'Daily Consumption');
+        XLSX.utils.book_append_sheet(wb, userWs, 'Top Users');
+        XLSX.utils.book_append_sheet(wb, projectWs, 'Project Consumption');
+        XLSX.writeFile(wb, 'analytics_export.xlsx');
+      }
+    };
 
   if (loading) {
     return <Spin />;
@@ -274,6 +289,25 @@ const AnalyticsPage = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickFormatter={formatCurrency} />
                 <YAxis dataKey="user_email" type="category" width={200} />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
+                <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
+                <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <Card>
+            <Title level={4}>{t('analytics.projectConsumption', 'Cost by Creative Project')}</Title>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart layout="vertical" data={projectConsumption}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tickFormatter={formatCurrency} />
+                <YAxis dataKey="project_name" type="category" width={200} />
                 <Tooltip formatter={(value) => formatCurrency(value)} />
                 <Legend />
                 <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />

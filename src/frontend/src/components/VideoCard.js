@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, Typography, Button, Tooltip, Tag, Collapse } from 'antd';
-import { ScissorOutlined, AudioOutlined, ArrowUpOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { ScissorOutlined, AudioOutlined, ArrowUpOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined, PlusOutlined } from '@ant-design/icons';
+import AddToProjectModal from './AddToProjectModal';
+import ShareToGroupModal from './ShareToGroupModal';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -16,8 +18,10 @@ const ResolutionIcon = ({ resolution }) => {
   return null;
 };
 
-const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete }) => {
+const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete, showAddToProject = true }) => {
   const { t } = useTranslation();
+  const [isAddToProjectModalOpen, setIsAddToProjectModalOpen] = useState(false);
+  const [isShareToGroupModalOpen, setIsShareToGroupModalOpen] = useState(false);
   const isActionable = video.status === 'SUCCESS' && (video.output_video_gcs_paths || video.video_gcs_uri);
   const canDelete = onShareDelete && user && video.shared_by_user_email === user.email;
 
@@ -46,7 +50,14 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
   if (onShareClick) {
     actions.push(
       <Tooltip title={t('history.actions.share')}>
-        <Button icon={<ShareAltOutlined />} onClick={() => onShareClick(video)} disabled={!isActionable} />
+        <Button icon={<ShareAltOutlined />} onClick={() => setIsShareToGroupModalOpen(true)} disabled={!isActionable} />
+      </Tooltip>
+    );
+  }
+  if (showAddToProject) {
+    actions.push(
+      <Tooltip title={t('creativeProjects.addToProject')}>
+        <Button icon={<PlusOutlined />} onClick={() => setIsAddToProjectModalOpen(true)} disabled={!isActionable} />
       </Tooltip>
     );
   }
@@ -59,13 +70,14 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
   }
 
   return (
-    <Card
-      hoverable
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+    <>
+      <Card
+        hoverable
+        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
       cover={
-        video.signed_urls && video.signed_urls[0] ? (
+        video.signed_url || (video.signed_urls && video.signed_urls[0]) ? (
           <video
-            src={video.signed_urls[0]}
+            src={video.signed_url || video.signed_urls[0]}
             controls
             style={{ width: '100%', height: 300, objectFit: 'contain' }}
           />
@@ -102,6 +114,7 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
         <Panel header={t('history.details')} key="1">
           <Text strong>{t('history.fullPrompt')}:</Text> <Text>{video.prompt}</Text><br />
           <Text strong>{t('history.model')}:</Text> <Text>{modelName}</Text><br />
+          {video.project_name && <><Text strong>{t('nav.creativeProjects')}:</Text> <Text>{video.project_name}</Text><br /></>}
           <Text strong>{t('history.genDuration')}:</Text> <Text>{Math.round(video.operation_duration || 0)}s</Text><br />
           <Text strong>{t('history.completionTime')}:</Text> <Text>{new Date(video.completion_time).toLocaleString()}</Text><br />
           {video.resolution && (
@@ -112,6 +125,19 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
         </Panel>
       </Collapse>
     </Card>
+    <AddToProjectModal
+      open={isAddToProjectModalOpen}
+      onClose={() => setIsAddToProjectModalOpen(false)}
+      asset={video}
+      onComplete={() => {}}
+    />
+    <ShareToGroupModal
+      open={isShareToGroupModalOpen}
+      onClose={() => setIsShareToGroupModalOpen(false)}
+      asset={video}
+      onComplete={() => {}}
+    />
+    </>
   );
 };
 

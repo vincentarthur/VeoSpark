@@ -15,7 +15,8 @@
     "gallery": "提示画廊",
     "configurations": "配置",
     "groups": "群组管理",
-    "teamGallery": "团队画廊"
+    "teamGallery": "团队画廊",
+    "creativeProjects": "创意项目"
   },
   "gallery": {
     "search": "搜索",
@@ -57,7 +58,8 @@
     "raiFilterErrorCode": "错误代码",
     "raiFilterCategory": "类别",
     "raiFilterDescription": "描述",
-    "raiFilterFilteredContent": "过滤内容"
+    "raiFilterFilteredContent": "过滤内容",
+    "dedicatedProjectLabel": "专用项目"
   },
   "history": {
     "title": "我的生成历史",
@@ -84,7 +86,7 @@
       "clip": "剪辑",
       "dub": "配音",
       "upscale": "放大",
-      "share": "分享"
+      "share": "分享到团队"
     },
     "tabs": {
       "videoHistory": "视频历史",
@@ -150,7 +152,35 @@
     "manageMembersDescription": "从此组中添加或删除成员。",
     "confirmRemoveTitle": "确认删除",
     "confirmRemoveDescription": "您确定要从此组中删除 {{email}} 吗？",
-    "memberRemovedSuccess": "成员已成功删除。"
+    "memberRemovedSuccess": "成员已成功删除。",
+    "memberList": "成员列表"
+  },
+  "creativeProjects": {
+    "title": "创意项目",
+    "importFromFile": "从文件导入",
+    "importHint": "文件应包含 'project' 和 'member' (或 'email') 列。",
+    "selectFile": "选择文件",
+    "confirmImport": "确认导入",
+    "createProject": "创建新项目",
+    "projectName": "项目名称",
+    "addMember": "添加成员",
+    "memberEmail": "成员电子邮件",
+    "bulkActions": "批量操作",
+    "bulkPlaceholder": "输入逗号分隔的电子邮件",
+    "bulkAdd": "批量添加",
+    "bulkRemove": "批量删除",
+    "manageMembers": "管理成员",
+    "manageMembersFor": "管理成员",
+    "membersCount": "{{count}} 名成员",
+    "manageMembersDescription": "从此项目中添加或删除成员。",
+    "confirmRemoveTitle": "确认删除",
+    "confirmRemoveDescription": "您确定要从此项目中删除 {{email}} 吗？",
+    "memberRemovedSuccess": "成员已成功删除。",
+    "memberList": "成员列表",
+    "addToProject": "添加到项目",
+    "selectProject": "选择一个项目",
+    "assets": "资产",
+    "loadAssets": "加载资产"
   },
   "sharedItems": {
     "title": "团队画廊",
@@ -162,7 +192,7 @@
     "refreshing": "刷新中..."
   },
   "shareModal": {
-    "title": "分享项目",
+    "title": "分享到团队",
     "selectGroup": "选择一个群组来分享"
   },
   "common": {
@@ -171,7 +201,8 @@
     "add": "添加",
     "close": "关闭",
     "actions": "操作",
-    "confirm": "确认"
+    "confirm": "确认",
+    "refresh": "刷新"
   },
   "analytics": {
     "title": "模型成本分析",
@@ -183,7 +214,8 @@
     "secondsGenerated": "生成秒数",
     "totalCost": "总成本 (美元)",
     "costUSD": "成本 (美元)",
-    "totalCostInRange": "总成本（已筛选）"
+    "totalCostInRange": "总成本（已筛选）",
+    "projectConsumption": "各创意项目成本"
   },
   "imageCard": {
     "useAsFirstFrame": "用作第一帧"
@@ -203,7 +235,8 @@
     "sampleCountLabel": "图片数量",
     "generateButton": "生成图片",
     "generatingStatus": "生成中...",
-    "resultsTitle": "结果"
+    "resultsTitle": "结果",
+    "dedicatedProjectLabel": "专用项目"
   },
   "imagePromptGenerator": {
     "title": "从图片生成提示",
@@ -258,7 +291,8 @@
     "subPromptLabel": "自定义输入",
     "generateButton": "生成模仿图片",
     "noImageError": "请先上传一张图片。",
-    "sampleCount": "样本数"
+    "sampleCount": "样本数",
+    "dedicatedProjectLabel": "专用项目"
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"

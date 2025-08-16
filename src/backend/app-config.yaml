@@ -41,6 +41,9 @@ PROMPT_GALLERY_COLLECTION: prompts
 # Groups
 GROUPS_DB: veo-app-user-groups
 
+# Creative Projects
+CREATIVE_PROJECTS_DB: veo-creative-projects
+
 # Video Sharing
 SHARED_VIDEOS_DB: veo-app-shared-videos
 SHARED_VIDEOS_COLLECTION: shared_videos

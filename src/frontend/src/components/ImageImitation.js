@@ -19,6 +19,7 @@ const ImageImitation = ({ user }) => {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [models, setModels] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
@@ -42,7 +43,16 @@ const ImageImitation = ({ user }) => {
         console.error("Failed to fetch models:", error);
       }
     };
+    const fetchProjects = async () => {
+      try {
+        const response = await axios.get('/api/creative-projects');
+        setProjects(response.data);
+      } catch (error) {
+        console.error("Failed to fetch creative projects:", error);
+      }
+    };
     fetchModels();
+    fetchProjects();
   }, [form]);
 
   useEffect(() => {
@@ -119,6 +129,7 @@ const ImageImitation = ({ user }) => {
     formData.append('model', values.model);
     formData.append('sample_count', values.sample_count);
     formData.append('image_size', values.image_size);
+    formData.append('creative_project_id', values.creative_project_id);
 
     try {
       const response = await axios.post('/api/images/imitate', formData, {
@@ -162,6 +173,13 @@ const ImageImitation = ({ user }) => {
             </Form.Item>
             <Form.Item name="sub_prompt" label={t('imageImitation.subPromptLabel')} rules={[{ required: true }]}>
               <TextArea rows={2} />
+            </Form.Item>
+            <Form.Item name="creative_project_id" label={t('imageImitation.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
+              <Select placeholder="Select a project">
+                {projects.map((p) => (
+                  <Option key={p.id} value={p.id}>{p.name}</Option>
+                ))}
+              </Select>
             </Form.Item>
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={(value) => {

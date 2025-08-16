@@ -20,6 +20,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState('');
   const [sampleCount, setSampleCount] = useState(1);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generatedImages, setGeneratedImages] = useState([]);
@@ -48,7 +49,16 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
         console.error("Failed to fetch image models:", error);
       }
     };
+    const fetchProjects = async () => {
+      try {
+        const response = await axios.get('/api/creative-projects');
+        setProjects(response.data);
+      } catch (error) {
+        console.error("Failed to fetch creative projects:", error);
+      }
+    };
     fetchModels();
+    fetchProjects();
   }, [form]);
 
   useEffect(() => {
@@ -141,6 +151,13 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
             </Form.Item>
             <Form.Item name="negative_prompt" label={t('imageGenerator.negativePromptLabel')}>
               <TextArea rows={2} />
+            </Form.Item>
+            <Form.Item name="creative_project_id" label={t('imageGenerator.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
+              <Select placeholder="Select a project">
+                {projects.map((p) => (
+                  <Option key={p.id} value={p.id}>{p.name}</Option>
+                ))}
+              </Select>
             </Form.Item>
             <Row gutter={16}>
               <Col span={12}>

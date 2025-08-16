@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Row, Col, Button, Input, Typography, Slider, Radio, Checkbox,
@@ -23,7 +24,7 @@ const FilmStripPlayer = ({ video, onEditClick, title }) => {
   return (
     <Card
       title={title}
-      bordered={false}
+      variant={false}
       style={{
         backgroundColor: '#212121',
         color: 'white',
@@ -54,6 +55,7 @@ const Dashboard = ({ initialFirstFrame }) => {
 
   const [models, setModels] = useState([]);
   const [model, setModel] = useState('');
+  const [projects, setProjects] = useState([]);
   const [prompt, setPrompt] = useState('A dramatic timelapse of a storm cloud over a desert');
   const [generationMode, setGenerationMode] = useState('generate'); // 'generate' or 'extend'
   const [duration, setDuration] = useState(8);
@@ -192,7 +194,16 @@ const Dashboard = ({ initialFirstFrame }) => {
         console.error("Failed to fetch models:", error);
       }
     };
+    const fetchProjects = async () => {
+      try {
+        const response = await axios.get('/api/creative-projects');
+        setProjects(response.data);
+      } catch (error) {
+        console.error("Failed to fetch creative projects:", error);
+      }
+    };
     fetchModels();
+    fetchProjects();
   }, []);
 
   useEffect(() => {
@@ -308,6 +319,13 @@ const Dashboard = ({ initialFirstFrame }) => {
             </Form.Item>
             <Form.Item name="prompt" label={t('dashboard.promptLabel')} rules={[{ required: true }]}>
               <TextArea rows={4} ref={promptInputRef} />
+            </Form.Item>
+            <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
+              <Select placeholder="Select a project">
+                {projects.map((p) => (
+                  <Option key={p.id} value={p.id}>{p.name}</Option>
+                ))}
+              </Select>
             </Form.Item>
 
             <CameraMovements onMovementClick={handleMovementClick} />

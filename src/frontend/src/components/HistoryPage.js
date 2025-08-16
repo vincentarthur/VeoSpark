@@ -198,6 +198,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
                       <VideoCard
                         video={video}
                         models={models}
+                        user={user}
                         onEditClick={openModal}
                         onShareClick={openShareModal}
                       />

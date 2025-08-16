@@ -26,6 +26,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 -   **Prompt Translation**: Instantly translate generated prompts into different languages using Gemini 2.5 Flash.
 -   **Generation History & Caching**: Keep track of all your video and image generations. The history page now caches data for faster load times when switching between tabs.
 -   **Comprehensive Cost Analytics**: Monitor your spending with a detailed dashboard that provides a complete overview of both video and image creation costs.
+-   **Cost by Creative Project**: Analyze costs broken down by creative projects, allowing for better budget tracking and project management.
 -   **User Authentication**: Secure access to the application with Google OAuth.
 -   **Internationalization**: Support for multiple languages (English, Japanese, Chinese).
 -   **Video Editing**: Basic video editing features like clipping and dubbing.
@@ -376,6 +377,8 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v1.7**
+    - Added a new analytics feature to view costs aggregated by "Creative Project".
 - **v1.6**
     - Redesigned the entire frontend with Ant Design for a more modern and consistent look and feel.
     - Implemented a theme switcher to allow users to toggle between light and dark modes.

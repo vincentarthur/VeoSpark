@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
   Typography, Spin, Alert, Button, Input,
-  Collapse, Table, Modal, Upload, Card, notification
+  Collapse, Table, Modal, Upload, Card, notification, Row, Col
 } from 'antd';
 import { DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import Papa from 'papaparse';
@@ -181,20 +181,23 @@ const GroupsPage = () => {
       {loading && <Spin />}
       {error && <Alert message={error} type="error" />}
       
-      <Card style={{ marginBottom: 16 }}>
-        <Title level={4}>{t('groups.createGroup')}</Title>
-        <Input.Group compact>
-          <Input
-            style={{ width: 'calc(100% - 100px)' }}
-            placeholder={t('groups.groupName')}
-            value={newGroupName}
-            onChange={(e) => setNewGroupName(e.target.value)}
-          />
-          <Button type="primary" onClick={handleCreateGroup}>{t('common.submit')}</Button>
-        </Input.Group>
-      </Card>
-
-      <Card style={{ marginBottom: 16 }}>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Card style={{ marginBottom: 16 }}>
+            <Title level={4}>{t('groups.createGroup')}</Title>
+            <Input.Group compact>
+              <Input
+                style={{ width: 'calc(100% - 100px)' }}
+                placeholder={t('groups.groupName')}
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+              />
+              <Button type="primary" onClick={handleCreateGroup}>{t('common.submit')}</Button>
+            </Input.Group>
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card style={{ marginBottom: 16 }}>
         <Title level={4}>{t('groups.importFromFile')}</Title>
         <Text type="secondary">{t('groups.importHint')}</Text>
         <Upload beforeUpload={handleFileChange} showUploadList={false}>
@@ -219,7 +222,9 @@ const GroupsPage = () => {
             </Button>
           </div>
         )}
-      </Card>
+          </Card>
+        </Col>
+      </Row>
 
       <Collapse accordion>
         {groups.map((group) => (
@@ -227,12 +232,16 @@ const GroupsPage = () => {
             <Button onClick={() => openModal(group)} style={{ marginBottom: 16 }}>
               {t('groups.manageMembers')}
             </Button>
-            <Table
-              dataSource={group.members.map(email => ({ email, groupId: group.id }))}
-              columns={columns}
-              rowKey="email"
-              pagination={{ pageSize: 5 }}
-            />
+            <Collapse>
+              <Panel header={t('groups.memberList')} key="1">
+                <Table
+                  dataSource={group.members.map(email => ({ email, groupId: group.id }))}
+                  columns={columns}
+                  rowKey="email"
+                  pagination={{ pageSize: 5 }}
+                />
+              </Panel>
+            </Collapse>
           </Panel>
         ))}
       </Collapse>

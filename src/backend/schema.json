@@ -13,5 +13,6 @@
   { "name": "first_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" },
   { "name": "with_audio", "type": "BOOLEAN", "mode": "NULLABLE" },
   { "name": "resolution", "type": "STRING", "mode": "NULLABLE" },
-  { "name": "last_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" }
+  { "name": "last_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" }
 ]

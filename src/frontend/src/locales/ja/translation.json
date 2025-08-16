@@ -15,7 +15,8 @@
     "gallery": "プロンプトギャラリー",
     "configurations": "設定",
     "groups": "グループ管理",
-    "teamGallery": "チームギャラリー"
+    "teamGallery": "チームギャラリー",
+    "creativeProjects": "クリエイティブプロジェクト"
   },
   "gallery": {
     "search": "検索",
@@ -56,7 +57,8 @@
     "raiFilterErrorCode": "エラーコード",
     "raiFilterCategory": "カテゴリー",
     "raiFilterDescription": "説明",
-    "raiFilterFilteredContent": "フィルタリングされたコンテンツ"
+    "raiFilterFilteredContent": "フィルタリングされたコンテンツ",
+    "dedicatedProjectLabel": "専用プロジェクト"
   },
   "history": {
     "title": "私の生成履歴",
@@ -83,7 +85,7 @@
       "clip": "クリップ",
       "dub": "吹き替え",
       "upscale": "アップスケール",
-      "share": "共有"
+      "share": "グループに共有"
     },
     "tabs": {
       "videoHistory": "ビデオ履歴",
@@ -148,7 +150,35 @@
     "manageMembersDescription": "このグループにメンバーを追加または削除します。",
     "confirmRemoveTitle": "削除の確認",
     "confirmRemoveDescription": "本当に {{email}} をこのグループから削除しますか？",
-    "memberRemovedSuccess": "メンバーを正常に削除しました。"
+    "memberRemovedSuccess": "メンバーを正常に削除しました。",
+    "memberList": "メンバーリスト"
+  },
+  "creativeProjects": {
+    "title": "クリエイティブプロジェクト",
+    "importFromFile": "ファイルからインポート",
+    "importHint": "ファイルには 'project' と 'member' (または 'email') の列が必要です。",
+    "selectFile": "ファイルを選択",
+    "confirmImport": "インポートを確認",
+    "createProject": "新しいプロジェクトを作成",
+    "projectName": "プロジェクト名",
+    "addMember": "メンバーを追加",
+    "memberEmail": "メンバーのメールアドレス",
+    "bulkActions": "一括操作",
+    "bulkPlaceholder": "コンマで区切られたメールアドレスを入力してください",
+    "bulkAdd": "一括追加",
+    "bulkRemove": "一括削除",
+    "manageMembers": "メンバーを管理",
+    "manageMembersFor": "のメンバーを管理",
+    "membersCount": "{{count}} 人のメンバー",
+    "manageMembersDescription": "このプロジェクトにメンバーを追加または削除します。",
+    "confirmRemoveTitle": "削除の確認",
+    "confirmRemoveDescription": "本当に {{email}} をこのプロジェクトから削除しますか？",
+    "memberRemovedSuccess": "メンバーを正常に削除しました。",
+    "memberList": "メンバーリスト",
+    "addToProject": "プロジェクトに追加",
+    "selectProject": "プロジェクトを選択",
+    "assets": "アセット",
+    "loadAssets": "アセットを読み込む"
   },
   "sharedItems": {
     "title": "チームギャラリー",
@@ -169,7 +199,8 @@
     "add": "追加",
     "close": "閉じる",
     "actions": "アクション",
-    "confirm": "確認"
+    "confirm": "確認",
+    "refresh": "更新"
   },
   "analytics": {
     "title": "モデルコスト分析",
@@ -181,7 +212,8 @@
     "secondsGenerated": "生成された秒数",
     "totalCost": "総コスト (USD)",
     "costUSD": "コスト (USD)",
-    "totalCostInRange": "総コスト（フィルター済み）"
+    "totalCostInRange": "総コスト（フィルター済み）",
+    "projectConsumption": "クリエイティブプロジェクト別のコスト"
   },
   "imageCard": {
     "useAsFirstFrame": "最初のフレームとして使用"
@@ -201,7 +233,8 @@
     "sampleCountLabel": "画像数",
     "generateButton": "画像を生成",
     "generatingStatus": "生成中...",
-    "resultsTitle": "結果"
+    "resultsTitle": "結果",
+    "dedicatedProjectLabel": "専用プロジェクト"
   },
   "imagePromptGenerator": {
     "title": "画像からプロンプトを生成",
@@ -256,7 +289,8 @@
     "subPromptLabel": "入力をカスタマイズ",
     "generateButton": "模倣を生成",
     "noImageError": "最初に画像をアップロードしてください。",
-    "sampleCount": "サンプル数"
+    "sampleCount": "サンプル数",
+    "dedicatedProjectLabel": "専用プロジェクト"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

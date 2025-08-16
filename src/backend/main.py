@@ -71,6 +71,7 @@ def log_generation_to_bq(**kwargs):
                 "aspect_ratio": kwargs.get("aspect_ratio"),
                 "output_image_gcs_path": kwargs.get("output_image_gcs_path"),
                 "resolution": kwargs.get("resolution"),
+                "creative_project_id": kwargs.get("creative_project_id"),
             }
         else:
             row_to_insert = {
@@ -88,6 +89,7 @@ def log_generation_to_bq(**kwargs):
                 "first_frame_gcs_uri": kwargs.get("first_frame_gcs_uri"),
                 "last_frame_gcs_uri": kwargs.get("last_frame_gcs_uri"),
                 "output_video_gcs_paths": json.dumps(kwargs.get("output_video_gcs_paths", [])),
+                "creative_project_id": kwargs.get("creative_project_id"),
             }
 
         # Remove None values so BQ doesn't complain about missing columns if not provided
@@ -213,6 +215,13 @@ try:
 except Exception as e:
     logger.error(f"Could not initialize Firestore client for groups. Error: {e}", exc_info=True)
     groups_db = None
+
+try:
+    creative_projects_db = firestore.Client(project=PROJECT, database=app_conf.get('CREATIVE_PROJECTS_DB', 'creative-projects'))
+    logger.info("Firestore client for creative projects initialized successfully.")
+except Exception as e:
+    logger.error(f"Could not initialize Firestore client for creative projects. Error: {e}", exc_info=True)
+    creative_projects_db = None
 
 try:
     shared_videos_db = firestore.Client(project=PROJECT, database=app_conf.get('SHARED_VIDEOS_DB'))
@@ -614,6 +623,46 @@ async def set_configurations(request: Request, user: dict = Depends(get_user)):
     return {"message": "Configuration saved successfully."}
 
 
+def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], user_info: Dict[str, Any]):
+    """
+    Adds an asset to a creative project's subcollection in Firestore.
+    """
+    if not creative_projects_db:
+        logger.error("Creative projects database is not configured. Skipping asset addition.")
+        return
+
+    if not project_id:
+        logger.info("No creative_project_id provided. Skipping asset addition to project.")
+        return
+
+    try:
+        project_ref = creative_projects_db.collection('projects').document(project_id)
+        project_doc = project_ref.get()
+
+        if not project_doc.exists:
+            logger.error(f"Creative project with ID '{project_id}' not found.")
+            return
+
+        # Optional: Check if user is a member of the project
+        project_members = project_doc.to_dict().get('members', [])
+        user_email = user_info.get('email')
+        if user_email not in project_members and user_info.get('role') != 'APP_ADMIN':
+            logger.warning(f"User '{user_email}' is not a member of project '{project_id}'. Skipping asset addition.")
+            return
+
+        asset_ref = project_ref.collection('assets').document()
+        asset_payload = {
+            "added_by": user_email,
+            "added_at": firestore.SERVER_TIMESTAMP,
+            **asset_data
+        }
+        asset_ref.set(asset_payload)
+        logger.info(f"Successfully added asset to creative project '{project_id}'. Asset ID: {asset_ref.id}")
+
+    except Exception as e:
+        logger.error(f"Failed to add asset to creative project '{project_id}'. Error: {e}", exc_info=True)
+
+
 def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]], body: Dict[str, Any]):
     """
     A wrapper function to run the video generation in the background.
@@ -665,7 +714,8 @@ def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]]
                 resolution=resolution,
                 first_frame_gcs_uri=image_gcs_uri,
                 last_frame_gcs_uri=final_frame_gcs_uri,
-                output_video_gcs_paths=[path]
+                output_video_gcs_paths=[path],
+                creative_project_id=body.get('creative_project_id')
             )
 
         # --- Prepare successful result ---
@@ -677,6 +727,24 @@ def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]]
                     "gcs_uri": uri,
                     "signed_url": signed_url
                 })
+
+        # --- Add asset to creative project ---
+        creative_project_id = body.get('creative_project_id')
+        if creative_project_id and gcs_paths:
+            for path in gcs_paths:
+                asset_data = {
+                    "type": "video",
+                    "gcs_uri": path,
+                    "prompt": prompt,
+                    "model_used": model_used,
+                    "video_duration": requested_duration,
+                    "with_audio": with_audio,
+                    "resolution": resolution,
+                    "status": "SUCCESS",
+                    "trigger_time": trigger_time.isoformat(),
+                    "completion_time": completion_time.isoformat(),
+                }
+                add_asset_to_creative_project(creative_project_id, asset_data, user_info)
         
         return {
             "message": "Video generation successful.",
@@ -702,7 +770,8 @@ def background_video_generation(prompt: str, user_info: Optional[Dict[str, Any]]
             resolution=body.get('resolution'),
             first_frame_gcs_uri=body.get('image_gcs_uri'),
             last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
-            output_video_gcs_paths=[]
+            output_video_gcs_paths=[],
+            creative_project_id=body.get('creative_project_id')
         )
         logger.error(f"Video generation failed in background. Error: {e}", exc_info=True)
         # This exception will be caught by the task_wrapper and stored in the task store
@@ -811,7 +880,8 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                 status="SUCCESS",
                 aspect_ratio=aspect_ratio,
                 output_image_gcs_path=path,
-                resolution=image_size
+                resolution=image_size,
+                creative_project_id=body.get('creative_project_id')
             )
 
         image_data = []
@@ -822,6 +892,24 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
                     "gcs_uri": uri,
                     "signed_url": signed_url
                 })
+
+        # --- Add asset to creative project ---
+        creative_project_id = body.get('creative_project_id')
+        if creative_project_id and gcs_paths:
+            for path in gcs_paths:
+                asset_data = {
+                    "type": "image",
+                    "gcs_uri": path,
+                    "prompt": prompt,
+                    "negative_prompt": negative_prompt,
+                    "model_used": model_used,
+                    "aspect_ratio": aspect_ratio,
+                    "resolution": image_size,
+                    "status": "SUCCESS",
+                    "trigger_time": trigger_time.isoformat(),
+                    "completion_time": completion_time.isoformat(),
+                }
+                add_asset_to_creative_project(creative_project_id, asset_data, user_info)
         
         return {
             "message": "Image generation successful.",
@@ -858,7 +946,8 @@ def background_image_generation(user_info: Optional[Dict[str, Any]], body: Dict[
             status="FAILURE",
             error_message=str(e),
             aspect_ratio=body.get('aspect_ratio'),
-            resolution=body.get('image_size')
+            resolution=body.get('image_size'),
+            creative_project_id=body.get('creative_project_id')
         )
         logger.error(f"Image generation failed in background. Error: {e}", exc_info=True)
         raise
@@ -877,7 +966,7 @@ async def generate_image(request: Request, user: dict = Depends(get_user)):
     return JSONResponse({"task_id": task_id}, status_code=202)
 
 
-def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: bytes, file_content_type: str, file_filename: str, sub_prompt: str, model: str, sample_count: int, image_size: str):
+def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: bytes, file_content_type: str, file_filename: str, sub_prompt: str, model: str, sample_count: int, image_size: str, creative_project_id: Optional[str] = None):
     """
     A wrapper function to run the image imitation in the background.
     """
@@ -981,7 +1070,8 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
                 model_used=model,
                 status="SUCCESS",
                 output_image_gcs_path=path,
-                resolution=image_size
+                resolution=image_size,
+                creative_project_id=creative_project_id
             )
 
         image_data = []
@@ -992,6 +1082,21 @@ def background_image_imitation(user_info: Optional[Dict[str, Any]], file_bytes: 
                     "gcs_uri": uri,
                     "signed_url": signed_url
                 })
+
+        # --- Add asset to creative project ---
+        if creative_project_id and gcs_paths:
+            for path in gcs_paths:
+                asset_data = {
+                    "type": "image",
+                    "gcs_uri": path,
+                    "prompt": combined_prompt,
+                    "model_used": model,
+                    "resolution": image_size,
+                    "status": "SUCCESS",
+                    "trigger_time": datetime.now(timezone.utc).isoformat(),
+                    "completion_time": completion_time.isoformat(),
+                }
+                add_asset_to_creative_project(creative_project_id, asset_data, user_info)
         
         return {
             "message": "Image imitation successful.",
@@ -1025,7 +1130,8 @@ async def imitate_image(
     sub_prompt: str = Form(""),
     model: str = Form(...),
     sample_count: int = Form(1),
-    image_size: str = Form("1K")
+    image_size: str = Form("1K"),
+    creative_project_id: Optional[str] = Form(None)
 ):
     if app_conf.get('ENABLE_OAUTH', False) and not user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -1044,7 +1150,8 @@ async def imitate_image(
         sub_prompt=sub_prompt,
         model=model,
         sample_count=sample_count,
-        image_size=image_size
+        image_size=image_size,
+        creative_project_id=creative_project_id
     )
     return JSONResponse({"task_id": task_id}, status_code=202)
 
@@ -1224,7 +1331,8 @@ def get_image_history(
             model_used,
             output_image_gcs_path,
             status,
-            resolution
+            resolution,
+            creative_project_id
         FROM
             `{PROJECT}.{dataset_id}.imagen_history`
         WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC
@@ -1237,11 +1345,22 @@ def get_image_history(
         query_job = bq_client.query(query, job_config=job_config)
         rows = [dict(row) for row in query_job.result()]
 
+        project_ids = {row['creative_project_id'] for row in rows if row.get('creative_project_id')}
+        project_names = {}
+        if creative_projects_db and project_ids:
+            project_refs = [creative_projects_db.collection('projects').document(pid) for pid in project_ids]
+            project_docs = creative_projects_db.get_all(project_refs)
+            for doc in project_docs:
+                if doc.exists:
+                    project_names[doc.id] = doc.to_dict().get('name')
+
         veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
         for row in rows:
             gcs_path = row.get("output_image_gcs_path")
             if gcs_path:
                 row["signed_url"] = veo_client.generate_signed_gcs_url(gcs_path)
+            if row.get('creative_project_id'):
+                row['project_name'] = project_names.get(row['creative_project_id'])
 
         return JSONResponse({"rows": rows, "total": total_rows})
 
@@ -1313,7 +1432,8 @@ def get_user_history(
             error_message,
             first_frame_gcs_uri,
             last_frame_gcs_uri,
-            resolution
+            resolution,
+            creative_project_id
         FROM
             `{PROJECT}.{dataset_id}.{table_id}`
         WHERE {" AND ".join(where_clauses)} ORDER BY trigger_time DESC
@@ -1326,6 +1446,15 @@ def get_user_history(
         query_job = bq_client.query(query, job_config=job_config)
         rows = [dict(row) for row in query_job.result()]
 
+        project_ids = {row['creative_project_id'] for row in rows if row.get('creative_project_id')}
+        project_names = {}
+        if creative_projects_db and project_ids:
+            project_refs = [creative_projects_db.collection('projects').document(pid) for pid in project_ids]
+            project_docs = creative_projects_db.get_all(project_refs)
+            for doc in project_docs:
+                if doc.exists:
+                    project_names[doc.id] = doc.to_dict().get('name')
+
         veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
         for row in rows:
             gcs_paths_str = row.get("output_video_gcs_paths", "[]")
@@ -1333,7 +1462,6 @@ def get_user_history(
                 gcs_paths = json.loads(gcs_paths_str)
                 signed_urls = [veo_client.generate_signed_gcs_url(uri) for uri in gcs_paths]
                 row["signed_urls"] = [url for url in signed_urls if url]
-                # Extract video name from the first GCS path
                 if gcs_paths:
                     row["video_name"] = Path(gcs_paths[0]).name
                 else:
@@ -1341,6 +1469,9 @@ def get_user_history(
             except (json.JSONDecodeError, TypeError):
                 row["signed_urls"] = []
                 row["video_name"] = None
+            
+            if row.get('creative_project_id'):
+                row['project_name'] = project_names.get(row['creative_project_id'])
 
         return JSONResponse({"rows": rows, "total": total_rows})
 
@@ -1630,6 +1761,175 @@ async def bulk_remove_group_members(group_id: str, request: Request, user: dict 
         "members": firestore.ArrayRemove(emails)
     })
     return JSONResponse({"message": "Members removed successfully."})
+
+
+@api_router.post("/creative-projects", tags=["Creative Projects"])
+async def create_creative_project(request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not creative_projects_db:
+        raise HTTPException(status_code=503, detail="Creative projects database is not configured")
+
+    body = await request.json()
+    project_name = body.get("name")
+    members = body.get("members", [])
+
+    if not project_name:
+        raise HTTPException(status_code=400, detail="Project name is required.")
+
+    doc_ref = creative_projects_db.collection('projects').document()
+    doc_ref.set({
+        "name": project_name,
+        "members": members,
+        "created_by": user.get("email"),
+        "created_at": firestore.SERVER_TIMESTAMP
+    })
+    return JSONResponse({"message": "Creative project created successfully", "id": doc_ref.id}, status_code=201)
+
+
+@api_router.get("/creative-projects", tags=["Creative Projects"])
+def get_creative_projects(user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not creative_projects_db:
+        raise HTTPException(status_code=503, detail="Creative projects database is not configured")
+
+    if user.get('role') == 'APP_ADMIN':
+        projects_ref = creative_projects_db.collection('projects')
+    else:
+        user_email = user.get('email')
+        projects_ref = creative_projects_db.collection('projects').where(filter=FieldFilter('members', 'array_contains', user_email))
+    
+    projects = []
+    for doc in projects_ref.stream():
+        project_data = doc.to_dict()
+        project_data["id"] = doc.id
+        if 'created_at' in project_data and hasattr(project_data['created_at'], 'isoformat'):
+            project_data['created_at'] = project_data['created_at'].isoformat()
+        projects.append(project_data)
+
+    return JSONResponse(projects)
+
+
+@api_router.post("/creative-projects/{project_id}/members", tags=["Creative Projects"])
+async def add_project_member(project_id: str, request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not creative_projects_db:
+        raise HTTPException(status_code=503, detail="Creative projects database is not configured")
+
+    body = await request.json()
+    member_email = body.get("email")
+
+    if not member_email:
+        raise HTTPException(status_code=400, detail="Member email is required.")
+
+    doc_ref = creative_projects_db.collection('projects').document(project_id)
+    doc_ref.update({
+        "members": firestore.ArrayUnion([member_email])
+    })
+    return JSONResponse({"message": "Member added successfully."})
+
+
+@api_router.delete("/creative-projects/{project_id}/members/{member_email}", tags=["Creative Projects"])
+def remove_project_member(project_id: str, member_email: str, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not creative_projects_db:
+        raise HTTPException(status_code=503, detail="Creative projects database is not configured")
+
+    doc_ref = creative_projects_db.collection('projects').document(project_id)
+    doc_ref.update({
+        "members": firestore.ArrayRemove([member_email])
+    })
+    return JSONResponse({"message": "Member removed successfully."})
+
+
+@api_router.post("/creative-projects/{project_id}/assets", tags=["Creative Projects"])
+async def add_asset_to_project(project_id: str, request: Request, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not creative_projects_db:
+        raise HTTPException(status_code=503, detail="Creative projects database is not configured")
+
+    body = await request.json()
+    asset_data = body.get("asset")
+
+    if not asset_data:
+        raise HTTPException(status_code=400, detail="Asset data is required.")
+
+    # Ensure user is a member of the project
+    project_ref = creative_projects_db.collection('projects').document(project_id)
+    project_doc = project_ref.get()
+    if not project_doc.exists:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project_members = project_doc.to_dict().get('members', [])
+    if user.get('email') not in project_members and user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="You are not a member of this project.")
+
+    asset_ref = project_ref.collection('assets').document()
+    asset_payload = {
+        "added_by": user.get("email"),
+        "added_at": firestore.SERVER_TIMESTAMP,
+        **asset_data
+    }
+    asset_ref.set(asset_payload)
+    
+    return JSONResponse({"message": "Asset added to project successfully", "id": asset_ref.id}, status_code=201)
+
+
+@api_router.get("/creative-projects/{project_id}/assets", tags=["Creative Projects"])
+def get_project_assets(project_id: str, user: dict = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not creative_projects_db:
+        raise HTTPException(status_code=503, detail="Creative projects database is not configured")
+
+    # Ensure user is a member of the project
+    project_ref = creative_projects_db.collection('projects').document(project_id)
+    project_doc = project_ref.get()
+    if not project_doc.exists:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project_members = project_doc.to_dict().get('members', [])
+    if user.get('email') not in project_members and user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="You are not a member of this project.")
+
+    assets_ref = project_ref.collection('assets').order_by('added_at', direction=firestore.Query.DESCENDING)
+    assets = []
+    veo_client = VeoApiClient(PROJECT, LOCATION, BUCKET_NAME)
+    for doc in assets_ref.stream():
+        asset_data = doc.to_dict()
+        asset_data["id"] = doc.id
+        if 'added_at' in asset_data and hasattr(asset_data['added_at'], 'isoformat'):
+            asset_data['added_at'] = asset_data['added_at'].isoformat()
+        
+        asset_type = asset_data.get('type')
+        gcs_uri = None
+
+        if asset_type == 'image':
+            gcs_uri = asset_data.get('gcs_uri') or asset_data.get('output_image_gcs_path')
+        else:  # Treat as video if type is not 'image' or is missing
+            asset_data['type'] = 'video'
+            gcs_uri = asset_data.get('gcs_uri')
+            if not gcs_uri:
+                gcs_paths_str = asset_data.get("output_video_gcs_paths", "[]")
+                try:
+                    gcs_paths = json.loads(gcs_paths_str)
+                    if gcs_paths:
+                        gcs_uri = gcs_paths[0]
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        
+        if gcs_uri:
+            asset_data['signed_url'] = veo_client.generate_signed_gcs_url(gcs_uri)
+        else:
+            asset_data['signed_url'] = None
+        
+        assets.append(asset_data)
+
+    return JSONResponse(assets)
 
 
 @api_router.post("/groups/import", tags=["Groups"])
@@ -1975,6 +2275,120 @@ def get_consumption_analytics(
     except Exception as e:
         logger.error(f"Failed to execute analytics query. Error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve analytics data.")
+
+
+@api_router.get("/analytics/consumption_by_project", tags=["Analytics"])
+def get_consumption_by_project_analytics(
+    user: dict = Depends(get_user),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """
+    Provides aggregated consumption data grouped by creative project.
+    """
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    cost_managers = app_conf.get('COST_MANAGERS', [])
+    if user.get('email') not in cost_managers:
+        raise HTTPException(status_code=403, detail="You do not have permission to view analytics.")
+
+    if not app_conf.get('ENABLE_BIGQUERY_LOGGING', False) or not bq_client:
+        raise HTTPException(status_code=501, detail="Analytics are disabled (BigQuery not configured).")
+
+    # --- Helper functions for cost calculation ---
+    def calculate_video_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
+        if not model_used or not video_duration: return 0.0
+        model_info = next((m for m in models_conf.get('models', []) if m['id'] == model_used), None)
+        if not model_info: return 0.0
+        pricing = model_info.get('pricing', {})
+        cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
+        return round(video_duration * cost_per_second, 4)
+
+    def calculate_image_cost(model_used: str) -> float:
+        if not model_used: return 0.0
+        model_info = next((m for m in image_models_conf.get('models', []) if m['id'] == model_used), None)
+        if not model_info: return 0.0
+        pricing = model_info.get('pricing', {})
+        return round(pricing.get('per_image', 0.0), 4)
+
+    try:
+        # --- Prepare queries and parameters ---
+        query_params = []
+        video_where_clauses = ["status = 'SUCCESS'", "video_duration > 0", "creative_project_id IS NOT NULL"]
+        image_where_clauses = ["status = 'SUCCESS'", "creative_project_id IS NOT NULL"]
+
+        if start_date:
+            video_where_clauses.append("trigger_time >= @start_date")
+            image_where_clauses.append("trigger_time >= @start_date")
+            query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
+        if end_date:
+            end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
+            video_where_clauses.append("trigger_time < @end_date")
+            image_where_clauses.append("trigger_time < @end_date")
+            query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
+
+        video_query = f"""
+            SELECT creative_project_id, model_used, video_duration, with_audio
+            FROM `{PROJECT}.{dataset_id}.{table_id}`
+            WHERE {" AND ".join(video_where_clauses)}
+        """
+        image_query = f"""
+            SELECT creative_project_id, model_used
+            FROM `{PROJECT}.{dataset_id}.imagen_history`
+            WHERE {" AND ".join(image_where_clauses)}
+        """
+        job_config = bigquery.QueryJobConfig(query_parameters=query_params)
+
+        # --- Execute queries and process data ---
+        video_rows = bq_client.query(video_query, job_config=job_config).result()
+        image_rows = bq_client.query(image_query, job_config=job_config).result()
+
+        project_costs = {}
+
+        # Process video costs
+        for row in video_rows:
+            cost = calculate_video_cost(row.model_used, row.video_duration, row.with_audio)
+            if cost > 0:
+                project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0})
+                project_entry['video'] += cost
+        
+        # Process image costs
+        for row in image_rows:
+            cost = calculate_image_cost(row.model_used)
+            if cost > 0:
+                project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0})
+                project_entry['image'] += cost
+        
+        # Get project names from Firestore
+        project_details = {}
+        if creative_projects_db and project_costs:
+            project_ids = list(project_costs.keys())
+            project_refs = [creative_projects_db.collection('projects').document(pid) for pid in project_ids]
+            project_docs = creative_projects_db.get_all(project_refs)
+            for doc in project_docs:
+                if doc.exists:
+                    project_details[doc.id] = doc.to_dict().get('name', 'Unknown Project')
+
+        # --- Format data for response ---
+        project_consumption_data = [
+            {
+                "project_id": pid,
+                "project_name": project_details.get(pid, "Unknown Project"),
+                "video_cost": round(costs['video'], 2),
+                "image_cost": round(costs['image'], 2),
+                "total_cost": round(costs['video'] + costs['image'], 2)
+            }
+            for pid, costs in project_costs.items()
+        ]
+
+        return JSONResponse({
+            "project_consumption": sorted(project_consumption_data, key=lambda x: x['total_cost'], reverse=True)
+        })
+
+    except Exception as e:
+        logger.error(f"Failed to execute project consumption analytics query. Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve project consumption analytics data.")
 
 
 @api_router.get("/analytics/top_users", tags=["Analytics"])

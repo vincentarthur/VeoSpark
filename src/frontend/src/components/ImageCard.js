@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, Typography, Button, Tooltip, Tag, Modal, Collapse } from 'antd';
-import { ShareAltOutlined, DeleteOutlined, PictureOutlined } from '@ant-design/icons';
+import { ShareAltOutlined, DeleteOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
+import AddToProjectModal from './AddToProjectModal';
+import ShareToGroupModal from './ShareToGroupModal';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
-const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFirstFrame }) => {
+const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFirstFrame, showAddToProject = true }) => {
   const { t } = useTranslation();
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isAddToProjectModalOpen, setIsAddToProjectModalOpen] = useState(false);
+  const [isShareToGroupModalOpen, setIsShareToGroupModalOpen] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -35,7 +39,14 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
   if (onShareClick) {
     actions.push(
       <Tooltip title={t('history.actions.share')}>
-        <Button icon={<ShareAltOutlined />} onClick={() => onShareClick(image)} disabled={!isActionable} />
+        <Button icon={<ShareAltOutlined />} onClick={() => setIsShareToGroupModalOpen(true)} disabled={!isActionable} />
+      </Tooltip>
+    );
+  }
+  if (showAddToProject) {
+    actions.push(
+      <Tooltip title={t('creativeProjects.addToProject')}>
+        <Button icon={<PlusOutlined />} onClick={() => setIsAddToProjectModalOpen(true)} disabled={!isActionable} />
       </Tooltip>
     );
   }
@@ -81,9 +92,9 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
                   {t('videoCard.sharedBy')}: {image.shared_by_user_email}
                 </Text>
               )}
-              {image.user_email && image.user_email !== image.shared_by_user_email && (
+              {(image.user_email || image.added_by) && (image.user_email || image.added_by) !== image.shared_by_user_email && (
                 <Text type="secondary" style={{ display: 'block' }}>
-                  {t('videoCard.generatedBy')}: {image.user_email}
+                  {t('videoCard.generatedBy')}: {image.user_email || image.added_by}
                 </Text>
               )}
             </>
@@ -93,6 +104,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
           <Panel header={t('history.details')} key="1">
             <Text strong>{t('history.fullPrompt')}:</Text> <Text>{image.prompt}</Text><br />
             <Text strong>{t('history.model')}:</Text> <Text>{modelName}</Text><br />
+            {image.project_name && <><Text strong>{t('nav.creativeProjects')}:</Text> <Text>{image.project_name}</Text><br /></>}
             <Text strong>{t('history.resolution')}:</Text> <Text>{image.resolution}</Text><br />
             <Text strong>{t('history.genDuration')}:</Text> <Text>{Math.round(image.operation_duration || 0)}s</Text><br />
             <Text strong>{t('history.completionTime')}:</Text> <Text>{formatDate(image.completion_time)}</Text><br />
@@ -109,6 +121,18 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
       >
         <img src={image.signed_url} alt={image.prompt} style={{ maxWidth: '90vw', maxHeight: '90vh' }} />
       </Modal>
+      <AddToProjectModal
+        open={isAddToProjectModalOpen}
+        onClose={() => setIsAddToProjectModalOpen(false)}
+        asset={image}
+        onComplete={() => {}}
+      />
+    <ShareToGroupModal
+      open={isShareToGroupModalOpen}
+      onClose={() => setIsShareToGroupModalOpen(false)}
+      asset={image}
+      onComplete={() => {}}
+    />
     </>
   );
 };

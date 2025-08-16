@@ -12,6 +12,7 @@ import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage';
 import ConfigurationsPage from '../components/ConfigurationsPage';
 import PromptGalleryPage from './PromptGalleryPage';
+import CreativeProjectsPage from './CreativeProjectsPage';
 import GroupsPage from './GroupsPage';
 import SharedItemsPage from './SharedItemsPage';
 
@@ -34,6 +35,7 @@ const HomePage = ({ user }) => {
     if (path.startsWith('/gallery')) return 'gallery';
     if (path.startsWith('/history')) return 'history';
     if (path.startsWith('/shared-items')) return 'shared-items';
+    if (path.startsWith('/creative-projects')) return 'creative-projects';
     if (path.startsWith('/groups')) return 'groups';
     if (path.startsWith('/analytics')) return 'analytics';
     if (path.startsWith('/configurations')) return 'configurations';
@@ -45,6 +47,7 @@ const HomePage = ({ user }) => {
     { key: 'gallery', label: t('nav.gallery'), path: '/gallery' },
     { key: 'history', label: t('nav.history'), path: '/history' },
     { key: 'shared-items', label: t('nav.teamGallery'), path: '/shared-items' },
+    { key: 'creative-projects', label: t('nav.creativeProjects'), path: '/creative-projects' },
     user?.role === 'APP_ADMIN' && { key: 'groups', label: t('nav.groups'), path: '/groups' },
     user?.is_cost_manager && { key: 'analytics', label: t('nav.analytics'), path: '/analytics' },
     user?.role === 'APP_ADMIN' && { key: 'configurations', label: t('nav.configurations'), path: '/configurations' },
@@ -84,6 +87,7 @@ const HomePage = ({ user }) => {
             } />
             <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
             <Route path="/shared-items" element={<SharedItemsPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
+            <Route path="/creative-projects" element={<CreativeProjectsPage user={user} />} />
             {user?.role === 'APP_ADMIN' && <Route path="/groups" element={<GroupsPage />} />}
             {user?.is_cost_manager && <Route path="/analytics" element={<AnalyticsPage />} />}
             {user?.role === 'APP_ADMIN' && <Route path="/configurations" element={<ConfigurationsPage />} />}
