@@ -171,8 +171,16 @@ def process_video_from_gcs(
     return f"gs://{bucket_name}/{output_blob_name}", duration
 
 
-def check_quota(user_email: str, bq_client: bigquery.Client, config: dict, app_conf: dict) -> Tuple[bool, str]:
-    quota_config = config.get('quota', {})
+def check_quota(user_email: str, bq_client: bigquery.Client, config: dict, app_conf: dict, project_id: Optional[str] = None, project_config: Optional[dict] = None) -> Tuple[bool, str]:
+    
+    # Determine which configuration to use
+    if project_config and not project_config.get('unrestricted', False):
+        quota_config = project_config.get('quota', {})
+        config_source = "Project"
+    else:
+        quota_config = config.get('quota', {})
+        config_source = "Global"
+
     quota_type = quota_config.get('type', 'NO_LIMIT')
 
     if quota_type == 'NO_LIMIT':
@@ -182,13 +190,29 @@ def check_quota(user_email: str, bq_client: bigquery.Client, config: dict, app_c
     period = quota_config.get('period', 'day')
     now = datetime.now(timezone.utc)
     
+    start_time = None
     if period == 'day':
         start_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == 'week':
         start_time = now - timedelta(days=now.weekday())
         start_time = start_time.replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        return False, ""
+    
+    base_query = f"""
+        FROM `{bq_client.project}.{app_conf.get('ANALYSIS_DATASET')}.{app_conf.get('HISTORY_TABLE')}`
+        WHERE status = 'SUCCESS'
+    """
+    
+    query_parameters = []
+    if start_time:
+        base_query += " AND trigger_time >= @start_time"
+        query_parameters.append(bigquery.ScalarQueryParameter("start_time", "TIMESTAMP", start_time))
+
+    if config_source == "Project":
+        base_query += " AND creative_project_id = @project_id"
+        query_parameters.append(bigquery.ScalarQueryParameter("project_id", "STRING", project_id))
+    else: # Global config applies to the user
+        base_query += " AND user_email = @user_email"
+        query_parameters.append(bigquery.ScalarQueryParameter("user_email", "STRING", user_email))
 
     query = f"""
         SELECT
@@ -204,15 +228,9 @@ def check_quota(user_email: str, bq_client: bigquery.Client, config: dict, app_c
                     ELSE 0
                 END
             ) as total_cost
-        FROM `{bq_client.project}.{app_conf.get('ANALYSIS_DATASET')}.{app_conf.get('HISTORY_TABLE')}`
-        WHERE user_email = @user_email AND trigger_time >= @start_time AND status = 'SUCCESS'
+        {base_query}
     """
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("user_email", "STRING", user_email),
-            bigquery.ScalarQueryParameter("start_time", "TIMESTAMP", start_time),
-        ]
-    )
+    job_config = bigquery.QueryJobConfig(query_parameters=query_parameters)
     query_job = bq_client.query(query, job_config=job_config)
     results = list(query_job.result())
 

@@ -27,6 +27,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 -   **Generation History & Caching**: Keep track of all your video and image generations. The history page now caches data for faster load times when switching between tabs.
 -   **Comprehensive Cost Analytics**: Monitor your spending with a detailed dashboard that provides a complete overview of both video and image creation costs.
 -   **Cost by Creative Project**: Analyze costs broken down by creative projects, allowing for better budget tracking and project management.
+-   **Project-Specific Cost-Limitation**: In addition to global cost controls, administrators can set specific cost limits for each creative project. This includes daily, weekly, and total cost limits, as well as the option to mark a project as unrestricted.
 -   **User Authentication**: Secure access to the application with Google OAuth.
 -   **Internationalization**: Support for multiple languages (English, Japanese, Chinese).
 -   **Video Editing**: Basic video editing features like clipping and dubbing.
@@ -169,6 +170,9 @@ You can enable the API and create the database using the `gcloud` CLI:
 
     # Create the database for shared videos
     gcloud firestore databases create --database="veo-app-shared-videos" --location=us-central1
+
+    # Create the database for creative projects
+    gcloud firestore databases create --database="creative-projects" --location=us-central1
     ```
 
 #### Deploying Firestore Indexes
@@ -186,6 +190,11 @@ To ensure your Firestore queries are efficient, you need to deploy the required 
     ./setup_firestore.sh
     ```
     The script will automatically use the `PROJECT_ID` and `PROMPT_GALLERY_DB` from your `app-config.yaml` file.
+
+    To set up the indexes for the Creative Projects database, run the following script:
+    ```bash
+    ./setup_creative_projects_firestore.sh
+    ```
 
 ### 5. Cloud Tasks
 
@@ -377,6 +386,8 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v1.8**
+    - Added project-specific cost limitation settings, including a "total cost" option.
 - **v1.7**
     - Added a new analytics feature to view costs aggregated by "Creative Project".
 - **v1.6**

@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button, Typography, Radio, Input,
-  Spin, Alert, Select, Form, Card, Row, Col
+  Spin, Alert, Select, Form, Card, Row, Col, Tabs
 } from 'antd';
 import axios from 'axios';
+import ProjectCostConfiguration from './ProjectCostConfiguration';
 
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 const { Option } = Select;
 
 const ConfigurationsPage = () => {
@@ -63,53 +65,60 @@ const ConfigurationsPage = () => {
   return (
     <Card>
       <Title level={2}>{t('configurations.title')}</Title>
-      <Form form={form} layout="vertical" onFinish={handleSubmit} onValuesChange={(changedValues) => {
-        if (changedValues.quotaType) {
-          setQuotaType(changedValues.quotaType);
-        }
-      }}>
-        <Form.Item name="quotaType" label={t('configurations.quotaType')}>
-          <Radio.Group>
-            <Radio.Button value="NO_LIMIT">{t('configurations.noLimit')}</Radio.Button>
-            <Radio.Button value="COST_LIMIT">{t('configurations.costLimit')}</Radio.Button>
-            <Radio.Button value="GENERATION_QUANTITY">{t('configurations.generationQuantity')}</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
+      <Tabs defaultActiveKey="1">
+        <TabPane tab={t('configurations.globalSettings')} key="1">
+          <Form form={form} layout="vertical" onFinish={handleSubmit} onValuesChange={(changedValues) => {
+            if (changedValues.quotaType) {
+              setQuotaType(changedValues.quotaType);
+            }
+          }}>
+            <Form.Item name="quotaType" label={t('configurations.quotaType')}>
+              <Radio.Group>
+                <Radio.Button value="NO_LIMIT">{t('configurations.noLimit')}</Radio.Button>
+                <Radio.Button value="COST_LIMIT">{t('configurations.costLimit')}</Radio.Button>
+                <Radio.Button value="GENERATION_QUANTITY">{t('configurations.generationQuantity')}</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
 
-        {quotaType === 'COST_LIMIT' && (
-          <Text type="secondary">{t('configurations.costLimitDescription')}</Text>
-        )}
-        {quotaType === 'GENERATION_QUANTITY' && (
-          <Text type="secondary">{t('configurations.generationQuantityDescription')}</Text>
-        )}
+            {quotaType === 'COST_LIMIT' && (
+              <Text type="secondary">{t('configurations.costLimitDescription')}</Text>
+            )}
+            {quotaType === 'GENERATION_QUANTITY' && (
+              <Text type="secondary">{t('configurations.generationQuantityDescription')}</Text>
+            )}
 
-        {quotaType !== 'NO_LIMIT' && (
-          <Row gutter={16} style={{ marginTop: 16 }}>
-            <Col span={12}>
-              <Form.Item name="limit" label={t('configurations.limit')} rules={[{ required: true }]}>
-                <Input type="number" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="period" label={t('configurations.period')} rules={[{ required: true }]}>
-                <Select>
-                  <Option value="day">{t('configurations.daily')}</Option>
-                  <Option value="week">{t('configurations.weekly')}</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
+            {quotaType !== 'NO_LIMIT' && (
+              <Row gutter={16} style={{ marginTop: 16 }}>
+                <Col span={12}>
+                  <Form.Item name="limit" label={t('configurations.limit')} rules={[{ required: true }]}>
+                    <Input type="number" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="period" label={t('configurations.period')} rules={[{ required: true }]}>
+                    <Select>
+                      <Option value="day">{t('configurations.daily')}</Option>
+                      <Option value="week">{t('configurations.weekly')}</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+            )}
 
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            {t('configurations.save')}
-          </Button>
-        </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {t('configurations.save')}
+              </Button>
+            </Form.Item>
 
-        {error && <Alert message={error} type="error" showIcon />}
-        {success && <Alert message={success} type="success" showIcon />}
-      </Form>
+            {error && <Alert message={error} type="error" showIcon />}
+            {success && <Alert message={success} type="success" showIcon />}
+          </Form>
+        </TabPane>
+        <TabPane tab={t('configurations.projectSettings')} key="2">
+          <ProjectCostConfiguration />
+        </TabPane>
+      </Tabs>
     </Card>
   );
 };

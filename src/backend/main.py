@@ -36,7 +36,7 @@ import vertexai
 
 # Import the new video processing functions
 from video_processing import process_video_from_gcs, check_quota
-from config_manager import get_config, save_config, get_image_models
+from config_manager import get_config, save_config, get_image_models, get_project_config, save_project_config, save_bulk_project_configs
 from prompts import IMAGE_IMITATION_PROMPT_PREFIX, IMAGE_IMITATION_PROMPT_SUFFIX, IMAGE_IMITATION_PROMPT_COMBINATION
 from task_manager import create_task, get_task_status
 
@@ -790,7 +790,9 @@ async def generate_video_endpoint(request: Request, user: dict = Depends(get_use
 
     # Check quota
     user_email = user.get('email', 'anonymous') if user else 'anonymous'
-    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf)
+    project_id = body.get('creative_project_id')
+    project_config = get_project_config(config_db, project_id) if project_id else None
+    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf, project_id, project_config)
     if quota_exceeded:
         raise HTTPException(status_code=429, detail=message)
 
@@ -961,6 +963,14 @@ async def generate_image(request: Request, user: dict = Depends(get_user)):
 
     if not body.get('prompt'):
         raise HTTPException(status_code=400, detail="Prompt is required.")
+
+    # Check quota
+    user_email = user.get('email', 'anonymous') if user else 'anonymous'
+    project_id = body.get('creative_project_id')
+    project_config = get_project_config(config_db, project_id) if project_id else None
+    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf, project_id, project_config)
+    if quota_exceeded:
+        raise HTTPException(status_code=429, detail=message)
 
     task_id = create_task(background_image_generation, user_info=user, body=body)
     return JSONResponse({"task_id": task_id}, status_code=202)
@@ -1138,6 +1148,13 @@ async def imitate_image(
 
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+
+    # Check quota
+    user_email = user.get('email', 'anonymous') if user else 'anonymous'
+    project_config = get_project_config(config_db, creative_project_id) if creative_project_id else None
+    quota_exceeded, message = check_quota(user_email, bq_client, get_config(config_db), app_conf, creative_project_id, project_config)
+    if quota_exceeded:
+        raise HTTPException(status_code=429, detail=message)
 
     file_bytes = await file.read()
     
@@ -1843,6 +1860,44 @@ def remove_project_member(project_id: str, member_email: str, user: dict = Depen
         "members": firestore.ArrayRemove([member_email])
     })
     return JSONResponse({"message": "Member removed successfully."})
+
+
+@api_router.get("/creative-projects/{project_id}/config", tags=["Creative Projects"])
+def get_project_config_endpoint(project_id: str, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not config_db:
+        raise HTTPException(status_code=503, detail="Configuration database is not configured")
+    
+    config = get_project_config(config_db, project_id)
+    if not config:
+        return JSONResponse({})
+    return JSONResponse(config)
+
+
+@api_router.post("/creative-projects/{project_id}/config", tags=["Creative Projects"])
+async def save_project_config_endpoint(project_id: str, request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not config_db:
+        raise HTTPException(status_code=503, detail="Configuration database is not configured")
+
+    config = await request.json()
+    save_project_config(config_db, project_id, config)
+    return JSONResponse({"message": "Project configuration saved successfully."})
+
+
+@api_router.post("/creative-projects/config/bulk", tags=["Creative Projects"])
+async def save_bulk_project_configs_endpoint(request: Request, user: dict = Depends(get_user)):
+    if not user or user.get('role') != 'APP_ADMIN':
+        raise HTTPException(status_code=403, detail="Permission denied")
+    if not config_db:
+        raise HTTPException(status_code=503, detail="Configuration database is not configured")
+
+    configs = await request.json()
+    print(f"configs : {configs}")
+    save_bulk_project_configs(config_db, configs)
+    return JSONResponse({"message": "Project configurations saved successfully."})
 
 
 @api_router.post("/creative-projects/{project_id}/assets", tags=["Creative Projects"])

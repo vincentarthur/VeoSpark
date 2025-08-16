@@ -299,6 +299,8 @@
   },
   "configurations": {
     "title": "配置",
+    "globalSettings": "全局设置",
+    "projectSettings": "项目设置",
     "quotaType": "配额类型",
     "noLimit": "无限制",
     "costLimit": "成本限制",
@@ -307,9 +309,11 @@
     "period": "期间",
     "daily": "每日",
     "weekly": "每周",
+    "total": "总计",
     "save": "保存",
     "costLimitDescription": "根据用户生成的视频总成本（美元）来限制用户。",
-    "generationQuantityDescription": "根据用户生成的视频总数来限制用户。"
+    "generationQuantityDescription": "根据用户生成的视频总数来限制用户。",
+    "unrestricted": "无限制"
   },
   "login": {
     "title": "Veo Spark",

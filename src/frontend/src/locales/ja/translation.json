@@ -297,6 +297,8 @@
   },
   "configurations": {
     "title": "設定",
+    "globalSettings": "グローバル設定",
+    "projectSettings": "プロジェクト設定",
     "quotaType": "クォータタイプ",
     "noLimit": "制限なし",
     "costLimit": "コスト制限",
@@ -305,9 +307,11 @@
     "period": "期間",
     "daily": "毎日",
     "weekly": "毎週",
+    "total": "合計",
     "save": "保存",
     "costLimitDescription": "生成されたビデオの総コスト（USD）に基づいてユーザーを制限します。",
-    "generationQuantityDescription": "生成されたビデオの総数に基づいてユーザーを制限します。"
+    "generationQuantityDescription": "生成されたビデオの総数に基づいてユーザーを制限します。",
+    "unrestricted": "無制限"
   },
   "login": {
     "title": "Veo Spark",
