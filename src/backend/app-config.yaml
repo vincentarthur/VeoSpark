@@ -1,4 +1,4 @@
-## Enable OAuth
+# Enable OAuth
 ENABLE_OAUTH: True
 
 # App metadata

@@ -241,12 +241,9 @@ def check_quota(user_email: str, bq_client: bigquery.Client, config: dict, app_c
     generation_count = row.generation_count or 0
     total_cost = row.total_cost or 0
 
-    if quota_type == 'GENERATION_QUANTITY' and generation_count >= limit:
-        message = f"Exceeded generation quota. Limit: {limit}, Current usage: {generation_count}."
-        return True, message
-    
-    if quota_type == 'COST_LIMIT' and total_cost >= limit:
-        message = f"Exceeded cost quota. Limit: ${limit:.2f}, Current usage: ${total_cost:.2f}."
+    if (quota_type == 'GENERATION_QUANTITY' and generation_count >= limit) or \
+       (quota_type == 'COST_LIMIT' and total_cost >= limit):
+        message = "Total cost reaches to reserved limitation."
         return True, message
 
     return False, ""

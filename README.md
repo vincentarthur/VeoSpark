@@ -234,7 +234,7 @@ You can enable the API and create the database using the `gcloud` CLI:
     gcloud firestore databases create --database="veo-app-shared-videos" --location=us-central1
 
     # Create the database for creative projects
-    gcloud firestore databases create --database="creative-projects" --location=us-central1
+    gcloud firestore databases create --database="veo-creative-projects" --location=us-central1
     ```
 
 #### Deploying Firestore Indexes
