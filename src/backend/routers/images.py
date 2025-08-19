@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form, R
 from schemas import ImageGenerationRequest, TaskResponse
 from services import GenerationService, get_generation_service
 from config import settings
-from dependencies import get_bq_client, get_config_db, get_creative_projects_db
+from dependencies import get_bq_client, get_config_db, get_creative_projects_db, get_shared_videos_db
 from video_processing import check_quota
 from config_manager import get_project_config, get_config
 from google.cloud import bigquery, firestore
@@ -13,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 from task_manager import create_task
 from typing import Optional
 from starlette.responses import JSONResponse
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -193,3 +194,46 @@ def get_image_history(
     except Exception as e:
         logger.error(f"Error querying image history for user {user_email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve image history.")
+
+
+@router.post("/share", tags=["Team Gallery"])
+async def share_image(request: Request, user: dict = Depends(get_user), shared_videos_db: firestore.Client = Depends(get_shared_videos_db)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not shared_videos_db:
+        raise HTTPException(status_code=503, detail="Shared items database is not configured")
+
+    body = await request.json()
+    item_data = body.get("item")
+    group_id = body.get("group_id")
+
+    if not item_data or not group_id:
+        raise HTTPException(status_code=400, detail="Item data and group_id are required.")
+
+    gcs_uri = item_data.get('output_image_gcs_path')
+
+    if not gcs_uri:
+        raise HTTPException(status_code=400, detail="Could not determine a valid GCS URI from the item data.")
+
+    doc_ref = shared_videos_db.collection(settings.SHARED_VIDEOS_COLLECTION).document()
+    
+    shared_item_payload = {
+        "gcs_uri": gcs_uri,
+        "shared_with_group_id": group_id,
+        "shared_by_user_email": user.get("email"),
+        "shared_at": firestore.SERVER_TIMESTAMP,
+        "prompt": item_data.get("prompt"),
+        "user_email": item_data.get("user_email"),
+        "trigger_time": item_data.get("trigger_time"),
+        "completion_time": item_data.get("completion_time"),
+        "operation_duration": item_data.get("operation_duration"),
+        "status": item_data.get("status"),
+        "model_used": item_data.get("model_used"),
+        "type": "image",
+    }
+    
+    shared_item_payload = {k: v for k, v in shared_item_payload.items() if v is not None}
+
+    doc_ref.set(shared_item_payload)
+    
+    return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)

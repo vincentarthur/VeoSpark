@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from schemas import VideoGenerationRequest, TaskResponse
 from services import GenerationService, get_generation_service
 from config import settings
-from dependencies import get_bq_client, get_config_db, get_creative_projects_db
+from dependencies import get_bq_client, get_config_db, get_creative_projects_db, get_shared_videos_db
 from video_processing import check_quota
 from config_manager import get_project_config, get_config
 from google.cloud import bigquery, firestore
@@ -165,3 +165,54 @@ def get_user_history(
     except Exception as e:
         logger.error(f"Error querying history for user {user_email}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve history.")
+
+
+@router.post("/share", tags=["Team Gallery"])
+async def share_video(request: Request, user: dict = Depends(get_user), shared_videos_db: firestore.Client = Depends(get_shared_videos_db)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not shared_videos_db:
+        raise HTTPException(status_code=503, detail="Shared videos database is not configured")
+
+    body = await request.json()
+    video_data = body.get("video")
+    group_id = body.get("group_id")
+
+    if not video_data or not group_id:
+        raise HTTPException(status_code=400, detail="Video data and group_id are required.")
+
+    gcs_uri = None
+    gcs_paths_str = video_data.get("output_video_gcs_paths", "[]")
+    try:
+        gcs_paths = json.loads(gcs_paths_str)
+        if gcs_paths:
+            gcs_uri = gcs_paths[0]
+    except (json.JSONDecodeError, TypeError):
+        pass
+    
+    if not gcs_uri:
+        raise HTTPException(status_code=400, detail="Could not determine a valid GCS URI from the video data.")
+
+    doc_ref = shared_videos_db.collection(settings.SHARED_VIDEOS_COLLECTION).document()
+    
+    shared_video_payload = {
+        "gcs_uri": gcs_uri,
+        "shared_with_group_id": group_id,
+        "shared_by_user_email": user.get("email"),
+        "shared_at": firestore.SERVER_TIMESTAMP,
+        "prompt": video_data.get("prompt"),
+        "user_email": video_data.get("user_email"), 
+        "trigger_time": video_data.get("trigger_time"),
+        "completion_time": video_data.get("completion_time"),
+        "operation_duration": video_data.get("operation_duration"),
+        "status": video_data.get("status"),
+        "model_used": video_data.get("model_used"),
+        "resolution": video_data.get("resolution"),
+        "type": "video",
+    }
+    
+    shared_video_payload = {k: v for k, v in shared_video_payload.items() if v is not None}
+
+    doc_ref.set(shared_video_payload)
+    
+    return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
