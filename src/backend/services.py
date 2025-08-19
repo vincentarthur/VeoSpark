@@ -453,12 +453,20 @@ class GenerationService:
         gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri]
         
         storage_client = storage.Client(project=settings.PROJECT_ID)
+        credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+        credentials.refresh(GoogleAuthRequest())
         video_data = []
         for uri in gcs_paths:
             bucket_name, blob_name = uri[5:].split("/", 1)
             bucket = storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
-            signed_url = blob.generate_signed_url(version="v4", expiration=timedelta(minutes=60), method="GET")
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(minutes=60),
+                method="GET",
+                service_account_email=credentials.service_account_email,
+                access_token=credentials.token,
+            )
             video_data.append({"gcs_uri": uri, "signed_url": signed_url})
 
         return {
@@ -539,12 +547,20 @@ class GenerationService:
                 gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
         storage_client = storage.Client(project=settings.PROJECT_ID)
+        credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+        credentials.refresh(GoogleAuthRequest())
         image_data = []
         for uri in gcs_paths:
             bucket_name, blob_name = uri[5:].split("/", 1)
             bucket = storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
-            signed_url = blob.generate_signed_url(version="v4", expiration=timedelta(minutes=60), method="GET")
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(minutes=60),
+                method="GET",
+                service_account_email=credentials.service_account_email,
+                access_token=credentials.token,
+            )
             image_data.append({"gcs_uri": uri, "signed_url": signed_url})
         
         return {
@@ -634,12 +650,20 @@ class GenerationService:
                     blob.upload_from_filename(temp_file.name)
                     gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
+            credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+            credentials.refresh(GoogleAuthRequest())
             image_data = []
             for uri in gcs_paths:
                 bucket_name, blob_name = uri[5:].split("/", 1)
                 bucket = storage_client.bucket(bucket_name)
                 blob = bucket.blob(blob_name)
-                signed_url = blob.generate_signed_url(version="v4", expiration=timedelta(minutes=60), method="GET")
+                signed_url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=timedelta(minutes=60),
+                    method="GET",
+                    service_account_email=credentials.service_account_email,
+                    access_token=credentials.token,
+                )
                 image_data.append({"gcs_uri": uri, "signed_url": signed_url})
             
             return {
