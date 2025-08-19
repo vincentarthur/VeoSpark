@@ -41,6 +41,7 @@ async def generate_video_endpoint(
         raise HTTPException(status_code=429, detail=message)
 
     logger.info("Submitting video generation task to the background processor.")
+
     task_id = create_task(
         generation_service.generate_video,
         on_success=generation_service.on_video_generation_success,

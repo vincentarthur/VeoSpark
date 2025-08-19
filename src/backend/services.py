@@ -377,12 +377,13 @@ class GenerationService:
             **kwargs
     ) -> Dict[str, Any]:
         start_time = time.time()
-        model_id = kwargs.get('body').get('model')
-        aspect_ratio = kwargs.get('aspect_ratio', '16:9')
-        duration_seconds = int(kwargs.get('duration') or 8)
-        sample_count = int(kwargs.get('sampleCount') or 1)
-        image_gcs_uri = kwargs.get('image_gcs_uri')
-        final_frame_gcs_uri = kwargs.get('final_frame_gcs_uri')
+        body = kwargs.get('body', {})
+        model_id = body.get('model')
+        aspect_ratio = body.get('aspectRatio', '16:9')
+        duration_seconds = int(body.get('duration', 8))
+        sample_count = int(body.get('sampleCount', 1))
+        image_gcs_uri = body.get('image_gcs_uri')
+        final_frame_gcs_uri = body.get('final_frame_gcs_uri')
 
         user_folder = "anonymous"
         if user_info and 'email' in user_info:
@@ -405,18 +406,18 @@ class GenerationService:
         if final_frame_gcs_uri:
             config.last_frame = types.Image(gcs_uri=final_frame_gcs_uri, mime_type="image/jpeg")
 
-        if kwargs.get('enhancePrompt') is not None:
-            config.enhance_prompt = kwargs['enhancePrompt']
+        if body.get('enhancePrompt') is not None:
+            config.enhance_prompt = body['enhancePrompt']
 
-        if kwargs.get('generateAudio') is not None:
-            config.generate_audio = kwargs['generateAudio']
-        if kwargs.get('resolution') is not None:
-            config.resolution = kwargs['resolution']
+        if body.get('generateAudio') is not None:
+            config.generate_audio = body['generateAudio']
+        if body.get('resolution') is not None:
+            config.resolution = body['resolution']
         
-        if kwargs.get('extend_duration') is not None:
+        if body.get('extend_duration') is not None:
             sdk_call_kwargs['video'] = types.Video(uri=image_gcs_uri)
             sdk_call_kwargs.pop('image', None)
-            config.duration_seconds = kwargs['extend_duration']
+            config.duration_seconds = body['extend_duration']
 
         operation = self.genai_client.models.generate_videos(
             model=model_id,
@@ -474,7 +475,8 @@ class GenerationService:
             "videos": video_data,
             "duration": time.time() - start_time,
             "revisedPrompt": revised_prompt,
-            "rai_reasons": rai_reasons
+            "rai_reasons": rai_reasons,
+            "creative_project_id": kwargs.get('body').get('creative_project_id')
         }
 
     def generate_image(
@@ -570,7 +572,8 @@ class GenerationService:
             "prompt": prompt,
             "model_used": model_used,
             "resolution": image_size,
-            "rai_reasons": rai_reasons if rai_reasons else None
+            "rai_reasons": rai_reasons if rai_reasons else None,
+            "creative_project_id": kwargs.get('body').get('creative_project_id')
         }
 
     def imitate_image(
@@ -587,109 +590,95 @@ class GenerationService:
     ) -> Dict[str, Any]:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
         
-        try:
-            # 1. Upload image to GCS
-            user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
-            storage_client = storage.Client(project=settings.PROJECT_ID)
-            bucket = storage_client.bucket(settings.VIDEO_BUCKET_NAME)
-            file_extension = Path(file_filename).suffix
-            blob_name = f"image_uploads/{user_folder}/{uuid.uuid4().hex}{file_extension}"
-            blob = bucket.blob(blob_name)
-            blob.upload_from_string(file_bytes, content_type=file_content_type)
-            gcs_uri = f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}"
+        # 1. Upload image to GCS
+        user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+        storage_client = storage.Client(project=settings.PROJECT_ID)
+        bucket = storage_client.bucket(settings.VIDEO_BUCKET_NAME)
+        file_extension = Path(file_filename).suffix
+        blob_name = f"image_uploads/{user_folder}/{uuid.uuid4().hex}{file_extension}"
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(file_bytes, content_type=file_content_type)
+        gcs_uri = f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}"
 
-            # 2. Describe the image with Gemini
-            image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=file_content_type)
-            response = self.genai_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[
-                    types.Part.from_text(text=IMAGE_IMITATION_PROMPT_PREFIX),
-                    image_part,
-                    types.Part.from_text(text=IMAGE_IMITATION_PROMPT_SUFFIX)
-                ],
-                config=generate_content_config
+        # 2. Describe the image with Gemini
+        image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=file_content_type)
+        response = self.genai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_text(text=IMAGE_IMITATION_PROMPT_PREFIX),
+                image_part,
+                types.Part.from_text(text=IMAGE_IMITATION_PROMPT_SUFFIX)
+            ],
+            config=generate_content_config
+        )
+        image_description = response.text
+        combined_prompt_template = IMAGE_IMITATION_PROMPT_COMBINATION.format(image_description_json=image_description, cust_input_text=sub_prompt)
+        response = self.genai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[types.Part.from_text(text=combined_prompt_template)],
+            config=generate_content_config
+        )
+        combined_prompt = response.text
+
+        # 3. Generate a new image
+        start_time = time.time()
+        images = self.imagen_client.models.generate_images(
+            model=model,
+            prompt=combined_prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=sample_count,
+                person_generation="allow_all",
+                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
+                add_watermark=True,
+                image_size=image_size,
+                include_rai_reason=True
             )
-            image_description = response.text
-            combined_prompt_template = IMAGE_IMITATION_PROMPT_COMBINATION.format(image_description_json=image_description, cust_input_text=sub_prompt)
-            response = self.genai_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[types.Part.from_text(text=combined_prompt_template)],
-                config=generate_content_config
-            )
-            combined_prompt = response.text
+        )
+        op_duration = time.time() - start_time
 
-            # 3. Generate a new image
-            start_time = time.time()
-            images = self.imagen_client.models.generate_images(
-                model=model,
-                prompt=combined_prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=sample_count,
-                    person_generation="allow_all",
-                    safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
-                    add_watermark=True,
-                    image_size=image_size,
-                    include_rai_reason=True
-                )
-            )
-            op_duration = time.time() - start_time
+        gcs_paths = []
+        rai_reasons = []
+        for generated_image in images.generated_images:
+            if generated_image.rai_filtered_reason:
+                reason = self._parse_rai_reason_from_error(f"Support codes: {generated_image.rai_filtered_reason}")
+                rai_reasons.append(reason or {"code": generated_image.rai_filtered_reason, "description": "Unknown reason"})
+                continue
 
-            gcs_paths = []
-            rai_reasons = []
-            for generated_image in images.generated_images:
-                if generated_image.rai_filtered_reason:
-                    reason = self._parse_rai_reason_from_error(f"Support codes: {generated_image.rai_filtered_reason}")
-                    rai_reasons.append(reason or {"code": generated_image.rai_filtered_reason, "description": "Unknown reason"})
-                    continue
-
-                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-                    generated_image.image._pil_image.save(temp_file.name)
-                    user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
-                    blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
-                    blob = bucket.blob(blob_name)
-                    blob.upload_from_filename(temp_file.name)
-                    gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
-
-            credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
-            credentials.refresh(GoogleAuthRequest())
-            image_data = []
-            for uri in gcs_paths:
-                bucket_name, blob_name = uri[5:].split("/", 1)
-                bucket = storage_client.bucket(bucket_name)
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+                generated_image.image._pil_image.save(temp_file.name)
+                user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+                blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
                 blob = bucket.blob(blob_name)
-                signed_url = blob.generate_signed_url(
-                    version="v4",
-                    expiration=timedelta(minutes=60),
-                    method="GET",
-                    service_account_email=credentials.service_account_email,
-                    access_token=credentials.token,
-                )
-                image_data.append({"gcs_uri": uri, "signed_url": signed_url})
-            
-            return {
-                "message": "Image imitation successful.",
-                "images": image_data,
-                "duration": op_duration,
-                "revised_prompt": combined_prompt,
-                "model": model,
-                "resolution": image_size,
-                "rai_reasons": rai_reasons if rai_reasons else None,
-                "gcs_paths": gcs_paths
-            }
+                blob.upload_from_filename(temp_file.name)
+                gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
-        except Exception as e:
-            rai_reason = self._parse_rai_reason_from_error(str(e))
-            if rai_reason:
-                return {
-                    "message": "Image imitation failed due to safety filters.",
-                    "images": [],
-                    "duration": 0,
-                    "revised_prompt": None,
-                    "model": model,
-                    "resolution": image_size,
-                    "rai_reasons": [rai_reason]
-                }
-            raise
+        credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+        credentials.refresh(GoogleAuthRequest())
+        image_data = []
+        for uri in gcs_paths:
+            bucket_name, blob_name = uri[5:].split("/", 1)
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(minutes=60),
+                method="GET",
+                service_account_email=credentials.service_account_email,
+                access_token=credentials.token,
+            )
+            image_data.append({"gcs_uri": uri, "signed_url": signed_url})
+            
+        return {
+            "message": "Image imitation successful.",
+            "images": image_data,
+            "duration": op_duration,
+            "revised_prompt": combined_prompt,
+            "model": model,
+            "resolution": image_size,
+            "rai_reasons": rai_reasons if rai_reasons else None,
+            "gcs_paths": gcs_paths,
+            "creative_project_id": kwargs.get('creative_project_id')
+        }
 
 def get_generation_service() -> GenerationService:
     return GenerationService(get_genai_client(), get_imagen_client())

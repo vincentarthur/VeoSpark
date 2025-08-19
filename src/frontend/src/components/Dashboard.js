@@ -299,7 +299,7 @@ const Dashboard = ({ initialFirstFrame }) => {
       <Col xs={24} md={8}>
         <Card>
           <Title level={2}>{t('dashboard.title')}</Title>
-          <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{
+          <Form form={form} layout="vertical" onFinish={onFinish} onFinishFailed={(e) => e.preventDefault()} initialValues={{
             model: model,
             prompt: prompt,
             duration: duration,
@@ -309,7 +309,7 @@ const Dashboard = ({ initialFirstFrame }) => {
             enhancePrompt: enhancePrompt,
             resolution: resolution,
             extend_duration: extendDuration,
-          }}>
+          }} action="#/">
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={setModel}>
                 {models.map((m) => (
