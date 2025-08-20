@@ -1,6 +1,7 @@
 import time
 import uuid
 import re
+import json
 from pathlib import Path
 import tempfile
 from typing import Dict, Any, Optional, List, Tuple
@@ -179,7 +180,7 @@ class GenerationService:
                 resolution=body.get('resolution'),
                 first_frame_gcs_uri=body.get('image_gcs_uri'),
                 last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
-                output_video_gcs_paths=path,
+                output_video_gcs_paths=json.dumps([path]),
                 creative_project_id=body.get('creative_project_id')
             )
 
