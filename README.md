@@ -194,16 +194,65 @@ To run this application, you need to set up the following Google Cloud services:
 
 ### 2. Enable APIs
 
--   Enable the following APIs for your project:
-    -   Vertex AI API
-    -   Cloud Storage API
-    -   BigQuery API
-    -   Secret Manager API
-    -   Cloud Tasks API
+-   Enable the following APIs for your project by running this command:
+    ```bash
+    gcloud services enable \
+        aiplatform.googleapis.com \
+        storage.googleapis.com \
+        bigquery.googleapis.com \
+        secretmanager.googleapis.com \
+        cloudtasks.googleapis.com \
+        iam.googleapis.com \
+        firestore.googleapis.com
+    ```
 
-### 3. Cloud Storage
+### 3. Network Setup
+
+-   **Create a VPC**:
+    ```bash
+    gcloud compute networks create veospark-vpc --subnet-mode=custom
+    ```
+-   **Create a subnet**:
+    ```bash
+    gcloud compute networks subnets create us-central1 \
+        --network=veospark-vpc \
+        --range=10.0.0.0/24 \
+        --region=us-central1
+    ```
+-   **Add firewall rules**:
+    -   Allow HTTPS Ingress:
+        ```bash
+        gcloud compute firewall-rules create allow-https \
+            --network=veospark-vpc \
+            --allow=tcp:443 \
+            --direction=INGRESS \
+            --source-ranges=0.0.0.0/0
+        ```
+    -   Allow All Egress:
+        ```bash
+        gcloud compute firewall-rules create allow-egress \
+            --network=veospark-vpc \
+            --allow=all \
+            --direction=EGRESS \
+            --destination-ranges=0.0.0.0/0
+        ```
+    -   Allow Load Balancer Health Checks:
+        ```bash
+        gcloud compute firewall-rules create allow-lb-health-check \
+            --network=veospark-vpc \
+            --allow=tcp:443 \
+            --direction=INGRESS \
+            --source-ranges=35.191.0.0/16,130.211.0.0/22,209.85.152.0/22,209.85.204.0/22
+        ```
+
+### 4. Cloud Storage
 
 -   Create a Cloud Storage bucket to store the generated videos and uploaded images.
+    ```bash
+    #!/bin/bash
+    BUCKET_NAME=$(grep VIDEO_BUCKET_NAME app-config.yaml | awk '{print $2}')
+    gcloud storage buckets create gs://$BUCKET_NAME --location=us-central1
+    ```
 
 ### 4. Firestore
 
@@ -214,15 +263,10 @@ To run this application, you need to set up the following Google Cloud services:
 #### Creating Firestore via Command Line
 You can enable the API and create the database using the `gcloud` CLI:
 
-1.  **Enable the API**:
-    ```bash
-    gcloud services enable firestore.googleapis.com
-    ```
-
-2.  **Create the databases in `us-central1`**:
+1.  **Create the databases in `us-central1`**:
     ```bash
     # Create the database for the prompt gallery
-    gcloud firestore databases create --database="prompt-gallery" --location=us-central1
+    gcloud firestore databases create --database="veo-prompt-gallery" --location=us-central1
 
     # Create the database for application configuration
     gcloud firestore databases create --database="veo-app-config" --location=us-central1
@@ -258,14 +302,7 @@ To ensure your Firestore queries are efficient, you need to deploy the required 
     ./setup_creative_projects_firestore.sh
     ```
 
-### 5. Cloud Tasks
-
-- Create a Cloud Tasks queue for handling asynchronous video upscaling.
-    ```bash
-    gcloud tasks queues create veo-upscale-queue --location=us-central1
-    ```
-
-### 6. BigQuery
+### 5. BigQuery
 
 You can create the required BigQuery dataset and table by running the provided setup script.
 
@@ -276,21 +313,16 @@ You can create the required BigQuery dataset and table by running the provided s
 
 2.  **Make the script executable**:
     ```bash
-    chmod +x setup_bigquery.sh
+    chmod +x setup_veo_bigquery.sh
     ```
 
 3.  **Run the script**:
-    Replace `YOUR_DATASET_ID` and `YOUR_TABLE_ID` with the names you configured in `app-config.yaml`.
     ```bash
-    ./setup_bigquery.sh YOUR_DATASET_ID YOUR_TABLE_ID
+    ./setup_veo_bigquery.sh
     ```
-    For example:
-    ```bash
-    ./setup_bigquery.sh marketing_materials_analysis veo_history
-    ```
-    The script will create the dataset and the table with the correct schema defined in `schema.json`.
+    The script will create the dataset and the table with the correct schema defined in `schema_veo_history.json`.
 
-### 7. BigQuery for Imagen History
+### 6. BigQuery for Imagen History
 
 You can create the required BigQuery table for Imagen history logging by running the provided setup script.
 
@@ -310,7 +342,7 @@ You can create the required BigQuery table for Imagen history logging by running
     ```
     The script will automatically use the `PROJECT_ID` and `ANALYSIS_DATASET` from your `app-config.yaml` file and create the `imagen_history` table with the schema from `schema_imagen_history.json`.
 
-### 8. Create a Service Account
+### 7. Create a Service Account
 
 It is recommended to create a dedicated service account for this application to follow the principle of least privilege.
 
@@ -333,7 +365,7 @@ It is recommended to create a dedicated service account for this application to 
     -   Cloud Tasks Enqueuer
 6.  Click **Done**.
 
-### 9. Authentication
+### 8. Authentication
 
 -   **OAuth 2.0 Client ID**:
     -   Go to "APIs & Services" > "Credentials".
@@ -344,17 +376,12 @@ It is recommended to create a dedicated service account for this application to 
     -   For production, add your public URL (e.g., `https://your-app-url.com`) to origins and `https://your-app-url.com/auth` to redirect URIs.
     -   Take note of the "Client ID" and "Client secret".
 -   **Secret Manager**:
-    -   Go to the [Secret Manager](https://console.cloud.google.com/security/secret-manager) page in the Google Cloud Console.
-    -   Click **Create secret**.
-    -   Enter a name for your secret (e.g., `veo-oauth-secret`). Note this name for your `app-config.yaml`.
-    -   In the **Secret value** field, paste the following JSON, replacing the placeholder values with your actual Client ID and Client Secret:
-        ```json
-        {
-          "GOOGLE_CLIENT_ID": "YOUR_CLIENT_ID",
-          "GOOGLE_CLIENT_SECRET": "YOUR_CLIENT_SECRET"
-        }
+    -   You can create the secret using the `gcloud` command-line tool. This command pipes a JSON string containing your OAuth credentials directly into the Secret Manager.
+
+        ```bash
+        echo -n '{"GOOGLE_CLIENT_ID": "YOUR_CLIENT_ID", "GOOGLE_CLIENT_SECRET": "YOUR_CLIENT_SECRET"}' | \
+        gcloud secrets create veo-oauth-secret --data-file=-
         ```
-    -   Leave the other settings as default and click **Create secret**.
     -   After the secret is created, you need to grant the `veo-spark-sa` service account access to it.
         -   Go back to the [Secret Manager](https://console.cloud.google.com/security/secret-manager) page, select your secret, and click **Permissions**.
         -   Click **Add principal**.
@@ -362,7 +389,7 @@ It is recommended to create a dedicated service account for this application to 
         -   In the **Select a role** dropdown, choose **Secret Manager Secret Accessor**.
         -   Click **Save**.
 
-## Running the Application Locally
+## Running the Application On Vertex AI Workbench
 
 ### Prerequisites
 

@@ -13,15 +13,10 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-# Check for the correct number of arguments.
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <DATASET_ID> <TABLE_ID>"
-    exit 1
-fi
-
-DATASET_ID=$1
-TABLE_ID=$2
-SCHEMA_FILE="./schema.json"
+DATASET_ID=$(grep ANALYSIS_DATASET app-config.yaml | awk '{print $2}')
+TABLE_ID=$(grep HISTORY_TABLE app-config.yaml | awk '{print $2}')
+LOCATION=$(grep 'BIGQUERY_LOCATION:' app-config.yaml | awk '{print $2}')
+SCHEMA_FILE="./schema_veo_history.json"
 
 # Check if the schema file exists.
 if [ ! -f "$SCHEMA_FILE" ]; then
@@ -30,9 +25,9 @@ if [ ! -f "$SCHEMA_FILE" ]; then
 fi
 
 echo "Creating BigQuery dataset '$DATASET_ID' if it doesn't exist..."
-bq --location=US mk --dataset --description "Dataset for VeoSpark history" "$DATASET_ID" 2>/dev/null || echo "Dataset '$DATASET_ID' already exists."
+bq --location=$LOCATION mk --dataset --description "Dataset for VeoSpark history" "$DATASET_ID" 2>/dev/null || echo "Dataset '$DATASET_ID' already exists."
 
 echo "Creating BigQuery table '$TABLE_ID' in dataset '$DATASET_ID'..."
 bq mk --table --description "VeoSpark generation history" "$DATASET_ID.$TABLE_ID" "$SCHEMA_FILE" 2>/dev/null || echo "Table '$DATASET_ID.$TABLE_ID' already exists."
 
-echo "BigQuery setup completed successfully."
+echo "Table $TABLE_ID created successfully in dataset $DATASET_ID."

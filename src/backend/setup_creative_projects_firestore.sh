@@ -36,11 +36,11 @@ gcloud firestore indexes composite create \
   --field-config=field-path=created_at,order=DESCENDING
 
 # Index for querying assets by date
-echo "Creating index for 'assets' collection group..."
-gcloud firestore indexes composite create \
-  --project=$PROJECT_ID \
-  --database=$DATABASE_ID \
-  --collection-group=assets \
-  --field-config=field-path=added_at,order=DESCENDING
+# echo "Creating index for 'assets' collection group..."
+# gcloud firestore indexes composite create \
+#   --project=$PROJECT_ID \
+#   --database=$DATABASE_ID \
+#   --collection-group=assets \
+#   --field-config=field-path=added_at,order=DESCENDING
 
-echo "Creative Projects Firestore setup complete."
+# echo "Creative Projects Firestore setup complete."

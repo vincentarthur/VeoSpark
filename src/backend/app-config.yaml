@@ -28,13 +28,14 @@ ENABLE_BIGQUERY_LOGGING: True
 ANALYSIS_DATASET: marketing_materials_analysis
 HISTORY_TABLE: veo_history
 IMAGEN_HISTORY_TABLE: imagen_history
+BIGQUERY_LOCATION: us-central1
 
 # Logging
 LOGGER_NAME: veo.service
 LOGGING_FORMAT: "%(asctime)s [%(levelname)s]: %(message)s"
 
 # Prompt Gallery
-PROMPT_GALLERY_DB: prompt-gallery
+PROMPT_GALLERY_DB: veo-prompt-gallery
 PROMPT_GALLERY_COLLECTION: prompts
 
 # Groups
