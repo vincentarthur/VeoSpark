@@ -528,23 +528,23 @@ sequenceDiagram
     participant "API Routers (FastAPI)"
     participant "Task Manager"
     participant "Generation Service"
-    participant "Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)"
+    participant "Google Cloud Services"
 
     Client->>"API Routers (FastAPI)": HTTP Request (e.g., POST /videos/generate)
     alt Synchronous Operation
-        "API Routers (FastAPI)"->>"Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)": Direct Call (e.g., Firestore query)
-        "Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)"-->>"API Routers (FastAPI)": Response
+        "API Routers (FastAPI)"->>"Google Cloud Services": Direct Call (e.g., Firestore query)
+        "Google Cloud Services"-->>"API Routers (FastAPI)": Response
         "API Routers (FastAPI)"-->>Client: HTTP Response
     else Asynchronous Generation
         "API Routers (FastAPI)"->>"Task Manager": create_task(generation_function, ...)
         "Task Manager"-->>"API Routers (FastAPI)": task_id
         "API Routers (FastAPI)"-->>Client: HTTP 200 OK (TaskResponse with task_id)
         "Task Manager"-x"Generation Service": Run in background: generate_video/image()
-        "Generation Service"->>"Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)": Call GenAI/Imagen API
-        "Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)"-->>"Generation Service": Generation Result
+        "Generation Service"->>"Google Cloud Services": Call GenAI/Imagen API
+        "Google Cloud Services"-->>"Generation Service": Generation Result
         "Generation Service"->>"Task Manager": on_success(result) / on_error(error)
-        "Task Manager"->>"Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)": Log to BigQuery
-        "Task Manager"->>"Google Cloud (GenAI, Imagen, GCS, BigQuery, Firestore)": Add asset to Firestore
+        "Task Manager"->>"Google Cloud Services": Log to BigQuery
+        "Task Manager"->>"Google Cloud Services": Add asset to Firestore
     end
 
     Client->>"API Routers (FastAPI)": GET /tasks/{task_id}
