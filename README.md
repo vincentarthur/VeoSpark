@@ -254,7 +254,7 @@ To run this application, you need to set up the following Google Cloud services:
     gcloud storage buckets create gs://$BUCKET_NAME --location=us-central1
     ```
 
-### 4. Firestore
+### 5. Firestore
 
 -   Enable the Firestore API in your Google Cloud project.
 -   Create a new Firestore database in **Native mode**.
@@ -302,7 +302,7 @@ To ensure your Firestore queries are efficient, you need to deploy the required 
     ./setup_creative_projects_firestore.sh
     ```
 
-### 5. BigQuery
+### 6. BigQuery
 
 You can create the required BigQuery dataset and table by running the provided setup script.
 
@@ -322,7 +322,7 @@ You can create the required BigQuery dataset and table by running the provided s
     ```
     The script will create the dataset and the table with the correct schema defined in `schema_veo_history.json`.
 
-### 6. BigQuery for Imagen History
+### 7. BigQuery for Imagen History
 
 You can create the required BigQuery table for Imagen history logging by running the provided setup script.
 
@@ -342,7 +342,7 @@ You can create the required BigQuery table for Imagen history logging by running
     ```
     The script will automatically use the `PROJECT_ID` and `ANALYSIS_DATASET` from your `app-config.yaml` file and create the `imagen_history` table with the schema from `schema_imagen_history.json`.
 
-### 7. Create a Service Account
+### 8. Create a Service Account
 
 It is recommended to create a dedicated service account for this application to follow the principle of least privilege.
 
@@ -365,7 +365,7 @@ It is recommended to create a dedicated service account for this application to 
     -   Cloud Tasks Enqueuer
 6.  Click **Done**.
 
-### 8. Authentication
+### 9. Authentication
 
 -   **OAuth 2.0 Client ID**:
     -   Go to "APIs & Services" > "Credentials".
@@ -440,6 +440,7 @@ It is recommended to create a dedicated service account for this application to 
     From the `src/backend` directory, run the following command:
     ```bash
     # (Optional) Set environment variables for local OAuth
+    
     export FRONTEND_URL="http://localhost:7860"
     export REDIRECT_URI="http://localhost:7860/auth"
     

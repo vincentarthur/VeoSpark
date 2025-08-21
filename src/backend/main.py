@@ -3,6 +3,7 @@ import uvicorn
 import json
 import logging
 import re
+import sys
 import tempfile
 import time
 import uuid
@@ -42,6 +43,10 @@ from video_processing import check_quota, process_video_from_gcs
 from routers.api import router as api_router
 from routers.videos import router as videos_router
 from routers.images import router as images_router
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ==============================================================================
 # 3. FASTAPI APP AND MIDDLEWARE SETUP
@@ -117,9 +122,14 @@ if settings.ENABLE_OAUTH:
             token = await oauth.google.authorize_access_token(request)
             user_info = dict(token)["userinfo"]
 
-            user_hd = user_info.get('hd')
-            if ALLOWED_DOMAINS and user_hd not in ALLOWED_DOMAINS:
-                logger.warning(f"Unauthorized domain: {user_hd}")
+            # user_hd = user_info.get('hd')
+            # if ALLOWED_DOMAINS and user_hd not in ALLOWED_DOMAINS:
+            #     logger.warning(f"Unauthorized domain: {user_hd}")
+            #     return RedirectResponse(url=f"{frontend_url}/login?error=domain_not_allowed")
+            
+            user_domain = (user_info.get('email').split('@')[1]).lower()
+            if ALLOWED_DOMAINS and user_domain not in ALLOWED_DOMAINS:
+                logger.warning(f"Unauthorized domain: {user_domain}")
                 return RedirectResponse(url=f"{frontend_url}/login?error=domain_not_allowed")
 
             request.session['user'] = user_info
