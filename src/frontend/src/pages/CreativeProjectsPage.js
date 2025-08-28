@@ -287,11 +287,11 @@ const CreativeProjectsPage = ({ user }) => {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
                 {assets[project.id].map(asset => (
                   <div key={asset.id} style={{ width: '300px' }}>
-                    {asset.output_video_gcs_paths ? (
+                    {asset.type.toLowerCase() === 'video' ? (
                       <VideoCard video={asset} user={user} showAddToProject={false} />
-                    ) : (
+                    ) : asset.type.toLowerCase() === 'image' ? (
                       <ImageCard image={asset} user={user} showAddToProject={false} />
-                    )}
+                    ) : null}
                   </div>
                 ))}
               </div>
