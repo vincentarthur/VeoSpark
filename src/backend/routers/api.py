@@ -70,6 +70,14 @@ def get_image_models_endpoint():
     """
     return JSONResponse(get_image_models())
 
+@router.get("/image-enrichment-models", tags=["Configuration"])
+def get_image_enrichment_models_endpoint():
+    """
+    Returns the available image enrichment models from the configuration.
+    """
+    from config_manager import get_image_enrichment_models
+    return JSONResponse(get_image_enrichment_models())
+
 @router.get("/notification-banner", tags=["Configuration"])
 def get_notification_banner():
     """
@@ -795,8 +803,7 @@ def get_consumption_analytics(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     top_x: Optional[int] = 10,
-    bq_client: bigquery.Client = Depends(get_bq_client),
-    generation_service: GenerationService = Depends(get_generation_service)
+    bq_client: bigquery.Client = Depends(get_bq_client)
 ):
     """
     Provides aggregated consumption data for both video and image generation.
@@ -811,119 +818,135 @@ def get_consumption_analytics(
     if not settings.ENABLE_BIGQUERY_LOGGING or not bq_client:
         raise HTTPException(status_code=501, detail="Analytics are disabled (BigQuery not configured).")
 
-    def calculate_video_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
-        if not model_used or not video_duration: return 0.0
-        model_info = next((m for m in get_models_config().get('models', []) if m['id'] == model_used), None)
-        if not model_info: return 0.0
-        pricing = model_info.get('pricing', {})
-        cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
-        return round(video_duration * cost_per_second, 4)
-
-    def calculate_image_cost(model_used: str) -> float:
-        if not model_used: return 0.0
-        model_info = next((m for m in get_image_models().get('models', []) if m['id'] == model_used), None)
-        if not model_info: return 0.0
-        pricing = model_info.get('pricing', {})
-        return round(pricing.get('per_image', 0.0), 4)
-
     try:
         query_params = []
-        video_where_clauses = ["status = 'SUCCESS'", "video_duration > 0"]
-        image_where_clauses = ["status = 'SUCCESS'"]
+        base_where_clauses = ["status = 'SUCCESS'", "cost > 0", "trigger_time IS NOT NULL", "user_email IS NOT NULL"]
 
         if start_date:
-            video_where_clauses.append("trigger_time >= @start_date")
-            image_where_clauses.append("trigger_time >= @start_date")
+            base_where_clauses.append("trigger_time >= @start_date")
             query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
         if end_date:
             end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
-            video_where_clauses.append("trigger_time < @end_date")
-            image_where_clauses.append("trigger_time < @end_date")
+            base_where_clauses.append("trigger_time < @end_date")
             query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
 
-        video_query = f"""
-            SELECT trigger_time, user_email, model_used, video_duration, with_audio
-            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.HISTORY_TABLE}`
-            WHERE {" AND ".join(video_where_clauses)}
-        """
-        image_query = f"""
-            SELECT trigger_time, user_email, model_used
-            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.imagen_history`
-            WHERE {" AND ".join(image_where_clauses)}
+        where_clause = " AND ".join(base_where_clauses)
+
+        # Combined query for both video and image costs
+        combined_query = f"""
+            WITH video_costs AS (
+                SELECT
+                    TIMESTAMP_TRUNC(trigger_time, DAY) as consumption_date,
+                    user_email,
+                    SUM(cost) as video_cost
+                FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.HISTORY_TABLE}`
+                WHERE {where_clause}
+                GROUP BY consumption_date, user_email
+            ),
+            image_costs AS (
+                SELECT
+                    TIMESTAMP_TRUNC(trigger_time, DAY) as consumption_date,
+                    user_email,
+                    SUM(cost) as image_cost
+                FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGEN_HISTORY_TABLE}`
+                WHERE {where_clause}
+                GROUP BY consumption_date, user_email
+            ),
+            enrichment_costs AS (
+                SELECT
+                    TIMESTAMP_TRUNC(trigger_time, DAY) as consumption_date,
+                    user_email,
+                    SUM(cost) as enrichment_cost
+                FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGE_ENRICHMENT_HISTORY_TABLE}`
+                WHERE {where_clause}
+                GROUP BY consumption_date, user_email
+            )
+            SELECT
+                COALESCE(v.consumption_date, i.consumption_date, e.consumption_date) as consumption_date,
+                COALESCE(v.user_email, i.user_email, e.user_email) as user_email,
+                v.video_cost,
+                i.image_cost,
+                e.enrichment_cost
+            FROM video_costs v
+            FULL OUTER JOIN image_costs i ON v.consumption_date = i.consumption_date AND v.user_email = i.user_email
+            FULL OUTER JOIN enrichment_costs e ON COALESCE(v.consumption_date, i.consumption_date) = e.consumption_date AND COALESCE(v.user_email, i.user_email) = e.user_email
         """
         job_config = bigquery.QueryJobConfig(query_parameters=query_params)
-
-        video_rows = bq_client.query(video_query, job_config=job_config).result()
-        image_rows = bq_client.query(image_query, job_config=job_config).result()
+        query_job = bq_client.query(combined_query, job_config=job_config)
+        rows = query_job.result()
 
         daily_costs = {}
         user_costs = {}
 
-        for row in video_rows:
-            cost = calculate_video_cost(row.model_used, row.video_duration, row.with_audio)
-            if cost > 0:
-                consumption_date = row.trigger_time.strftime('%Y-%m-%d')
-                date_entry = daily_costs.setdefault(consumption_date, {'video': 0, 'image': 0})
-                date_entry['video'] += cost
+        for row in rows:
+            consumption_date = row.consumption_date.strftime('%Y-%m-%d')
+            video_cost = row.video_cost or 0
+            image_cost = row.image_cost or 0
+            enrichment_cost = row.enrichment_cost or 0
 
-                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
-                user_entry['video'] += cost
-        
-        for row in image_rows:
-            cost = calculate_image_cost(row.model_used)
-            if cost > 0:
-                consumption_date = row.trigger_time.strftime('%Y-%m-%d')
-                date_entry = daily_costs.setdefault(consumption_date, {'video': 0, 'image': 0})
-                date_entry['image'] += cost
+            date_entry = daily_costs.setdefault(consumption_date, {'video': 0, 'image': 0, 'enrichment': 0})
+            date_entry['video'] += video_cost
+            date_entry['image'] += image_cost
+            date_entry['enrichment'] += enrichment_cost
 
-                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
-                user_entry['image'] += cost
+            user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0, 'enrichment': 0})
+            user_entry['video'] += video_cost
+            user_entry['image'] += image_cost
+            user_entry['enrichment'] += enrichment_cost
 
         total_video_cost = sum(user['video'] for user in user_costs.values())
         total_image_cost = sum(user['image'] for user in user_costs.values())
-        total_cost = total_video_cost + total_image_cost
+        total_enrichment_cost = sum(user['enrichment'] for user in user_costs.values())
+        total_cost = total_video_cost + total_image_cost + total_enrichment_cost
 
         daily_consumption_chart_data = [
             {
-                "consumption_date": date, 
+                "consumption_date": date,
                 "video_cost": round(costs['video'], 2),
                 "image_cost": round(costs['image'], 2),
-                "total_cost": round(costs['video'] + costs['image'], 2)
+                "enrichment_cost": round(costs['enrichment'], 2),
+                "total_cost": round(costs['video'] + costs['image'] + costs['enrichment'], 2)
             }
             for date, costs in sorted(daily_costs.items())
         ]
-        
+
         top_users_chart_data = sorted(
             [
                 {
-                    "user_email": email, 
+                    "user_email": email,
                     "video_cost": round(costs['video'], 2),
                     "image_cost": round(costs['image'], 2),
-                    "total_cost": round(costs['video'] + costs['image'], 2)
-                } 
+                    "enrichment_cost": round(costs['enrichment'], 2),
+                    "total_cost": round(costs['video'] + costs['image'] + costs['enrichment'], 2)
+                }
                 for email, costs in user_costs.items()
             ],
             key=lambda x: x["total_cost"],
             reverse=True
         )[:top_x]
 
-        video_dist_query = f"SELECT model_used, with_audio, COUNT(*) as generation_count FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.HISTORY_TABLE}` WHERE {' AND '.join(video_where_clauses)} AND model_used LIKE 'veo-%' GROUP BY model_used, with_audio"
-        image_dist_query = f"SELECT model_used, COUNT(*) as generation_count FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.imagen_history` WHERE {' AND '.join(image_where_clauses)} GROUP BY model_used"
-        
+        # Model distribution queries
+        video_dist_query = f"SELECT model_used, with_audio, COUNT(*) as generation_count FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.HISTORY_TABLE}` WHERE {' AND '.join(base_where_clauses)} AND model_used LIKE 'veo-%' GROUP BY model_used, with_audio"
+        image_dist_query = f"SELECT model_used, COUNT(*) as generation_count FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGEN_HISTORY_TABLE}` WHERE {' AND '.join(base_where_clauses)} GROUP BY model_used"
+        enrichment_dist_query = f"SELECT model_used, COUNT(*) as generation_count FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGE_ENRICHMENT_HISTORY_TABLE}` WHERE {' AND '.join(base_where_clauses)} GROUP BY model_used"
+
         video_dist_results = [dict(row) for row in bq_client.query(video_dist_query, job_config=job_config).result()]
         image_dist_results = [dict(row) for row in bq_client.query(image_dist_query, job_config=job_config).result()]
+        enrichment_dist_results = [dict(row) for row in bq_client.query(enrichment_dist_query, job_config=job_config).result()]
 
         return JSONResponse({
             "summary": {
                 "total_cost": round(total_cost, 2),
                 "total_video_cost": round(total_video_cost, 2),
                 "total_image_cost": round(total_image_cost, 2),
+                "total_enrichment_cost": round(total_enrichment_cost, 2),
             },
             "daily_consumption": daily_consumption_chart_data,
             "top_users": top_users_chart_data,
             "model_distribution": {
                 "video": video_dist_results,
-                "image": image_dist_results
+                "image": image_dist_results,
+                "enrichment": enrichment_dist_results
             }
         })
 
@@ -938,7 +961,6 @@ def get_consumption_by_project_analytics(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     bq_client: bigquery.Client = Depends(get_bq_client),
-    generation_service: GenerationService = Depends(get_generation_service),
     creative_projects_db: firestore.Client = Depends(get_creative_projects_db)
 ):
     """
@@ -954,64 +976,57 @@ def get_consumption_by_project_analytics(
     if not settings.ENABLE_BIGQUERY_LOGGING or not bq_client:
         raise HTTPException(status_code=501, detail="Analytics are disabled (BigQuery not configured).")
 
-    def calculate_video_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
-        if not model_used or not video_duration: return 0.0
-        model_info = next((m for m in get_models_config().get('models', []) if m['id'] == model_used), None)
-        if not model_info: return 0.0
-        pricing = model_info.get('pricing', {})
-        cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
-        return round(video_duration * cost_per_second, 4)
-
-    def calculate_image_cost(model_used: str) -> float:
-        if not model_used: return 0.0
-        model_info = next((m for m in get_image_models().get('models', []) if m['id'] == model_used), None)
-        if not model_info: return 0.0
-        pricing = model_info.get('pricing', {})
-        return round(pricing.get('per_image', 0.0), 4)
-
     try:
         query_params = []
-        video_where_clauses = ["status = 'SUCCESS'", "video_duration > 0", "creative_project_id IS NOT NULL"]
-        image_where_clauses = ["status = 'SUCCESS'", "creative_project_id IS NOT NULL"]
+        base_where_clauses = ["status = 'SUCCESS'", "cost > 0", "creative_project_id IS NOT NULL", "trigger_time IS NOT NULL", "user_email IS NOT NULL"]
 
         if start_date:
-            video_where_clauses.append("trigger_time >= @start_date")
-            image_where_clauses.append("trigger_time >= @start_date")
+            base_where_clauses.append("trigger_time >= @start_date")
             query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
         if end_date:
             end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
-            video_where_clauses.append("trigger_time < @end_date")
-            image_where_clauses.append("trigger_time < @end_date")
+            base_where_clauses.append("trigger_time < @end_date")
             query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
 
+        where_clause = " AND ".join(base_where_clauses)
+
         video_query = f"""
-            SELECT creative_project_id, model_used, video_duration, with_audio
+            SELECT creative_project_id, SUM(cost) as total_cost
             FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.HISTORY_TABLE}`
-            WHERE {" AND ".join(video_where_clauses)}
+            WHERE {where_clause}
+            GROUP BY creative_project_id
         """
         image_query = f"""
-            SELECT creative_project_id, model_used
-            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.imagen_history`
-            WHERE {" AND ".join(image_where_clauses)}
+            SELECT creative_project_id, SUM(cost) as total_cost
+            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGEN_HISTORY_TABLE}`
+            WHERE {where_clause}
+            GROUP BY creative_project_id
+        """
+        enrichment_query = f"""
+            SELECT creative_project_id, SUM(cost) as total_cost
+            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGE_ENRICHMENT_HISTORY_TABLE}`
+            WHERE {where_clause}
+            GROUP BY creative_project_id
         """
         job_config = bigquery.QueryJobConfig(query_parameters=query_params)
 
         video_rows = bq_client.query(video_query, job_config=job_config).result()
         image_rows = bq_client.query(image_query, job_config=job_config).result()
+        enrichment_rows = bq_client.query(enrichment_query, job_config=job_config).result()
 
         project_costs = {}
 
         for row in video_rows:
-            cost = calculate_video_cost(row.model_used, row.video_duration, row.with_audio)
-            if cost > 0:
-                project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0})
-                project_entry['video'] += cost
+            project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0, 'enrichment': 0})
+            project_entry['video'] += row.total_cost or 0
         
         for row in image_rows:
-            cost = calculate_image_cost(row.model_used)
-            if cost > 0:
-                project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0})
-                project_entry['image'] += cost
+            project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0, 'enrichment': 0})
+            project_entry['image'] += row.total_cost or 0
+        
+        for row in enrichment_rows:
+            project_entry = project_costs.setdefault(row.creative_project_id, {'video': 0, 'image': 0, 'enrichment': 0})
+            project_entry['enrichment'] += row.total_cost or 0
         
         project_details = {}
         if creative_projects_db and project_costs:
@@ -1028,7 +1043,8 @@ def get_consumption_by_project_analytics(
                 "project_name": project_details.get(pid, "Unknown Project"),
                 "video_cost": round(costs['video'], 2),
                 "image_cost": round(costs['image'], 2),
-                "total_cost": round(costs['video'] + costs['image'], 2)
+                "enrichment_cost": round(costs['enrichment'], 2),
+                "total_cost": round(costs['video'] + costs['image'] + costs['enrichment'], 2)
             }
             for pid, costs in project_costs.items()
         ]
@@ -1048,8 +1064,7 @@ def get_top_users_analytics(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     top_x: Optional[int] = 10,
-    bq_client: bigquery.Client = Depends(get_bq_client),
-    generation_service: GenerationService = Depends(get_generation_service)
+    bq_client: bigquery.Client = Depends(get_bq_client)
 ):
     """
     Provides aggregated consumption data for the top X users.
@@ -1064,72 +1079,66 @@ def get_top_users_analytics(
     if not settings.ENABLE_BIGQUERY_LOGGING or not bq_client:
         raise HTTPException(status_code=501, detail="Analytics are disabled (BigQuery not configured).")
 
-    def calculate_video_cost(model_used: str, video_duration: float, with_audio: Optional[bool]) -> float:
-        if not model_used or not video_duration: return 0.0
-        model_info = next((m for m in get_models_config().get('models', []) if m['id'] == model_used), None)
-        if not model_info: return 0.0
-        pricing = model_info.get('pricing', {})
-        cost_per_second = pricing.get('video_with_audio') if with_audio else pricing.get('video_without_audio', 0.0)
-        return round(video_duration * cost_per_second, 4)
-
-    def calculate_image_cost(model_used: str) -> float:
-        if not model_used: return 0.0
-        model_info = next((m for m in get_image_models().get('models', []) if m['id'] == model_used), None)
-        if not model_info: return 0.0
-        pricing = model_info.get('pricing', {})
-        return round(pricing.get('per_image', 0.0), 4)
-
     try:
         query_params = []
-        video_where_clauses = ["status = 'SUCCESS'", "video_duration > 0"]
-        image_where_clauses = ["status = 'SUCCESS'"]
+        base_where_clauses = ["status = 'SUCCESS'", "cost > 0", "trigger_time IS NOT NULL", "user_email IS NOT NULL"]
 
         if start_date:
-            video_where_clauses.append("trigger_time >= @start_date")
-            image_where_clauses.append("trigger_time >= @start_date")
+            base_where_clauses.append("trigger_time >= @start_date")
             query_params.append(bigquery.ScalarQueryParameter("start_date", "TIMESTAMP", start_date))
         if end_date:
             end_date_inclusive = (datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat()
-            video_where_clauses.append("trigger_time < @end_date")
-            image_where_clauses.append("trigger_time < @end_date")
+            base_where_clauses.append("trigger_time < @end_date")
             query_params.append(bigquery.ScalarQueryParameter("end_date", "TIMESTAMP", end_date_inclusive))
 
+        where_clause = " AND ".join(base_where_clauses)
+
         video_query = f"""
-            SELECT user_email, model_used, video_duration, with_audio
+            SELECT user_email, SUM(cost) as total_cost
             FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.HISTORY_TABLE}`
-            WHERE {" AND ".join(video_where_clauses)}
+            WHERE {where_clause}
+            GROUP BY user_email
         """
         image_query = f"""
-            SELECT user_email, model_used
-            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.imagen_history`
-            WHERE {" AND ".join(image_where_clauses)}
+            SELECT user_email, SUM(cost) as total_cost
+            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGEN_HISTORY_TABLE}`
+            WHERE {where_clause}
+            GROUP BY user_email
+        """
+        enrichment_query = f"""
+            SELECT user_email, SUM(cost) as total_cost
+            FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.IMAGE_ENRICHMENT_HISTORY_TABLE}`
+            WHERE {where_clause}
+            GROUP BY user_email
         """
         job_config = bigquery.QueryJobConfig(query_parameters=query_params)
 
         video_rows = bq_client.query(video_query, job_config=job_config).result()
         image_rows = bq_client.query(image_query, job_config=job_config).result()
+        enrichment_rows = bq_client.query(enrichment_query, job_config=job_config).result()
 
         user_costs = {}
         for row in video_rows:
-            cost = calculate_video_cost(row.model_used, row.video_duration, row.with_audio)
-            if cost > 0:
-                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
-                user_entry['video'] += cost
+            user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0, 'enrichment': 0})
+            user_entry['video'] += row.total_cost or 0
         
         for row in image_rows:
-            cost = calculate_image_cost(row.model_used)
-            if cost > 0:
-                user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0})
-                user_entry['image'] += cost
+            user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0, 'enrichment': 0})
+            user_entry['image'] += row.total_cost or 0
+        
+        for row in enrichment_rows:
+            user_entry = user_costs.setdefault(row.user_email, {'video': 0, 'image': 0, 'enrichment': 0})
+            user_entry['enrichment'] += row.total_cost or 0
 
         top_users_chart_data = sorted(
             [
                 {
-                    "user_email": email, 
+                    "user_email": email,
                     "video_cost": round(costs['video'], 2),
                     "image_cost": round(costs['image'], 2),
-                    "total_cost": round(costs['video'] + costs['image'], 2)
-                } 
+                    "enrichment_cost": round(costs['enrichment'], 2),
+                    "total_cost": round(costs['video'] + costs['image'] + costs['enrichment'], 2)
+                }
                 for email, costs in user_costs.items()
             ],
             key=lambda x: x["total_cost"],

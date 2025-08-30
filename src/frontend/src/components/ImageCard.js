@@ -20,7 +20,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
     return isNaN(date) ? t('history.invalidDate') : date.toLocaleString();
   };
 
-  const isActionable = image.status === 'SUCCESS' && (image.output_image_gcs_path || image.gcs_uri);
+  const isActionable = image.status === 'SUCCESS' && (image.output_image_gcs_path || image.gcs_uri);;
   const canDelete = onShareDelete && user && image.shared_by_user_email === user.email;
   const modelName = models?.find(m => m.id === image.model_used)?.name || image.model_used;
 
@@ -30,7 +30,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
       <Tooltip title={t('imageCard.useAsFirstFrame', 'Use as First Frame')}>
         <Button
           icon={<PictureOutlined />}
-          onClick={() => onUseAsFirstFrame({ gcsUri: image.gcs_uri, signedUrl: image.signed_url })}
+          onClick={() => onUseAsFirstFrame({ signedUrl: image.signed_url, gcsUri: image.output_image_gcs_path })}
           disabled={!isActionable}
         />
       </Tooltip>

@@ -7,7 +7,7 @@ import NotificationBanner from '../components/NotificationBanner';
 import Dashboard from '../components/Dashboard';
 import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import ImageGenerator from '../components/ImageGenerator';
-import ImageImitation from '../components/ImageImitation';
+import ConversationalImageEnrichment from '../components/ConversationalImageEnrichment';
 import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage';
 import ConfigurationsPage from '../components/ConfigurationsPage';
@@ -80,8 +80,8 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.promptFromImages')} key="3">
                   <ImagePromptGenerator />
                 </TabPane>
-                <TabPane tab={t('nav.imageImitation')} key="4">
-                  <ImageImitation user={user} />
+                <TabPane tab={t('nav.imageEnrichment')} key="4">
+                  <ConversationalImageEnrichment user={user} />
                 </TabPane>
               </Tabs>
             } />

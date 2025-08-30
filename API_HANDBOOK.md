@@ -241,6 +241,31 @@ Handles image generation, imitation, history, and sharing.
 
 ---
 
+#### **GET /enrichment-history**
+- **Description**: Gets the user's image enrichment history from BigQuery.
+- **Request Body**: None
+- **Response Body**:
+  ```json
+  {
+    "rows": [
+      {
+        "user_email": "user@example.com",
+        "trigger_time": "2023-10-27T12:00:00Z",
+        "completion_time": "2023-10-27T12:00:45Z",
+        "prompt": "A detailed description of the enriched image.",
+        "model_used": "gemini-pro-vision",
+        "output_image_gcs_path": "gs://.../enriched_image.png",
+        "signed_url": "https://...",
+        "status": "SUCCESS"
+      }
+    ],
+    "total": 1
+  }
+  ```
+- **Service/Function Call**: `bigquery.Client.query`
+
+---
+
 #### **GET /history**
 - **Description**: Gets the user's image generation history from BigQuery.
 - **Request Body**: None

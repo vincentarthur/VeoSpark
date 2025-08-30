@@ -2,10 +2,12 @@ import yaml
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 
+
 class QuotaSettings(BaseModel):
     type: str = "NO_LIMIT"
     limit: Optional[int] = None
     period: Optional[str] = "day"
+
 
 class AppConfig(BaseModel):
     PROJECT_ID: str
@@ -14,6 +16,7 @@ class AppConfig(BaseModel):
     ANALYSIS_DATASET: str
     HISTORY_TABLE: str
     IMAGEN_HISTORY_TABLE: str
+    IMAGE_ENRICHMENT_HISTORY_TABLE: str
     PROMPT_GALLERY_COLLECTION: str
     PROMPT_GALLERY_DB: str
     CONFIG_DB: str
@@ -34,9 +37,11 @@ class AppConfig(BaseModel):
     ENABLE_UPSCALE: bool = False
     quota: QuotaSettings = Field(default_factory=QuotaSettings)
 
+
 def load_config() -> AppConfig:
     with open('./app-config.yaml', 'r') as config_file:
         config_data = yaml.safe_load(config_file)
     return AppConfig(**config_data)
+
 
 settings = load_config()

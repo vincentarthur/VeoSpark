@@ -1,10 +1,10 @@
-IMAGE_IMITATION_PROMPT_PREFIX = """
+IMAGE_ENRICHMENT_PROMPT_PREFIX = """
 Act as an expert image analyst. Your task is to analyze the provided image with extreme detail and output your findings as a structured JSON object. Do not miss any details. Describe every element, including all subjects, objects, the environment, and the artistic properties of the image.
 
 **Image:** """
 
 
-IMAGE_IMITATION_PROMPT_SUFFIX = """
+IMAGE_ENRICHMENT_PROMPT_SUFFIX = """
 **Output Format (JSON):**
 {
   "summary": "A one-sentence summary of the image's overall content and mood.",
@@ -57,7 +57,7 @@ IMAGE_IMITATION_PROMPT_SUFFIX = """
 """
 
 
-IMAGE_IMITATION_PROMPT_COMBINATION = """
+IMAGE_ENRICHMENT_PROMPT_COMBINATION = """
 # ROLE AND GOAL
 You are an expert Visual Scene Editor. Your task is to intelligently modify a detailed JSON image description (`IMAGE_DESCRIPTION`) based on a user's modification request (`CUST_INPUT`). Your goal is to seamlessly integrate the user's request into the description, creating a new, coherent, and logically consistent scene while strictly preserving the original JSON structure.
 

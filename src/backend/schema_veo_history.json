@@ -15,5 +15,6 @@
   { "name": "resolution", "type": "STRING", "mode": "NULLABLE" },
   { "name": "aspect_ratio", "type": "STRING", "mode": "NULLABLE" },
   { "name": "last_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" },
-  { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" }
+  { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" },
+  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" }
 ]

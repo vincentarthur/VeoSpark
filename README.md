@@ -127,6 +127,8 @@ graph TD
 │   │   ├── dependencies.py
 │   │   ├── main.py
 │   │   ├── models.yaml
+│   │   ├── image-models.yaml
+│   │   ├── image-enrichment-models.yaml
 │   │   ├── prompts.py
 │   │   ├── requirements.txt
 │   │   ├── schemas.py
@@ -143,46 +145,71 @@ graph TD
 └── README.md
 ```
 
+## Cost and Pricing System
+
+The application features a robust, version-controlled pricing system that ensures historical cost accuracy while allowing for future price changes.
+
+### Key Concepts
+
+1.  **Versioned Pricing**: Instead of a single price, each model's cost is defined in a list of pricing tiers, each with an `effective_date`. This allows for scheduling future price changes without any code modification.
+2.  **Cost Solidification**: When a generation task (video, image, or enrichment) is completed, its cost is calculated immediately based on the pricing active at that moment. This calculated `cost` is then stored permanently in its BigQuery history record.
+3.  **Accurate Analytics**: The analytics dashboards read directly from the stored `cost` field in BigQuery. This guarantees that reports always reflect the historical cost at the time of generation, regardless of subsequent price changes.
+
+This design ensures that the system is both flexible for future business needs and accurate for historical reporting.
+
 ## Model Configuration
 
-VeoSpark allows for easy management of Veo models through the `src/backend/models.yaml` file. This file centralizes model definitions and pricing, allowing administrators to add, remove, or update models without any code changes.
+VeoSpark allows for easy management of all generative models through three distinct `.yaml` files in the `src/backend/` directory. This separation allows for clear and specific pricing models for each generation type.
 
-### Structure of `models.yaml`
+### 1. `models.yaml` (Video Generation)
 
-The file contains a list of model objects, each with the following properties:
+-   **Purpose**: Defines Veo models used for video generation.
+-   **Pricing**: Priced per second, with different rates for video with and without audio.
+-   **Structure**:
+    -   `id`, `name`, `type`
+    -   `pricing`: A list of pricing tiers.
+        -   `effective_date`: The date the pricing tier becomes active (YYYY-MM-DD).
+        -   `video_with_audio`: Cost per second.
+        -   `video_without_audio`: Cost per second.
 
--   `id`: The unique identifier for the model used by the API.
--   `name`: The user-friendly display name for the model in the UI.
--   `type`: The model type (e.g., `veo-2.0`, `veo-3.0`), used for conditional logic in the application.
--   `pricing`: An object containing the cost per second for video generation.
-    -   `video_with_audio`: Cost per second for generating video with audio.
-    -   `video_without_audio`: Cost per second for generating video without audio.
+### 2. `image-models.yaml` (Image Generation)
 
-### Example `models.yaml`
+-   **Purpose**: Defines Imagen models used for standard image generation.
+-   **Pricing**: Priced per image.
+-   **Structure**:
+    -   `id`, `name`, `type`
+    -   `pricing`: A list of pricing tiers.
+        -   `effective_date`: The date the pricing tier becomes active.
+        -   `per_image`: The cost for a single generated image.
+
+### 3. `image-enrichment-models.yaml` (Image Enrichment)
+
+-   **Purpose**: Defines Gemini models used for the Image Enrichment feature.
+-   **Pricing**: Priced per one million input and output tokens.
+-   **Structure**:
+    -   `id`, `name`, `type`
+    -   `pricing`: A list of pricing tiers.
+        -   `effective_date`: The date the pricing tier becomes active.
+        -   `cost_per_million_input_token`: The cost for 1M input tokens.
+        -   `cost_per_million_output_token`: The cost for 1M output tokens.
+
+### Example of Versioned Pricing (`image-enrichment-models.yaml`)
 
 ```yaml
 models:
-  - id: "veo-2.0-generate-001"
-    name: "Veo 2.0"
-    type: "veo-2.0"
+  - id: "gemini-2.5-flash"
+    name: "Gemini 2.5 Flash"
+    type: "gemini-2.5"
     pricing:
-      video_with_audio: 0.50
-      video_without_audio: 0.50
-  - id: "veo-3.0-generate-preview"
-    name: "Veo 3.0 Preview"
-    type: "veo-3.0"
-    pricing:
-      video_with_audio: 0.75
-      video_without_audio: 0.50
-  - id: "veo-3.0-fast-generate-preview"
-    name: "Veo 3.0 Fast Preview"
-    type: "veo-3.0"
-    pricing:
-      video_with_audio: 0.40
-      video_without_audio: 0.25
+      - effective_date: "2020-01-01"
+        cost_per_million_input_token: 1.50
+        cost_per_million_output_token: 2.50
+      - effective_date: "2025-09-01"
+        cost_per_million_input_token: 2.00
+        cost_per_million_output_token: 3.00
 ```
 
-To add a new model, simply append a new entry to the `models` list in this file. The application will automatically pick up the new model and make it available in the UI.
+To add a new model or update pricing, simply edit the appropriate `.yaml` file. The application will automatically apply the changes based on the `effective_date`.
 
 ## Google Cloud Setup
 
@@ -322,25 +349,36 @@ You can create the required BigQuery dataset and table by running the provided s
     ```
     The script will create the dataset and the table with the correct schema defined in `schema_veo_history.json`.
 
-### 7. BigQuery for Imagen History
+### 7. BigQuery for Generation History
 
-You can create the required BigQuery table for Imagen history logging by running the provided setup script.
+The application uses three separate tables to log the history for different generation types. Each table now includes a `cost` column to store the calculated cost at the time of generation.
+
+You can create the required BigQuery tables by running the provided setup scripts.
 
 1.  **Navigate to the backend directory**:
     ```bash
     cd src/backend
     ```
 
-2.  **Make the script executable**:
+2.  **Make the scripts executable**:
     ```bash
+    chmod +x setup_veo_bigquery.sh
     chmod +x setup_imagen_bigquery.sh
     ```
 
-3.  **Run the script**:
+3.  **Run the scripts**:
     ```bash
+    ./setup_veo_bigquery.sh
     ./setup_imagen_bigquery.sh
     ```
-    The script will automatically use the `PROJECT_ID` and `ANALYSIS_DATASET` from your `app-config.yaml` file and create the `imagen_history` table with the schema from `schema_imagen_history.json`.
+    These scripts will create the `veo_history` and `imagen_history` tables.
+
+4.  **Create the Image Enrichment Table**:
+    A separate table is used for Image Enrichment logs. Create it using the `bq` command-line tool:
+    ```bash
+    bq mk --table [YOUR_PROJECT_ID]:[YOUR_DATASET].image_enrichment_history src/backend/schema_image_enrichment_history.json
+    ```
+    Replace `[YOUR_PROJECT_ID]` and `[YOUR_DATASET]` with the values from your `app-config.yaml`.
 
 ### 8. Create a Service Account
 
@@ -468,14 +506,32 @@ It is recommended to create a dedicated service account for this application to 
 ### Home Page
 ![Home Page](screenshots/HomePage.png)
 
+### Gemini 2.5 Flash Image Page
+![Gemini 2.5 Flash Image Page](screenshots/Gemini2.5FlashImage.png)
+
 ### History Page
 ![History Page](screenshots/History.png)
 
 ### Cost Analysis Page
 ![Cost Analysis Page](screenshots/CostAnalysis.png)
 
+### Cost Restriction Page
+![Cost Restriction Page](screenshots/CostRestriction.png)
+
 ## Change Log
 
+- **v2.1**
+    - Added a new "Image Enrichment History" tab to the "My History" page.
+    - Removed auto-fetching of data for both video and image history. Data is now fetched only when the user clicks the "Fetch History" button.
+    - Implemented a version-controlled pricing system using `effective_date` in model configuration files.
+    - Separated model configurations into `models.yaml`, `image-models.yaml`, and a new `image-enrichment-models.yaml`.
+    - Image Enrichment is now billed based on input/output tokens.
+    - Cost is now calculated and stored in BigQuery at the time of generation to ensure historical accuracy.
+    - Created a new `image_enrichment_history` table in BigQuery to log enrichment-specific data, including token counts.
+    - Analytics dashboards have been completely refactored to read from the stored `cost` in BigQuery, ensuring reports are accurate regardless of price changes.
+    - Added "Image Enrichment Cost" as a new segment across all analytics charts (Daily, By User, By Project).
+    - Added a new "Enrichment Model Distribution" pie chart to the analytics page.
+    - Fixed a bug in analytics queries that caused "Unknown" and anonymous user entries due to `FULL OUTER JOIN` behavior.
 - **v2.0**
     - Refactored the backend to log image and video generation history to separate BigQuery tables (`imagen_history` and `veo_history`).
     - Fixed a bug that caused a "Not Found" error when refreshing the browser on a frontend route.

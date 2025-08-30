@@ -7,7 +7,7 @@ import tempfile
 from typing import Dict, Any, Optional, List, Tuple
 from config import settings
 from dependencies import get_genai_client, get_imagen_client
-from config_manager import get_models_config
+from config_manager import get_models_config, get_price_for_model
 from google.cloud import storage
 import google.genai as genai
 from google.genai import types
@@ -16,7 +16,9 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from datetime import datetime, timedelta, timezone
 import logging
 from google.cloud import bigquery, firestore
-from prompts import IMAGE_IMITATION_PROMPT_PREFIX, IMAGE_IMITATION_PROMPT_SUFFIX, IMAGE_IMITATION_PROMPT_COMBINATION
+from prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION
+from PIL import Image
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,26 @@ generate_content_config = types.GenerateContentConfig(
       thinking_budget=0,
     ),
   )
+
+gemini_2_5_flash_image_generate_content_config = types.GenerateContentConfig(
+        temperature=1,
+        top_p=0.95,
+        max_output_tokens=32768,
+        response_modalities=["TEXT", "IMAGE"],
+        safety_settings=[types.SafetySetting(
+            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold="OFF"
+        ), types.SafetySetting(
+            category="HARM_CATEGORY_HATE_SPEECH",
+            threshold="OFF"
+        ), types.SafetySetting(
+            category="HARM_CATEGORY_HARASSMENT",
+            threshold="OFF"
+        ), types.SafetySetting(
+            category="HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold="OFF"
+        )],
+    )
 
 def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], user_info: Dict[str, Any]):
     """
@@ -136,8 +158,7 @@ class VeoApiClient:
                 version="v4",
                 expiration=timedelta(minutes=expiration_minutes),
                 method="GET",
-                access_token=self._credentials.token,
-                service_account_email=self._credentials.service_account_email
+                access_token=self._credentials.token
             )
         except Exception as e:
             self.logger.error(f"Failed to generate signed URL for {gcs_uri}: {e}", exc_info=True)
@@ -162,6 +183,16 @@ class GenerationService:
         
         completion_time = datetime.now(timezone.utc)
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
+
+        model_id = body.get('model')
+        video_duration = body.get('duration')
+        with_audio = body.get('generateAudio', False)
+        price_info = get_price_for_model(model_id, trigger_time, 'video')
+        cost = 0
+        if price_info and video_duration:
+            price_key = 'video_with_audio' if with_audio else 'video_without_audio'
+            price_per_second = price_info.get(price_key, 0)
+            cost = price_per_second * video_duration
         
         for video in video_data:
             path = video['gcs_uri']
@@ -181,7 +212,8 @@ class GenerationService:
                 first_frame_gcs_uri=body.get('image_gcs_uri'),
                 last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
                 output_video_gcs_paths=json.dumps([path]),
-                creative_project_id=body.get('creative_project_id')
+                creative_project_id=body.get('creative_project_id'),
+                cost=cost
             )
 
         creative_project_id = body.get('creative_project_id')
@@ -216,6 +248,10 @@ class GenerationService:
         
         completion_time = datetime.now(timezone.utc)
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
+
+        model_id = body.get('model')
+        price_info = get_price_for_model(model_id, trigger_time, 'image')
+        cost_per_image = price_info.get('per_image', 0) if price_info else 0
         
         for img in image_data:
             path = img['gcs_uri']
@@ -232,7 +268,8 @@ class GenerationService:
                 aspect_ratio=body.get('aspect_ratio'),
                 output_image_gcs_path=path,
                 resolution=body.get('image_size'),
-                creative_project_id=body.get('creative_project_id')
+                creative_project_id=body.get('creative_project_id'),
+                cost=cost_per_image
             )
 
         creative_project_id = body.get('creative_project_id')
@@ -253,9 +290,9 @@ class GenerationService:
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
-    def on_image_imitation_success(self, result: Dict[str, Any], **kwargs):
-        """Callback for successful image imitation."""
-        logger.info("Image imitation succeeded. Processing results.")
+    def on_image_enrichment_success(self, result: Dict[str, Any], **kwargs):
+        """Callback for successful image enrichment."""
+        logger.info("Image enrichment succeeded. Processing results.")
         user_info = kwargs.get('user_info')
         creative_project_id = kwargs.get('creative_project_id')
         trigger_time = kwargs.get('trigger_time')
@@ -265,14 +302,29 @@ class GenerationService:
         revised_prompt = result.get("revised_prompt")
         model = result.get("model")
         image_size = result.get("resolution")
+        input_token = result.get("input_token", 0)
+        output_token = result.get("output_token", 0)
         
         completion_time = datetime.now(timezone.utc)
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
 
+        price_info = get_price_for_model(model, trigger_time, 'image_enrichment')
+        cost = 0
+        if price_info:
+            cost_per_million_input = price_info.get('cost_per_million_input_token', 0)
+            cost_per_million_output = price_info.get('cost_per_million_output_token', 0)
+            input_cost = (input_token / 1_000_000) * cost_per_million_input
+            output_cost = (output_token / 1_000_000) * cost_per_million_output
+            cost = input_cost + output_cost
+
+        # The cost is for the entire operation, which may generate multiple images.
+        # We distribute the cost evenly among the generated images.
+        cost_per_image = cost / len(image_data) if image_data else 0
+
         for img in image_data:
             path = img['gcs_uri']
             log_generation_to_bq(
-                table_name=settings.IMAGEN_HISTORY_TABLE,
+                table_name=settings.IMAGE_ENRICHMENT_HISTORY_TABLE,
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=completion_time,
@@ -283,7 +335,10 @@ class GenerationService:
                 status="SUCCESS",
                 output_image_gcs_path=path,
                 resolution=image_size,
-                creative_project_id=creative_project_id
+                creative_project_id=creative_project_id,
+                cost=cost_per_image,
+                input_token=input_token,
+                output_token=output_token
             )
 
         if creative_project_id and image_data:
@@ -466,7 +521,6 @@ class GenerationService:
                 version="v4",
                 expiration=timedelta(minutes=60),
                 method="GET",
-                service_account_email=credentials.service_account_email,
                 access_token=credentials.token,
             )
             video_data.append({"gcs_uri": uri, "signed_url": signed_url})
@@ -561,7 +615,6 @@ class GenerationService:
                 version="v4",
                 expiration=timedelta(minutes=60),
                 method="GET",
-                service_account_email=credentials.service_account_email,
                 access_token=credentials.token,
             )
             image_data.append({"gcs_uri": uri, "signed_url": signed_url})
@@ -577,81 +630,72 @@ class GenerationService:
             "creative_project_id": kwargs.get('body').get('creative_project_id')
         }
 
-    def imitate_image(
+    def enrich_image(
             self,
             user_info: Optional[Dict[str, Any]],
-            file_bytes: bytes,
-            file_content_type: str,
-            file_filename: str,
             sub_prompt: str,
             model: str,
-            sample_count: int,
-            image_size: str,
+            # sample_count: int,
+            # image_size: str,
+            files: Optional[List[Dict[str, Any]]] = None,
+            previous_image_gcs_paths: Optional[List[str]] = None,
             **kwargs
     ) -> Dict[str, Any]:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
-        
-        # 1. Upload image to GCS
-        user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+        gcs_uris = []
         storage_client = storage.Client(project=settings.PROJECT_ID)
         bucket = storage_client.bucket(settings.VIDEO_BUCKET_NAME)
-        file_extension = Path(file_filename).suffix
-        blob_name = f"image_uploads/{user_folder}/{uuid.uuid4().hex}{file_extension}"
-        blob = bucket.blob(blob_name)
-        blob.upload_from_string(file_bytes, content_type=file_content_type)
-        gcs_uri = f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}"
+        
+        if previous_image_gcs_paths:
+            gcs_uris.extend(previous_image_gcs_paths)
+        elif files:
+            user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+            for file in files:
+                file_extension = Path(file["file_filename"]).suffix
+                blob_name = f"image_uploads/{user_folder}/{uuid.uuid4().hex}{file_extension}"
+                blob = bucket.blob(blob_name)
+                blob.upload_from_string(file["file_bytes"], content_type=file["file_content_type"])
+                gcs_uris.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
+        else:
+            raise ValueError("Either file data or previous_image_gcs_paths must be provided.")
 
-        # 2. Describe the image with Gemini
-        image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=file_content_type)
-        response = self.genai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_text(text=IMAGE_IMITATION_PROMPT_PREFIX),
-                image_part,
-                types.Part.from_text(text=IMAGE_IMITATION_PROMPT_SUFFIX)
-            ],
-            config=generate_content_config
-        )
-        image_description = response.text
-        combined_prompt_template = IMAGE_IMITATION_PROMPT_COMBINATION.format(image_description_json=image_description, cust_input_text=sub_prompt)
-        response = self.genai_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[types.Part.from_text(text=combined_prompt_template)],
-            config=generate_content_config
-        )
-        combined_prompt = response.text
+        image_parts = [types.Part.from_uri(file_uri=uri, mime_type='image/png' if uri.endswith('.png') else 'image/jpeg') for uri in gcs_uris]
 
-        # 3. Generate a new image
         start_time = time.time()
-        images = self.imagen_client.models.generate_images(
+
+        response = self.genai_client.models.generate_content(
             model=model,
-            prompt=combined_prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=sample_count,
-                person_generation="allow_all",
-                safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
-                add_watermark=True,
-                image_size=image_size,
-                include_rai_reason=True
-            )
+            contents=[
+                types.Part.from_text(text=sub_prompt),
+                *image_parts
+            ],
+            config=gemini_2_5_flash_image_generate_content_config
         )
         op_duration = time.time() - start_time
 
+        input_token = response.usage_metadata.prompt_token_count
+        output_token = response.usage_metadata.candidates_token_count
+
         gcs_paths = []
         rai_reasons = []
-        for generated_image in images.generated_images:
-            if generated_image.rai_filtered_reason:
-                reason = self._parse_rai_reason_from_error(f"Support codes: {generated_image.rai_filtered_reason}")
-                rai_reasons.append(reason or {"code": generated_image.rai_filtered_reason, "description": "Unknown reason"})
-                continue
 
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-                generated_image.image._pil_image.save(temp_file.name)
-                user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
-                blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
-                blob = bucket.blob(blob_name)
-                blob.upload_from_filename(temp_file.name)
-                gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
+        candidate = response.candidates[0]
+        if candidate.safety_ratings:
+            # Got issue with Safety Filter
+            reason = self._parse_rai_reason_from_error(f"Support codes: {candidate.safety_ratings.category}")
+            rai_reasons.append(reason or {"code": candidate.safety_ratings.category, "description": "Unknown reason"})
+
+        else:
+            for part in candidate.content.parts:
+                if part.inline_data:
+                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+
+                        Image.open(BytesIO(part.inline_data.data)).save(temp_file.name)
+                        user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+                        blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
+                        blob = bucket.blob(blob_name)
+                        blob.upload_from_filename(temp_file.name)
+                        gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
         credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
         credentials.refresh(GoogleAuthRequest())
@@ -664,7 +708,6 @@ class GenerationService:
                 version="v4",
                 expiration=timedelta(minutes=60),
                 method="GET",
-                service_account_email=credentials.service_account_email,
                 access_token=credentials.token,
             )
             image_data.append({"gcs_uri": uri, "signed_url": signed_url})
@@ -673,12 +716,14 @@ class GenerationService:
             "message": "Image imitation successful.",
             "images": image_data,
             "duration": op_duration,
-            "revised_prompt": combined_prompt,
+            "revised_prompt": sub_prompt,
             "model": model,
-            "resolution": image_size,
+            "resolution": None,
             "rai_reasons": rai_reasons if rai_reasons else None,
             "gcs_paths": gcs_paths,
-            "creative_project_id": kwargs.get('creative_project_id')
+            "creative_project_id": kwargs.get('creative_project_id'),
+            "input_token": input_token,
+            "output_token": output_token
         }
 
 def get_generation_service() -> GenerationService:

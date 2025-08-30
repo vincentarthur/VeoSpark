@@ -28,6 +28,7 @@ ENABLE_BIGQUERY_LOGGING: True
 ANALYSIS_DATASET: marketing_materials_analysis
 HISTORY_TABLE: veo_history
 IMAGEN_HISTORY_TABLE: imagen_history
+IMAGE_ENRICHMENT_HISTORY_TABLE: image_enrichment_history
 BIGQUERY_LOCATION: us-central1
 
 # Logging
@@ -55,4 +56,6 @@ CONFIG_DB: "veo-app-config"
 # Set a list of messages here to display banners to all users.
 # An empty list will hide the banner.
 BANNER_MESSAGES:
-  - "Veo3 Fast & Imagen 4 series are ready to use."
+  - "Veo3 & Imagen 4 series are ready"
+  - "Veo3 16:9 & 9:16 are ready"
+  - "Gemini 2.5 Flash Image (nano-banana) is ready"

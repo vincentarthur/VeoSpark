@@ -8,7 +8,7 @@
     "videoGenerator": "ビデオジェネレーター",
     "imageGenerator": "画像ジェネレーター",
     "promptFromImages": "画像からプロンプト",
-    "imageImitation": "画像模倣",
+    "imageEnrichment": "画像エンリッチメント",
     "generator": "クリエイティブプロダクション",
     "history": "私の履歴",
     "analytics": "アナリティクス",
@@ -80,6 +80,7 @@
     "completionTime": "完了時間",
     "resolution": "解像度",
     "noPreview": "ビデオプレビューはありません。",
+    "invalidDate": "無効な日付",
     "actions": {
       "preview": "プレビュー",
       "clip": "クリップ",
@@ -283,11 +284,11 @@
     "tiltDown": "カメラは下にチルトします",
     "tiltUp": "カメラは上にチルトします"
   },
-  "imageImitation": {
+  "imageEnrichment": {
     "description": "画像をアップロードし、Geminiから説明を取得し、プロンプトをカスタマイズして新しい画像を生成します。",
     "uploadImage": "画像をアップロード",
     "subPromptLabel": "入力をカスタマイズ",
-    "generateButton": "模倣を生成",
+    "generateButton": "エンリッチメントを生成",
     "noImageError": "最初に画像をアップロードしてください。",
     "sampleCount": "サンプル数",
     "dedicatedProjectLabel": "専用プロジェクト"

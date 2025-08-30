@@ -12,5 +12,7 @@
   {"name": "output_image_gcs_path", "type": "STRING", "mode": "NULLABLE"},
   {"name": "resolution", "type": "STRING", "mode": "NULLABLE"},
   { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" },
-  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" }
+  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" },
+  { "name": "input_token", "type": "INTEGER", "mode": "NULLABLE" },
+  { "name": "output_token", "type": "INTEGER", "mode": "NULLABLE" }
 ]

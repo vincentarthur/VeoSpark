@@ -14,6 +14,7 @@ import VideoCard from './VideoCard';
 import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
 import ImageHistory from './ImageHistory';
+import ImageEnrichmentHistory from './ImageEnrichmentHistory';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -23,6 +24,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const [history, setHistory] = useState([]);
   const [activeTab, setActiveTab] = useState("video");
+  const [hasFetched, setHasFetched] = useState(false);
   const [config, setConfig] = useState({ enable_upscale: false });
   const [totalRows, setTotalRows] = useState(0);
   const [page, setPage] = useState(1);
@@ -91,6 +93,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   const fetchHistory = async (isCleared = false, newPage = 1, newRowsPerPage = 10) => {
     setLoading(true);
     setError(null);
+    setHasFetched(true);
 
     const activeFilters = isCleared ? {} : Object.entries(filters).reduce((acc, [key, value]) => {
       if (value) {
@@ -103,11 +106,18 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
       activeFilters.status = 'SUCCESS';
     }
 
-    const endpoint = activeTab === 'video' ? '/api/videos/history' : '/api/images/history';
+    let endpoint;
+    if (activeTab === 'video') {
+      endpoint = '/api/videos/history';
+    } else if (activeTab === 'image') {
+      endpoint = '/api/images/history';
+    } else {
+      endpoint = '/api/images/enrichment-history';
+    }
 
     try {
-      const response = await axios.get(endpoint, { 
-        params: { 
+      const response = await axios.get(endpoint, {
+        params: {
           ...activeFilters,
           page: newPage,
           page_size: newRowsPerPage
@@ -136,7 +146,15 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     };
     const fetchModels = async () => {
       try {
-        const response = await axios.get(activeTab === 'video' ? '/api/models' : '/api/image-models');
+        let models_endpoint;
+        if (activeTab === 'video') {
+          models_endpoint = '/api/models';
+        } else if (activeTab === 'image') {
+          models_endpoint = '/api/image-models';
+        } else {
+          models_endpoint = '/api/image-enrichment-models';
+        }
+        const response = await axios.get(models_endpoint);
         setModels(response.data.models || []);
       } catch (error) {
         console.error("Failed to fetch models:", error);
@@ -144,7 +162,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     };
     fetchConfig();
     fetchModels();
-    fetchHistory();
+    // fetchHistory();
   }, [activeTab]);
 
   return (
@@ -165,7 +183,11 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
         </Col>
       </Row>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs activeKey={activeTab} onChange={(key) => {
+        setActiveTab(key);
+        setHistory([]);
+        setHasFetched(false);
+      }}>
         <TabPane tab={t('history.tabs.videoHistory')} key="video">
           <Card>
             <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -223,7 +245,25 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
             models={models}
             loading={loading}
             error={error}
-            hasFetched={true}
+            hasFetched={hasFetched}
+            totalRows={totalRows}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            fetchHistory={fetchHistory}
+            setFilters={setFilters}
+            clearFilters={clearFilters}
+            filters={filters}
+            onUseAsFirstFrame={onUseAsFirstFrame}
+          />
+        </TabPane>
+        <TabPane tab={t('history.tabs.imageEnrichmentHistory')} key="image-enrichment">
+          <ImageEnrichmentHistory
+            user={user}
+            history={history}
+            models={models}
+            loading={loading}
+            error={error}
+            hasFetched={hasFetched}
             totalRows={totalRows}
             page={page}
             rowsPerPage={rowsPerPage}

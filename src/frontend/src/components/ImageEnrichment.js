@@ -12,7 +12,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { Panel } = Collapse;
 
-const ImageImitation = ({ user }) => {
+const ImageEnrichment = ({ user }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -27,11 +27,12 @@ const ImageImitation = ({ user }) => {
   const [raiReasons, setRaiReasons] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const [pollingTaskId, setPollingTaskId] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const response = await axios.get('/api/image-models');
+        const response = await axios.get('/api/image-enrichment-models');
         const fetchedModels = response.data.models || [];
         setModels(fetchedModels);
         if (fetchedModels.length > 0) {
@@ -46,7 +47,19 @@ const ImageImitation = ({ user }) => {
     const fetchProjects = async () => {
       try {
         const response = await axios.get('/api/creative-projects');
-        setProjects(response.data);
+        const fetchedProjects = response.data;
+        setProjects(fetchedProjects);
+
+        const lastSelectedProjectId = sessionStorage.getItem('lastSelectedProjectId');
+        if (lastSelectedProjectId && fetchedProjects.some(p => p.id === lastSelectedProjectId)) {
+          form.setFieldsValue({ creative_project_id: lastSelectedProjectId });
+          const project = fetchedProjects.find(p => p.id === lastSelectedProjectId);
+          setSelectedProject(project);
+        } else if (fetchedProjects.length > 0) {
+          // If no project is saved in session, default to the first project
+          form.setFieldsValue({ creative_project_id: fetchedProjects[0].id });
+          setSelectedProject(fetchedProjects[0]);
+        }
       } catch (error) {
         console.error("Failed to fetch creative projects:", error);
       }
@@ -74,6 +87,8 @@ const ImageImitation = ({ user }) => {
             operation_duration: result.duration,
             user_email: user.email,
             resolution: result.resolution,
+            creative_project_id: selectedProject?.id,
+            project_name: selectedProject?.name,
           }));
           setGeneratedImages(syntheticImages);
           setRevisedPrompt(result.revised_prompt);
@@ -98,7 +113,7 @@ const ImageImitation = ({ user }) => {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
-  }, [pollingTaskId, user.email]);
+  }, [pollingTaskId, user.email, selectedProject]);
 
   const handleImageUpload = (file) => {
     setImageFile(file);
@@ -111,9 +126,24 @@ const ImageImitation = ({ user }) => {
     setImagePreview(null);
   };
 
+  const handleUseAsFirstFrame = async ({ signedUrl }) => {
+    if (!signedUrl) return;
+    try {
+      const response = await fetch(signedUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `used-as-frame.${blob.type.split('/')[1] || 'png'}`, { type: blob.type });
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      window.scrollTo(0, 0);
+    } catch (err) {
+      setError('Failed to use image as a new frame.');
+      console.error("Failed to use image as first frame:", err);
+    }
+  };
+
   const handleSubmit = async (values) => {
     if (!imageFile) {
-      setError(t('imageImitation.noImageError'));
+      setError(t('imageEnrichment.noImageError'));
       return;
     }
 
@@ -123,16 +153,17 @@ const ImageImitation = ({ user }) => {
     setRevisedPrompt('');
     setRaiReasons([]);
 
+    const project = projects.find(p => p.id === values.creative_project_id);
+    setSelectedProject(project);
+
     const formData = new FormData();
     formData.append('file', imageFile);
     formData.append('sub_prompt', values.sub_prompt);
     formData.append('model', values.model);
-    formData.append('sample_count', values.sample_count);
-    formData.append('image_size', values.image_size);
     formData.append('creative_project_id', values.creative_project_id);
 
     try {
-      const response = await axios.post('/api/images/imitate', formData, {
+      const response = await axios.post('/api/images/enrich', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (response.data.task_id) {
@@ -151,9 +182,9 @@ const ImageImitation = ({ user }) => {
     <Row gutter={32}>
       <Col xs={24} md={8}>
         <Card>
-          <Title level={2}>{t('nav.imageImitation')}</Title>
+          <Title level={2}>{t('nav.imageEnrichment')}</Title>
           <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ sample_count: 1, image_size: '1K' }}>
-            <Form.Item label={t('imageImitation.uploadImage')}>
+            <Form.Item label={t('imageEnrichment.uploadImage')}>
               <Upload
                 beforeUpload={handleImageUpload}
                 showUploadList={false}
@@ -166,49 +197,39 @@ const ImageImitation = ({ user }) => {
                   </div>
                 ) : (
                   <Button icon={<UploadOutlined />}>
-                    {t('imageImitation.uploadImage')}
+                    {t('imageEnrichment.uploadImage')}
                   </Button>
                 )}
               </Upload>
             </Form.Item>
-            <Form.Item name="sub_prompt" label={t('imageImitation.subPromptLabel')} rules={[{ required: true }]}>
+            <Form.Item name="sub_prompt" label={t('imageEnrichment.subPromptLabel')} rules={[{ required: true }]}>
               <TextArea rows={2} />
             </Form.Item>
-            <Form.Item name="creative_project_id" label={t('imageImitation.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
-              <Select placeholder="Select a project">
+            <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
+              <Select
+                placeholder="Select a project"
+                onChange={(projectId) => {
+                  sessionStorage.setItem('lastSelectedProjectId', projectId);
+                  const project = projects.find(p => p.id === projectId);
+                  setSelectedProject(project);
+                  form.setFieldsValue({ creative_project_id: projectId });
+                }}
+              >
                 {projects.map((p) => (
                   <Option key={p.id} value={p.id}>{p.name}</Option>
                 ))}
               </Select>
             </Form.Item>
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
-              <Select onChange={(value) => {
-                setSelectedModel(value);
-                if (value === 'imagen-4.0-ultra-generate-preview-06-06') {
-                  form.setFieldsValue({ sample_count: 1 });
-                }
-              }}>
+              <Select onChange={(value) => setSelectedModel(value)}>
                 {models.map((m) => (
                   <Option key={m.id} value={m.id}>{m.name}</Option>
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="sample_count" label={t('imageGenerator.sampleCountLabel')}>
-              <Select disabled={selectedModel === 'imagen-4.0-ultra-generate-preview-06-06'}>
-                {[1, 2, 3, 4].map(count => (
-                  <Option key={count} value={count}>{count}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item name="image_size" label={t('imageGenerator.imageResolutionLabel')}>
-              <Select>
-                <Option value="1K">1K</Option>
-                <Option value="2K">2K</Option>
-              </Select>
-            </Form.Item>
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                {t('imageImitation.generateButton')}
+                {t('imageEnrichment.generateButton')}
               </Button>
             </Form.Item>
           </Form>
@@ -248,7 +269,13 @@ const ImageImitation = ({ user }) => {
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             {generatedImages.map((image, index) => (
               <Col xs={24} sm={12} md={8} key={index}>
-                <ImageCard image={image} models={models} user={user} />
+                <ImageCard
+                  image={image}
+                  models={models}
+                  user={user}
+                  onUseAsFirstFrame={handleUseAsFirstFrame}
+                  showAddToProject={false}
+                />
               </Col>
             ))}
           </Row>
@@ -258,4 +285,4 @@ const ImageImitation = ({ user }) => {
   );
 };
 
-export default ImageImitation;
+export default ImageEnrichment;

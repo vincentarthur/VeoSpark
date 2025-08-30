@@ -13,7 +13,7 @@ import { useShareModal } from '../hooks/useShareModal';
 
 const { Option } = Select;
 
-const ImageHistory = ({ user, history, models, loading, error, hasFetched, totalRows, page, rowsPerPage, fetchHistory, setFilters, clearFilters, filters, onUseAsFirstFrame }) => {
+const ImageEnrichmentHistory = ({ user, history, models, loading, error, hasFetched, totalRows, page, rowsPerPage, fetchHistory, setFilters, clearFilters, filters, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const {
     modalOpen: shareModalOpen,
@@ -108,4 +108,4 @@ const ImageHistory = ({ user, history, models, loading, error, hasFetched, total
   );
 };
 
-export default ImageHistory;
+export default ImageEnrichmentHistory;

@@ -105,17 +105,19 @@ const AnalyticsPage = () => {
   const handleExport = (format) => {
     if (!data) return;
 
-    const dailyData = data.daily_consumption.map(item => ({
-      Date: item.consumption_date,
-      'Video Cost': item.video_cost,
-      'Image Cost': item.image_cost,
-      'Total Cost': item.total_cost,
-    }));
+      const dailyData = data.daily_consumption.map(item => ({
+        Date: item.consumption_date,
+        'Video Cost': item.video_cost,
+        'Image Cost': item.image_cost,
+        'Image Enrichment Cost': item.enrichment_cost,
+        'Total Cost': item.total_cost,
+      }));
 
       const userData = data.top_users.map(item => ({
         User: item.user_email,
         'Video Cost': item.video_cost,
         'Image Cost': item.image_cost,
+        'Image Enrichment Cost': item.enrichment_cost,
         'Total Cost': item.total_cost,
       }));
 
@@ -123,6 +125,7 @@ const AnalyticsPage = () => {
         'Project Name': item.project_name,
         'Video Cost': item.video_cost,
         'Image Cost': item.image_cost,
+        'Image Enrichment Cost': item.enrichment_cost,
         'Total Cost': item.total_cost,
       }));
 
@@ -189,6 +192,17 @@ const AnalyticsPage = () => {
     return acc;
   }, []);
 
+  const enrichmentModelDistributionData = data.model_distribution.enrichment.reduce((acc, item) => {
+    const name = item.model_used;
+    const existing = acc.find(x => x.name === name);
+    if (existing) {
+      existing.value += item.generation_count;
+    } else {
+      acc.push({ name, value: item.generation_count });
+    }
+    return acc;
+  }, []);
+
   return (
     <div>
       <Title level={2}>{t('analytics.title')}</Title>
@@ -222,17 +236,22 @@ const AnalyticsPage = () => {
       </Card>
 
       <Row gutter={16}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card>
             <Statistic title={t('analytics.totalVideoCost', 'Video Cost')} value={data.summary.total_video_cost} precision={2} prefix="$" />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card>
             <Statistic title={t('analytics.totalImageCost', 'Image Cost')} value={data.summary.total_image_cost} precision={2} prefix="$" />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
+          <Card>
+            <Statistic title={t('analytics.totalEnrichmentCost', 'Enrichment Cost')} value={data.summary.total_enrichment_cost} precision={2} prefix="$" />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
           <Card>
             <Statistic title={t('analytics.totalCostInRange')} value={data.summary.total_cost} precision={2} prefix="$" />
           </Card>
@@ -252,6 +271,7 @@ const AnalyticsPage = () => {
                 <Legend />
                 <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
                 <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
+                <Bar dataKey="enrichment_cost" stackId="a" fill="#ffc658" name={t('analytics.enrichmentCost', 'Enrichment Cost')} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -293,6 +313,7 @@ const AnalyticsPage = () => {
                 <Legend />
                 <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
                 <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
+                <Bar dataKey="enrichment_cost" stackId="a" fill="#ffc658" name={t('analytics.enrichmentCost', 'Enrichment Cost')} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -312,6 +333,7 @@ const AnalyticsPage = () => {
                 <Legend />
                 <Bar dataKey="video_cost" stackId="a" fill="#8884d8" name={t('analytics.videoCost', 'Video Cost')} />
                 <Bar dataKey="image_cost" stackId="a" fill="#82ca9d" name={t('analytics.imageCost', 'Image Cost')} />
+                <Bar dataKey="enrichment_cost" stackId="a" fill="#ffc658" name={t('analytics.enrichmentCost', 'Enrichment Cost')} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -319,7 +341,7 @@ const AnalyticsPage = () => {
       </Row>
 
       <Row gutter={16} style={{ marginTop: 16 }}>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={8}>
           <Card>
             <Title level={4}>{t('analytics.videoModelDistribution', 'Video Model Distribution')}</Title>
             <ResponsiveContainer width="100%" height={300}>
@@ -333,13 +355,27 @@ const AnalyticsPage = () => {
             </ResponsiveContainer>
           </Card>
         </Col>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={8}>
           <Card>
             <Title level={4}>{t('analytics.imageModelDistribution', 'Image Model Distribution')}</Title>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie data={imageModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={100} fill="#82ca9d" dataKey="value">
                   {imageModelDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
+                <Tooltip formatter={(value, name) => [`${value} generations`, name]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card>
+            <Title level={4}>{t('analytics.enrichmentModelDistribution', 'Enrichment Model Distribution')}</Title>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie data={enrichmentModelDistributionData} cx="50%" cy="50%" labelLine={false} label={CustomPieLabel} outerRadius={100} fill="#ffc658" dataKey="value">
+                  {enrichmentModelDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(value, name) => [`${value} generations`, name]} />
                 <Legend />

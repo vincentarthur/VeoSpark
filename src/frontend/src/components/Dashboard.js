@@ -207,7 +207,6 @@ const Dashboard = ({ initialFirstFrame }) => {
   }, []);
 
   useEffect(() => {
-    if (isV3Model && aspectRatio === '9:16') setAspectRatio('16:9');
     if (isV3Model) {
       setEnhancePrompt(true);
       setDuration(8);
@@ -433,7 +432,7 @@ const Dashboard = ({ initialFirstFrame }) => {
             <Form.Item name="aspectRatio" label={t('dashboard.aspectRatioLabel')}>
               <Radio.Group>
                 <Radio.Button value="16:9">16:9</Radio.Button>
-                <Radio.Button value="9:16" disabled={isV3Model}>9:16</Radio.Button>
+                <Radio.Button value="9:16">9:16</Radio.Button>
               </Radio.Group>
             </Form.Item>
 

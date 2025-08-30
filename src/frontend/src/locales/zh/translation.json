@@ -8,7 +8,7 @@
     "videoGenerator": "视频生成器",
     "imageGenerator": "图片生成器",
     "promptFromImages": "从图片生成提示",
-    "imageImitation": "图像模仿",
+    "imageEnrichment": "图像增强",
     "generator": "创意生产",
     "history": "我的历史",
     "analytics": "分析",
@@ -81,6 +81,7 @@
     "completionTime": "完成时间",
     "resolution": "分辨率",
     "noPreview": "无视频预览。",
+    "invalidDate": "无效日期",
     "actions": {
       "preview": "预览",
       "clip": "剪辑",
@@ -285,11 +286,11 @@
     "tiltDown": "镜头向下倾斜",
     "tiltUp": "镜头向上倾斜"
   },
-  "imageImitation": {
+  "imageEnrichment": {
     "description": "上传一张图片，从Gemini获取描述，自定义提示并生成新图片。",
     "uploadImage": "上传图片",
     "subPromptLabel": "自定义输入",
-    "generateButton": "生成模仿图片",
+    "generateButton": "生成丰富图片",
     "noImageError": "请先上传一张图片。",
     "sampleCount": "样本数",
     "dedicatedProjectLabel": "专用项目"

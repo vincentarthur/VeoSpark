@@ -8,7 +8,7 @@
     "videoGenerator": "Video Generator",
     "imageGenerator": "Image Generator",
     "promptFromImages": "Prompt from Images",
-    "imageImitation": "Image Imitation",
+    "imageEnrichment": "Image Enrichment",
     "generator": "Creative Production",
     "history": "My History",
     "analytics": "Analytics",
@@ -82,6 +82,7 @@
     "completionTime": "Completion Time",
     "resolution": "Resolution",
     "noPreview": "No video preview available.",
+    "invalidDate": "Invalid Date",
     "actions": {
       "preview": "Preview",
       "clip": "Clip",
@@ -92,6 +93,7 @@
     "tabs": {
       "videoHistory": "Video History",
       "imageHistory": "Image History",
+      "imageEnrichmentHistory": "Image Enrichment History",
       "upscaleJobs": "Upscale Jobs"
     },
     "filters": {
@@ -286,11 +288,11 @@
     "tiltDown": "The camera tilts down",
     "tiltUp": "The camera tilts up"
   },
-  "imageImitation": {
+  "imageEnrichment": {
     "description": "Upload an image, get a description from Gemini, customize the prompt, and generate a new image.",
     "uploadImage": "Upload Image",
     "subPromptLabel": "Custom Input",
-    "generateButton": "Generate Imitation",
+    "generateButton": "Generate Enrichment",
     "noImageError": "Please upload an image first.",
     "dedicatedProjectLabel": "Dedicated Project"
   },
