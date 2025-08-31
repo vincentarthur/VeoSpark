@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select
+  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select, Tooltip
 } from 'antd';
 import { PlusOutlined, SendOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -11,7 +11,7 @@ const { Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
+const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProject, onProjectSelect }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -23,6 +23,12 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pollingTaskId, setPollingTaskId] = useState(null);
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const shortcutText = isMac ? '⌘ + Enter' : 'Alt + Enter';
+
+  useEffect(() => {
+    form.setFieldsValue({ creative_project_id: selectedProject });
+  }, [selectedProject, form]);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -38,13 +44,16 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
       try {
         const response = await axios.get('/api/creative-projects');
         setProjects(response.data);
+        if (selectedProject && !response.data.some(p => p.id === selectedProject)) {
+          onProjectSelect(null); 
+        }
       } catch (error) {
         console.error("Failed to fetch creative projects:", error);
       }
     };
     fetchModels();
     fetchProjects();
-  }, []);
+  }, [selectedProject]);
 
   const pollTaskStatus = useCallback(async (taskId) => {
     try {
@@ -107,6 +116,13 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
     const newPreviews = [...imagePreviews];
     newPreviews.splice(index, 1);
     setImagePreviews(newPreviews);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && (isMac ? e.metaKey : e.altKey)) {
+      e.preventDefault();
+      form.submit();
+    }
   };
 
   const handleSubmit = async (values) => {
@@ -184,7 +200,14 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
                   <Row gutter={[16, 16]} style={{ maxWidth: '60%' }}>
                     {item.images.map((image, imgIndex) => (
                       <Col xs={24} key={`${index}-${imgIndex}`}>
-                        <ImageCard image={image} models={models} user={user} onUseAsFirstFrame={onUseAsFirstFrame} />
+                        <ImageCard 
+                          image={image} 
+                          models={models} 
+                          user={user} 
+                          onUseAsFirstFrame={onUseAsFirstFrame} 
+                          onShareClick={true}
+                          showAddToProject={false}
+                          />
                       </Col>
                     ))}
                   </Row>
@@ -199,7 +222,11 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
       <div style={{ padding: '20px', borderTop: '1px solid #f0f0f0' }}>
         <Form form={form} onFinish={handleSubmit}>
           <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
-            <Select placeholder="Select a project">
+            <Select
+              placeholder="Select a project"
+              value={selectedProject}
+              onChange={onProjectSelect}
+            >
               {projects.map((p) => (
                 <Option key={p.id} value={p.id}>{p.name}</Option>
               ))}
@@ -236,10 +263,15 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
                 rows={1}
                 placeholder="Write your prompt here..."
                 autoSize={{ minRows: 1, maxRows: 6 }}
+                onKeyDown={handleKeyDown}
+                style={{ height: '54px' }}
               />
             </Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} icon={<SendOutlined />} style={{ marginLeft: '10px' }}>
-              Generate
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SendOutlined />} style={{ marginLeft: '10px', height: '54px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div>Generate</div>
+                <div style={{ fontSize: '10px', opacity: 0.8 }}>{shortcutText}</div>
+              </div>
             </Button>
           </div>
         </Form>

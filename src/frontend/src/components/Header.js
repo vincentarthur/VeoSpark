@@ -12,6 +12,7 @@ const Header = ({ user }) => {
   const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
+    sessionStorage.clear();
     window.location.href = '/logout';
   };
 

@@ -131,7 +131,7 @@ graph TD
 │   │   │   └── task_manager.py
 │   │   ├── configs
 │   │   │   ├── app-config.yaml
-│   │   │   ├── models.yaml
+│   │   │   ├── veo-models.yaml
 │   │   │   ├── image-models.yaml
 │   │   │   └── image-enrichment-models.yaml
 │   │   ├── scripts
@@ -166,7 +166,7 @@ This design ensures that the system is both flexible for future business needs a
 
 VeoSpark allows for easy management of all generative models through three distinct `.yaml` files in the `src/backend/configs/` directory. This separation allows for clear and specific pricing models for each generation type.
 
-### 1. `models.yaml` (Video Generation)
+### 1. `veo-models.yaml` (Video Generation)
 
 -   **Purpose**: Defines Veo models used for video generation.
 -   **Pricing**: Priced per second, with different rates for video with and without audio.
@@ -528,7 +528,7 @@ It is recommended to create a dedicated service account for this application to 
     - Added a new "Image Enrichment History" tab to the "My History" page.
     - Removed auto-fetching of data for both video and image history. Data is now fetched only when the user clicks the "Fetch History" button.
     - Implemented a version-controlled pricing system using `effective_date` in model configuration files.
-    - Separated model configurations into `models.yaml`, `image-models.yaml`, and a new `image-enrichment-models.yaml`.
+    - Separated model configurations into `veo-models.yaml`, `image-models.yaml`, and a new `image-enrichment-models.yaml`.
     - Image Enrichment is now billed based on input/output tokens.
     - Cost is now calculated and stored in BigQuery at the time of generation to ensure historical accuracy.
     - Created a new `image_enrichment_history` table in BigQuery to log enrichment-specific data, including token counts.

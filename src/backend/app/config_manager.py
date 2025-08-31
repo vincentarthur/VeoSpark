@@ -24,7 +24,7 @@ def get_models_config():
     Retrieves the models from the models.yaml file.
     """
     try:
-        config_path = Path(__file__).parent.parent / 'configs' / 'models.yaml'
+        config_path = Path(__file__).parent.parent / 'configs' / 'veo-models.yaml'
         with open(config_path, 'r') as f:
             return yaml.safe_load(f)
     except (FileNotFoundError, yaml.YAMLError):

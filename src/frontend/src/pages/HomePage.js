@@ -25,6 +25,11 @@ const HomePage = ({ user }) => {
   const navigate = useNavigate();
   const [firstFrame, setFirstFrame] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
+  const [selectedProject, setSelectedProject] = useState(null);
+
+  const handleProjectSelect = (projectId) => {
+    setSelectedProject(projectId);
+  };
 
   const handleUseAsFirstFrame = (frame) => {
     setFirstFrame(frame);
@@ -83,7 +88,12 @@ const HomePage = ({ user }) => {
                   <ImagePromptGenerator />
                 </TabPane>
                 <TabPane tab={t('nav.imageEnrichment')} key="4">
-                  <ConversationalImageEnrichment user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />
+                  <ConversationalImageEnrichment 
+                    user={user} 
+                    onUseAsFirstFrame={handleUseAsFirstFrame} 
+                    selectedProject={selectedProject}
+                    onProjectSelect={handleProjectSelect}
+                  />
                 </TabPane>
               </Tabs>
             } />
