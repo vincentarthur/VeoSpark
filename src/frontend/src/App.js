@@ -8,7 +8,6 @@ import { lightTheme, darkTheme } from './antdTheme';
 // Import Page & Component assets
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
-import CreativeProjectsPage from './pages/CreativeProjectsPage';
 
 function AppContent() {
   const [user, setUser] = useState(null);

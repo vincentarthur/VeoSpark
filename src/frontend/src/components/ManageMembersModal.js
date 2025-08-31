@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
-  Box, Typography, TextareaAutosize, Divider, DialogContentText
+  Box, Typography, Divider, DialogContentText
 } from '@mui/material';
 
 const ManageMembersModal = ({ open, onClose, group, onAddMember, onRemoveMember, onBulkAdd, onBulkRemove }) => {

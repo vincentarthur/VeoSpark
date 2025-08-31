@@ -5,9 +5,9 @@ import {
   Typography, Spin, Alert, Input, Button,
   Table, Modal, Tag, Dropdown, Menu, Card, Row, Col
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, SearchOutlined, UnorderedListOutlined, GlobalOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, UnorderedListOutlined, GlobalOutlined } from '@ant-design/icons';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Search } = Input;
 
 const PromptGalleryPage = ({ user }) => {

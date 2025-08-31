@@ -2,6 +2,7 @@ import time
 import uuid
 import re
 import json
+import yaml
 from pathlib import Path
 import tempfile
 from typing import Dict, Any, Optional, List, Tuple
@@ -105,11 +106,21 @@ def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], u
     except Exception as e:
         logger.error(f"Failed to add asset to creative project '{project_id}'. Error: {e}", exc_info=True)
 
-def log_generation_to_bq(table_name: str, **kwargs):
+def log_generation_to_bq(asset_type: str, **kwargs):
     if not settings.ENABLE_BIGQUERY_LOGGING:
         return
 
     bq_client = bigquery.Client(project=settings.PROJECT_ID)
+    if asset_type == "imgen":
+        table_name = settings.IMAGEN_HISTORY_TABLE
+    elif asset_type == "veo":
+        table_name = settings.HISTORY_TABLE
+    elif asset_type == "image_enrichment":
+        table_name = settings.IMAGE_ENRICHMENT_HISTORY_TABLE
+    else:
+        logger.error(f"Unknown BigQuery table type: {asset_type}")
+        return
+    
     table_id = f"{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{table_name}"
     
     # Remove None values and serialize datetimes
@@ -171,6 +182,16 @@ class GenerationService:
 
     def on_video_generation_success(self, result: Dict[str, Any], **kwargs):
         """Callback for successful video generation."""
+        if "error" in result:
+            logger.error(f"Video generation failed, processing error callback. Error: {result['error']}")
+            # Call the generic error handler
+            self.on_generation_error(
+                error=Exception(str(result["error"])),
+                asset_type='veo',
+                **kwargs
+            )
+            return
+
         logger.info("Video generation succeeded. Processing results.")
         user_info = kwargs.get('user_info')
         body = kwargs.get('body')
@@ -197,7 +218,7 @@ class GenerationService:
         for video in video_data:
             path = video['gcs_uri']
             log_generation_to_bq(
-                table_name=settings.HISTORY_TABLE,
+                asset_type='veo',
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=completion_time,
@@ -256,7 +277,7 @@ class GenerationService:
         for img in image_data:
             path = img['gcs_uri']
             log_generation_to_bq(
-                table_name=settings.IMAGEN_HISTORY_TABLE,
+                asset_type='imgen',
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=completion_time,
@@ -324,7 +345,7 @@ class GenerationService:
         for img in image_data:
             path = img['gcs_uri']
             log_generation_to_bq(
-                table_name=settings.IMAGE_ENRICHMENT_HISTORY_TABLE,
+                asset_type='image_enrichment',
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=completion_time,
@@ -356,7 +377,7 @@ class GenerationService:
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
-    def on_generation_error(self, error: Exception, **kwargs):
+    def on_generation_error(self, error: Exception, asset_type: str, **kwargs):
         """Generic callback for failed generation tasks."""
         logger.error(f"Generation task failed. Logging error. Error: {error}", exc_info=False)
         user_info = kwargs.get('user_info')
@@ -365,11 +386,9 @@ class GenerationService:
         trigger_time = kwargs.get('trigger_time')
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
         
-        is_image_gen = 'negative_prompt' in body or 'sub_prompt' in kwargs
-
-        if is_image_gen:
+        if asset_type == "imgen":
             log_generation_to_bq(
-                table_name=settings.IMAGEN_HISTORY_TABLE,
+                asset_type='imgen',
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=datetime.now(timezone.utc),
@@ -383,9 +402,9 @@ class GenerationService:
                 resolution=kwargs.get('image_size') or body.get('image_size'),
                 creative_project_id=kwargs.get('creative_project_id') or body.get('creative_project_id')
             )
-        else:
+        elif asset_type == "veo":
             log_generation_to_bq(
-                table_name=settings.HISTORY_TABLE,
+                asset_type='veo',
                 user_email=user_email,
                 trigger_time=trigger_time,
                 completion_time=datetime.now(timezone.utc),
@@ -399,32 +418,63 @@ class GenerationService:
                 resolution=body.get('resolution'),
                 first_frame_gcs_uri=body.get('image_gcs_uri'),
                 last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
-                output_video_gcs_paths=[],
+                output_video_gcs_paths=json.dumps([]),
                 creative_project_id=body.get('creative_project_id')
             )
+        elif asset_type == "image_enrichment":
+            log_generation_to_bq(
+                asset_type='image_enrichment',
+                user_email=user_email,
+                trigger_time=trigger_time,
+                completion_time=datetime.now(timezone.utc),
+                operation_duration=0,
+                prompt=prompt,
+                model_used=kwargs.get('model'),
+                status="FAILURE",
+                error_message=str(error),
+                resolution=kwargs.get('image_size'),
+                creative_project_id=kwargs.get('creative_project_id')
+            )
 
-    def _parse_rai_reason_from_error(self, error_message: str) -> Optional[Dict[str, str]]:
+    def _parse_rai_reason_from_error(self, error_message: str) -> Optional[List[Dict[str, str]]]:
         """
-        Parses the support code from a video generation error message and returns the mapped reason.
+        Parses support codes from a generation error message and returns the mapped reasons.
         """
-        match = re.search(r"Support codes: (\d+)", error_message)
-        if match:
-            support_code = match.group(1)
-            reason_details = {} # In a real app, this would come from a config
-            if reason_details:
-                return {
-                    "code": support_code,
-                    "category": reason_details.get("category", "Unknown"),
-                    "description": reason_details.get("description", "An unknown safety filter was triggered."),
-                    "filtered": reason_details.get("filtered", "N/A")
-                }
-            return {
-                "code": support_code,
+        # Load safety filters from the YAML file.
+        try:
+            with open(Path(__file__).parent / "safety_filters.yaml", "r") as f:
+                safety_filters = yaml.safe_load(f)
+        except (FileNotFoundError, yaml.YAMLError) as e:
+            logger.error(f"Failed to load or parse safety_filters.yaml: {e}")
+            safety_filters = {}
+
+        # Regex to find all support codes, which may be comma-separated.
+        matches = re.findall(r"Support codes: ([\d, ]+)", error_message)
+        if not matches:
+            return None
+
+        all_codes = []
+        for match in matches:
+            codes = [code.strip() for code in match.split(',') if code.strip().isdigit()]
+            all_codes.extend(codes)
+
+        if not all_codes:
+            return None
+
+        reasons = []
+        for code in all_codes:
+            reason = safety_filters.get(code, {
                 "category": "Unknown",
                 "description": "An unknown safety filter was triggered.",
                 "filtered": "N/A"
-            }
-        return None
+            })
+            reasons.append({
+                "code": code,
+                "category": reason.get("category", "Unknown"),
+                "description": reason.get("description", "No description available."),
+                "filtered": reason.get("filtered", "N/A")
+            })
+        return reasons
 
     def generate_video(
             self,
@@ -492,9 +542,27 @@ class GenerationService:
             operation = self.genai_client.operations.get(operation)
 
         if operation.error:
-            raise RuntimeError(f"Video generation failed: {operation.error}")
+            error_str = str(operation.error)
+            rai_reasons = self._parse_rai_reason_from_error(error_str)
+            return {
+                "message": "Video generation failed.",
+                "error": error_str,
+                "videos": [],
+                "duration": time.time() - start_time,
+                "revisedPrompt": None,
+                "rai_reasons": rai_reasons,
+                "creative_project_id": kwargs.get('body').get('creative_project_id')
+            }
         if not operation.response:
-            raise RuntimeError("Operation finished but no response data found.")
+            return {
+                "message": "Operation finished but no response data found.",
+                "error": "No response data",
+                "videos": [],
+                "duration": time.time() - start_time,
+                "revisedPrompt": None,
+                "rai_reasons": None,
+                "creative_project_id": kwargs.get('body').get('creative_project_id')
+            }
 
         result = operation.result
         revised_prompt = result.revised_prompt if hasattr(result, 'revised_prompt') else None
@@ -503,9 +571,14 @@ class GenerationService:
         rai_reasons = None
         if not generated_videos:
             if hasattr(result, 'rai_media_filtered_reasons') and result.rai_media_filtered_reasons:
-                raw_reasons = result.rai_media_filtered_reasons
-                parsed_reasons = [self._parse_rai_reason_from_error(r) or r for r in raw_reasons]
-                rai_reasons = parsed_reasons
+                rai_reasons = []
+                for r in result.rai_media_filtered_reasons:
+                    parsed = self._parse_rai_reason_from_error(r)
+                    if parsed:
+                        rai_reasons.extend(parsed)
+                    else:
+                        # Fallback for unparsable reasons
+                        rai_reasons.append({"code": "Unknown", "description": r})
         
         gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri]
         
@@ -515,7 +588,7 @@ class GenerationService:
         video_data = []
         for uri in gcs_paths:
             bucket_name, blob_name = uri[5:].split("/", 1)
-            bucket = storage_client.bucket(bucket_name)
+            bucket = self.storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
             signed_url = blob.generate_signed_url(
                 version="v4",
@@ -583,9 +656,10 @@ class GenerationService:
         rai_reasons = []
         for generated_image in images.generated_images:
             if generated_image.rai_filtered_reason:
-                reason = self._parse_rai_reason_from_error(f"Support codes: {generated_image.rai_filtered_reason}")
-                if reason:
-                    rai_reasons.append(reason)
+                reason_str = f"Support codes: {generated_image.rai_filtered_reason}"
+                parsed_reasons = self._parse_rai_reason_from_error(reason_str)
+                if parsed_reasons:
+                    rai_reasons.extend(parsed_reasons)
                 else:
                     rai_reasons.append({"code": generated_image.rai_filtered_reason, "description": "Unknown reason"})
                 continue
@@ -682,9 +756,12 @@ class GenerationService:
         candidate = response.candidates[0]
         if candidate.safety_ratings:
             # Got issue with Safety Filter
-            reason = self._parse_rai_reason_from_error(f"Support codes: {candidate.safety_ratings.category}")
-            rai_reasons.append(reason or {"code": candidate.safety_ratings.category, "description": "Unknown reason"})
-
+            reason_str = f"Support codes: {candidate.safety_ratings.category}"
+            parsed_reasons = self._parse_rai_reason_from_error(reason_str)
+            if parsed_reasons:
+                rai_reasons.extend(parsed_reasons)
+            else:
+                rai_reasons.append({"code": candidate.safety_ratings.category, "description": "Unknown reason"})
         else:
             for part in candidate.content.parts:
                 if part.inline_data:

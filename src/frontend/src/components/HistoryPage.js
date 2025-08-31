@@ -25,7 +25,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   const [history, setHistory] = useState([]);
   const [activeTab, setActiveTab] = useState("video");
   const [hasFetched, setHasFetched] = useState(false);
-  const [config, setConfig] = useState({ enable_upscale: false });
+  const [, setConfig] = useState({ enable_upscale: false });
   const [totalRows, setTotalRows] = useState(0);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);

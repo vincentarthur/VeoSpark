@@ -293,7 +293,8 @@
     "generateButton": "生成丰富图片",
     "noImageError": "请先上传一张图片。",
     "sampleCount": "样本数",
-    "dedicatedProjectLabel": "专用项目"
+    "dedicatedProjectLabel": "专用项目",
+    "maxImagesTip": "（最多3张图片）"
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"

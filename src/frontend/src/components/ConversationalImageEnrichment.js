@@ -7,11 +7,11 @@ import { PlusOutlined, SendOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import ImageCard from './ImageCard';
 
-const { Title, Text, Paragraph } = Typography;
+const { Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-const ConversationalImageEnrichment = ({ user }) => {
+const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -184,7 +184,7 @@ const ConversationalImageEnrichment = ({ user }) => {
                   <Row gutter={[16, 16]} style={{ maxWidth: '60%' }}>
                     {item.images.map((image, imgIndex) => (
                       <Col xs={24} key={`${index}-${imgIndex}`}>
-                        <ImageCard image={image} models={models} user={user} />
+                        <ImageCard image={image} models={models} user={user} onUseAsFirstFrame={onUseAsFirstFrame} />
                       </Col>
                     ))}
                   </Row>
@@ -218,6 +218,7 @@ const ConversationalImageEnrichment = ({ user }) => {
             >
               <Button icon={<PlusOutlined />} shape="circle" />
             </Upload>
+            <Typography.Text type="secondary" style={{ marginLeft: '10px' }}>{t('imageEnrichment.maxImagesTip')}</Typography.Text>
             {imagePreviews.map((preview, index) => (
               <div key={index} style={{ position: 'relative', marginLeft: '10px' }}>
                 <img src={preview} alt={`Preview ${index}`} style={{ maxWidth: '50px', borderRadius: '4px', verticalAlign: 'middle' }} />

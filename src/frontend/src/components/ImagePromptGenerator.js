@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Row, Col, Button, Typography, Spin, Input, Select, Alert, Upload, Card
+  Row, Col, Button, Typography, Input, Select, Alert, Upload, Card
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import CameraMovements from './CameraMovements';

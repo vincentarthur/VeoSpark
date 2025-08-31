@@ -5,11 +5,10 @@ import {
   Typography, Spin, Alert, Button, Input,
   Collapse, Table, Modal, Upload, Card, notification, Row, Col, Tooltip
 } from 'antd';
-import { DeleteOutlined, UploadOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons';
+import { DeleteOutlined, UploadOutlined, ReloadOutlined } from '@ant-design/icons';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import ManageMembersModal from '../components/ManageMembersModal';
-import ProjectConfigModal from '../components/ProjectConfigModal';
 import VideoCard from '../components/VideoCard';
 import ImageCard from '../components/ImageCard';
 
@@ -27,7 +26,7 @@ const CreativeProjectsPage = ({ user }) => {
   const [error, setError] = useState(null);
   const [newProjectName, setNewProjectName] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [, setIsConfigModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [activeKeys, setActiveKeys] = useState([]);
 
@@ -45,12 +44,14 @@ const CreativeProjectsPage = ({ user }) => {
   };
 
   useEffect(() => {
-    fetchProjects().then(() => {
-      if (projects.length > 0) {
-        setActiveKeys(projects.map(p => p.id));
-      }
-    });
+    fetchProjects()
   }, []);
+
+  useEffect(() => {
+    if (projects.length > 0) {
+      setActiveKeys(projects.map(p => p.id));
+    }
+  }, [projects]);
 
   const handleCreateProject = async () => {
     try {
@@ -121,15 +122,6 @@ const CreativeProjectsPage = ({ user }) => {
     setIsModalOpen(false);
   };
 
-  const openConfigModal = (project) => {
-    setSelectedProject(project);
-    setIsConfigModalOpen(true);
-  };
-
-  const closeConfigModal = () => {
-    setSelectedProject(null);
-    setIsConfigModalOpen(false);
-  };
 
   const handleFileChange = (file) => {
     if (!file) return;

@@ -109,10 +109,11 @@ Handles user authentication, configuration, GCS operations, prompt gallery, imag
 - **Response Body**: (See `TaskStatus` schema for detailed examples)
   ```json
   {
-    "status": "SUCCESS",
+    "status": "completed",
     "result": {
       "message": "Video generation successful.",
-      "videos": [{"gcs_uri": "...", "signed_url": "..."}]
+      "videos": [{"gcs_uri": "...", "signed_url": "..."}],
+      "rai_reasons": null
     },
     "error": null
   }
@@ -510,14 +511,14 @@ The result of a successful image imitation task.
 
 ### `TaskStatus`
 Represents the status of a background task, including its result or error.
-- `status` (str): The status of the task (e.g., "PENDING", "SUCCESS", "FAILURE").
-- `result` (Optional[dict]): The result of the task if it was successful.
-- `error` (Optional[str]): The error message if the task failed.
+- `status` (str): The status of the task (e.g., "running", "completed", "failed").
+- `result` (Optional[dict]): The result of the task if it was successful. This can also contain error details for handled failures (e.g., RAI violations).
+- `error` (Optional[str]): The error message if the task failed unexpectedly.
 
 **Example Payload (Success):**
 ```json
 {
-  "status": "SUCCESS",
+  "status": "completed",
   "result": {
     "message": "Video generation successful.",
     "videos": [
@@ -534,12 +535,41 @@ Represents the status of a background task, including its result or error.
 }
 ```
 
-**Example Payload (Failure):**
+**Example Payload (Handled Failure with RAI Reasons):**
 ```json
 {
-  "status": "FAILURE",
+  "status": "completed",
+  "result": {
+    "message": "Video generation failed.",
+    "error": "The prompt could not be submitted...",
+    "videos": [],
+    "duration": 0.5,
+    "revisedPrompt": null,
+    "rai_reasons": [
+      {
+        "code": "89371032",
+        "category": "Prohibited content",
+        "description": "Detects the request of prohibited content in the request.",
+        "filtered": "input (prompt)"
+      },
+      {
+        "code": "58061214",
+        "category": "Child",
+        "description": "Rejects requests to generate content depicting children...",
+        "filtered": "input (prompt)"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+**Example Payload (Unhandled Failure):**
+```json
+{
+  "status": "failed",
   "result": null,
-  "error": "An error occurred during video generation."
+  "error": "An unexpected error occurred during video generation."
 }
 ```
 

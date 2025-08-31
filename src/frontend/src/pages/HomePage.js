@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu, Tabs, Typography } from 'antd';
 import Header from '../components/Header';
 import NotificationBanner from '../components/NotificationBanner';
@@ -24,9 +24,11 @@ const HomePage = ({ user }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [firstFrame, setFirstFrame] = useState(null);
+  const [activeTab, setActiveTab] = useState("1");
 
   const handleUseAsFirstFrame = (frame) => {
     setFirstFrame(frame);
+    setActiveTab("2");
     navigate('/');
   };
 
@@ -70,7 +72,7 @@ const HomePage = ({ user }) => {
         <div style={{ padding: 24, minHeight: 280 }}>
           <Routes>
             <Route path="/" element={
-              <Tabs defaultActiveKey="1">
+              <Tabs activeKey={activeTab} onChange={setActiveTab}>
                 <TabPane tab={t('nav.imageGenerator')} key="1">
                   <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />
                 </TabPane>
@@ -81,7 +83,7 @@ const HomePage = ({ user }) => {
                   <ImagePromptGenerator />
                 </TabPane>
                 <TabPane tab={t('nav.imageEnrichment')} key="4">
-                  <ConversationalImageEnrichment user={user} />
+                  <ConversationalImageEnrichment user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />
                 </TabPane>
               </Tabs>
             } />

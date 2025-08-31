@@ -1,19 +1,28 @@
+# https://cloud.google.com/vertex-ai/generative-ai/docs/video/responsible-ai-and-usage-guidelines
 "58061214":
   category: "Child"
-  description: "Detects child content where it isn't allowed due to the API request settings or allowlisting."
+  description: "Rejects requests to generate content depicting children if personGeneration isn't set to \"allow_all\" or if the project isn't on the allowlist for this feature."
   filtered: "input (prompt)"
 "17301594":
   category: "Child"
-  description: "Detects child content where it isn't allowed due to the API request settings or allowlisting."
+  description: "Rejects requests to generate content depicting children if personGeneration isn't set to \"allow_all\" or if the project isn't on the allowlist for this feature."
   filtered: "output (image)"
 "29310472":
   category: "Celebrity"
-  description: "Detects a photorealistic representation of a celebrity in the request."
+  description: "Rejects requests to generate a photorealistic representation of a prominent person or if the project isn't on the allowlist for this feature."
   filtered: "input (prompt)"
 "15236754":
   category: "Celebrity"
-  description: "Detects a photorealistic representation of a celebrity in the request."
+  description: "Rejects requests to generate a photorealistic representation of a prominent person or if the project isn't on the allowlist for this feature."
   filtered: "output (image)"
+"64151117":
+  category: "Video safety violation"
+  description: "Detects content that's a safety violation."
+  filtered: "output (video)"
+"42237218":
+  category: "Video safety violation"
+  description: "Detects content that's a safety violation."
+  filtered: "output (video)"
 "62263041":
   category: "Dangerous content"
   description: "Detects content that's potentially dangerous in nature."
@@ -38,13 +47,9 @@
   category: "Other"
   description: "Detects other miscellaneous safety issues with the request."
   filtered: "input (prompt)"
-"39322892":
-  category: "People/Face"
-  description: "Detects a person or face when it isn't allowed due to the request safety settings."
-  filtered: "output (image)"
 "92201652":
   category: "Personal information"
-  description: "Detects Personally Identifiable Information (PII) in the text, such as the mentioning a credit card number, home addresses, or other such information."
+  description: "Detects Personally Identifiable Information (PII) in the text, such as mentioning a credit card number, home addresses, or other such information."
   filtered: "input (prompt)"
 "89371032":
   category: "Prohibited content"
@@ -76,11 +81,11 @@
   filtered: "input (prompt)"
 "61493863":
   category: "Violence"
-  description: "Detects violence-related content from the image or text."
+  description: "Detects violence-related content from the video or text."
   filtered: "input (prompt)"
 "56562880":
   category: "Violence"
-  description: "Detects violence-related content from the image or text."
+  description: "Detects violence-related content from the video or text."
   filtered: "output (image)"
 "32635315":
   category: "Vulgar"

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Row, Col, Button, Input, Typography, Slider, Radio, Checkbox,
-  Card, Spin, Alert, Select, Upload, Tooltip, Form
+  Card, Spin, Alert, Select, Upload, Tooltip, Form, Table
 } from 'antd';
 import { ScissorOutlined, AudioOutlined, UploadOutlined, CloseOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -238,17 +237,25 @@ const Dashboard = ({ initialFirstFrame }) => {
         const { status, result, error } = response.data;
 
         if (status === 'completed') {
-          setGeneratedVideos(result.videos || []);
-          if (result.revisedPrompt) {
-            setRevisedPrompt(result.revisedPrompt);
-          }
-          if (result.rai_reasons) {
-            setRaiReasons(result.rai_reasons);
+          // The task itself completed, but the generation might have failed gracefully.
+          if (result.error || result.rai_reasons) {
+            if (result.rai_reasons) {
+              setRaiReasons(result.rai_reasons);
+            } else {
+              setError(result.error || 'An unexpected error occurred during generation.');
+            }
+          } else {
+            // This is a true success.
+            setGeneratedVideos(result.videos || []);
+            if (result.revisedPrompt) {
+              setRevisedPrompt(result.revisedPrompt);
+            }
           }
           setLoading(false);
           setPollingTaskId(null);
           clearInterval(interval);
         } else if (status === 'failed') {
+          // The task itself failed unexpectedly.
           setError(error || 'An unexpected error occurred during generation.');
           setLoading(false);
           setPollingTaskId(null);
@@ -476,16 +483,18 @@ const Dashboard = ({ initialFirstFrame }) => {
             <Alert
               message={t('dashboard.raiFilterTitle')}
               description={
-                <div>
-                  {raiReasons.map((reason, index) => (
-                    <div key={index} style={{ marginBottom: '10px' }}>
-                      <Text strong>{t('dashboard.raiFilterErrorCode')}:</Text> {reason.code}<br />
-                      <Text strong>{t('dashboard.raiFilterCategory')}:</Text> {reason.category}<br />
-                      <Text strong>{t('dashboard.raiFilterDescription')}:</Text> {reason.description}<br />
-                      <Text strong>{t('dashboard.raiFilterFilteredContent')}:</Text> {reason.filtered}
-                    </div>
-                  ))}
-                </div>
+                <Table
+                  dataSource={raiReasons}
+                  columns={[
+                    { title: t('dashboard.raiFilterErrorCode'), dataIndex: 'code', key: 'code' },
+                    { title: t('dashboard.raiFilterCategory'), dataIndex: 'category', key: 'category' },
+                    { title: t('dashboard.raiFilterDescription'), dataIndex: 'description', key: 'description' },
+                    { title: t('dashboard.raiFilterFilteredContent'), dataIndex: 'filtered', key: 'filtered' },
+                  ]}
+                  pagination={false}
+                  size="small"
+                  rowKey="code"
+                />
               }
               type="warning"
               showIcon

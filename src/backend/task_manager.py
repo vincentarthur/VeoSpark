@@ -45,18 +45,37 @@ def create_task(
         try:
             # Pass only the relevant kwargs to the target function
             result = target_func(*args, **func_kwargs)
-            _task_store[task_id] = {"status": "completed", "result": result}
-            logger.info(f"Task {task_id} completed successfully.")
-            if on_success:
-                try:
-                    logger.info(f"Executing on_success callback for task {task_id}.")
-                    # Pass the result and the original context to the callback
-                    on_success(result, **func_kwargs)
-                except Exception as cb_e:
-                    logger.error(f"Error in on_success callback for task {task_id}: {cb_e}", exc_info=True)
+            
+            # Check if the result indicates a graceful failure (e.g., RAI violation)
+            if isinstance(result, dict) and "error" in result:
+                # Store the entire result so the frontend can get detailed RAI reasons
+                _task_store[task_id] = {"status": "completed", "result": result}
+                logger.warning(f"Task {task_id} completed with a handled error: {result['error']}")
+                if on_error:
+                    try:
+                        # Create an exception object from the error message for the callback
+                        error = Exception(result['error'])
+                        # If rai_reasons are available, attach them to the exception
+                        if "rai_reasons" in result:
+                            error.rai_reasons = result["rai_reasons"]
+                        logger.info(f"Executing on_error callback for task {task_id} due to handled error.")
+                        on_error(error, **func_kwargs)
+                    except Exception as cb_e:
+                        logger.error(f"Error in on_error callback for task {task_id}: {cb_e}", exc_info=True)
+            else:
+                # Task succeeded
+                _task_store[task_id] = {"status": "completed", "result": result}
+                logger.info(f"Task {task_id} completed successfully.")
+                if on_success:
+                    try:
+                        logger.info(f"Executing on_success callback for task {task_id}.")
+                        on_success(result, **func_kwargs)
+                    except Exception as cb_e:
+                        logger.error(f"Error in on_success callback for task {task_id}: {cb_e}", exc_info=True)
+
         except Exception as e:
             _task_store[task_id] = {"status": "failed", "error": str(e)}
-            logger.error(f"Task {task_id} failed with error: {e}", exc_info=True)
+            logger.error(f"Task {task_id} failed with an unhandled exception: {e}", exc_info=True)
             if on_error:
                 try:
                     logger.info(f"Executing on_error callback for task {task_id}.")

@@ -52,7 +52,7 @@ const TeamGalleryPage = ({ user, onUseAsFirstFrame }) => {
     if (selectedGroup) {
         fetchItems();
     }
-  }, [selectedGroup]);
+  }, [selectedGroup, fetchItems]);
 
   const handleDeleteClick = (item) => {
     Modal.confirm({

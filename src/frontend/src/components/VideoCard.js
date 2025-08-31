@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, Typography, Button, Tooltip, Tag, Collapse } from 'antd';
-import { ScissorOutlined, AudioOutlined, ArrowUpOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined, PlusOutlined } from '@ant-design/icons';
+import { ScissorOutlined, AudioOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined, PlusOutlined } from '@ant-design/icons';
 import AddToProjectModal from './AddToProjectModal';
 import ShareToGroupModal from './ShareToGroupModal';
 
@@ -121,6 +121,25 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
             <>
               <Text strong>{t('history.resolution')}:</Text> <ResolutionIcon resolution={video.resolution} />
             </>
+          )}
+          {video.status === 'FAILURE' && video.error_message && (
+            <>
+              <br />
+              <Text strong>{t('history.error')}:</Text> <Text type="danger">{video.error_message}</Text>
+            </>
+          )}
+          {video.rai_reasons && video.rai_reasons.length > 0 && (
+            <Collapse ghost>
+              <Panel header={t('videoCard.raiReasons')} key="rai">
+                {video.rai_reasons.map((reason, index) => (
+                  <div key={index}>
+                    <Text strong>{t('videoCard.code')}:</Text> <Text>{reason.code}</Text><br />
+                    <Text strong>{t('videoCard.category')}:</Text> <Text>{reason.category}</Text><br />
+                    <Text strong>{t('videoCard.description')}:</Text> <Text>{reason.description}</Text><br />
+                  </div>
+                ))}
+              </Panel>
+            </Collapse>
           )}
         </Panel>
       </Collapse>

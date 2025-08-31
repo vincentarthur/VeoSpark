@@ -43,7 +43,7 @@ async def generate_image(
     task_id = create_task(
         generation_service.generate_image,
         on_success=generation_service.on_image_generation_success,
-        on_error=generation_service.on_generation_error,
+        on_error=lambda e, **kwargs: generation_service.on_generation_error(e, asset_type="imgen", **kwargs),
         prompt=request.prompt,
         user_info=user,
         body=request.dict(),
@@ -114,7 +114,7 @@ async def enrich_image(
     task_id = create_task(
         generation_service.enrich_image,
         on_success=generation_service.on_image_enrichment_success,
-        on_error=generation_service.on_generation_error,
+        on_error=lambda e, **kwargs: generation_service.on_generation_error(e, asset_type="image_enrichment", **kwargs),
         **task_kwargs
     )
     logger.info(f"Task {task_id} created for image enrichment.")

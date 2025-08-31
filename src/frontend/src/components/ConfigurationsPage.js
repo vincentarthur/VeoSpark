@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button, Typography, Radio, Input,
-  Spin, Alert, Select, Form, Card, Row, Col, Tabs
+  Alert, Select, Form, Card, Row, Col, Tabs
 } from 'antd';
 import axios from 'axios';
 import ProjectCostConfiguration from './ProjectCostConfiguration';

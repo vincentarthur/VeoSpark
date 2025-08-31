@@ -45,12 +45,11 @@ async def generate_video_endpoint(
     task_id = create_task(
         generation_service.generate_video,
         on_success=generation_service.on_video_generation_success,
-        on_error=generation_service.on_generation_error,
+        on_error=lambda e, **kwargs: generation_service.on_generation_error(e, asset_type="veo", **kwargs),
         prompt=request.prompt,
         user_info=user,
         body=request.dict(),
-        trigger_time=datetime.now(timezone.utc),
-        generation_service=generation_service
+        trigger_time=datetime.now(timezone.utc)
     )
     logger.info(f"Task {task_id} created for video generation.")
 

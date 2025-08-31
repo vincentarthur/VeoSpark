@@ -108,6 +108,25 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
             <Text strong>{t('history.resolution')}:</Text> <Text>{image.resolution}</Text><br />
             <Text strong>{t('history.genDuration')}:</Text> <Text>{Math.round(image.operation_duration || 0)}s</Text><br />
             <Text strong>{t('history.completionTime')}:</Text> <Text>{formatDate(image.completion_time)}</Text><br />
+            {image.status === 'FAILURE' && image.error_message && (
+              <>
+                <br />
+                <Text strong>{t('history.error')}:</Text> <Text type="danger">{image.error_message}</Text>
+              </>
+            )}
+            {image.rai_reasons && image.rai_reasons.length > 0 && (
+              <Collapse ghost>
+                <Panel header={t('imageCard.raiReasons')} key="rai">
+                  {image.rai_reasons.map((reason, index) => (
+                    <div key={index}>
+                      <Text strong>{t('imageCard.code')}:</Text> <Text>{reason.code}</Text><br />
+                      <Text strong>{t('imageCard.category')}:</Text> <Text>{reason.category}</Text><br />
+                      <Text strong>{t('imageCard.description')}:</Text> <Text>{reason.description}</Text><br />
+                    </div>
+                  ))}
+                </Panel>
+              </Collapse>
+            )}
           </Panel>
         </Collapse>
       </Card>

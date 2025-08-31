@@ -291,7 +291,8 @@
     "generateButton": "エンリッチメントを生成",
     "noImageError": "最初に画像をアップロードしてください。",
     "sampleCount": "サンプル数",
-    "dedicatedProjectLabel": "専用プロジェクト"
+    "dedicatedProjectLabel": "専用プロジェクト",
+    "maxImagesTip": "(最大3枚の画像)"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"
