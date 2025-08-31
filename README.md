@@ -164,7 +164,7 @@ This design ensures that the system is both flexible for future business needs a
 
 ## Model Configuration
 
-VeoSpark allows for easy management of all generative models through three distinct `.yaml` files in the `src/backend/` directory. This separation allows for clear and specific pricing models for each generation type.
+VeoSpark allows for easy management of all generative models through three distinct `.yaml` files in the `src/backend/configs/` directory. This separation allows for clear and specific pricing models for each generation type.
 
 ### 1. `models.yaml` (Video Generation)
 
@@ -282,7 +282,7 @@ To run this application, you need to set up the following Google Cloud services:
 -   Create a Cloud Storage bucket to store the generated videos and uploaded images.
     ```bash
     #!/bin/bash
-    BUCKET_NAME=$(grep VIDEO_BUCKET_NAME app-config.yaml | awk '{print $2}')
+    BUCKET_NAME=$(grep VIDEO_BUCKET_NAME src/backend/configs/app-config.yaml | awk '{print $2}')
     gcloud storage buckets create gs://$BUCKET_NAME --location=us-central1
     ```
 
@@ -290,7 +290,7 @@ To run this application, you need to set up the following Google Cloud services:
 
 -   Enable the Firestore API in your Google Cloud project.
 -   Create a new Firestore database in **Native mode**.
--   By default, the application uses the `(default)` database. To use a different database for the prompt gallery, you can specify the database name in the `PROMPT_GALLERY_DB` field in `src/backend/app-config.yaml`.
+-   By default, the application uses the `(default)` database. To use a different database for the prompt gallery, you can specify the database name in the `PROMPT_GALLERY_DB` field in `src/backend/configs/app-config.yaml`.
 
 #### Creating Firestore via Command Line
 You can enable the API and create the database using the `gcloud` CLI:
@@ -323,15 +323,15 @@ To ensure your Firestore queries are efficient, you need to deploy the required 
     ```
 
 2.  **Run the setup script**:
-    This script will deploy the indexes from `firestore_index.json`.
+    This script will deploy the indexes from `src/backend/schemas/firestore_index.json`.
     ```bash
-    ./setup_firestore.sh
+    ./scripts/setup_firestore.sh
     ```
-    The script will automatically use the `PROJECT_ID` and `PROMPT_GALLERY_DB` from your `app-config.yaml` file.
+    The script will automatically use the `PROJECT_ID` and `PROMPT_GALLERY_DB` from your `src/backend/configs/app-config.yaml` file.
 
     To set up the indexes for the Creative Projects database, run the following script:
     ```bash
-    ./setup_creative_projects_firestore.sh
+    ./scripts/setup_creative_projects_firestore.sh
     ```
 
 ### 6. BigQuery
@@ -350,9 +350,9 @@ You can create the required BigQuery dataset and table by running the provided s
 
 3.  **Run the script**:
     ```bash
-    ./setup_veo_bigquery.sh
+    ./scripts/setup_veo_bigquery.sh
     ```
-    The script will create the dataset and the table with the correct schema defined in `schema_veo_history.json`.
+    The script will create the dataset and the table with the correct schema defined in `src/backend/schemas/veo_history.json`.
 
 ### 7. BigQuery for Generation History
 
@@ -369,21 +369,16 @@ You can create the required BigQuery tables by running the provided setup script
     ```bash
     chmod +x setup_veo_bigquery.sh
     chmod +x setup_imagen_bigquery.sh
+    chmod +x setup_image_enrichment_bigquery.sh
     ```
 
 3.  **Run the scripts**:
     ```bash
-    ./setup_veo_bigquery.sh
-    ./setup_imagen_bigquery.sh
+    ./scripts/setup_veo_bigquery.sh
+    ./scripts/setup_imagen_bigquery.sh
+    ./scripts/setup_image_enrichment_bigquery.sh
     ```
-    These scripts will create the `veo_history` and `imagen_history` tables.
-
-4.  **Create the Image Enrichment Table**:
-    A separate table is used for Image Enrichment logs. Create it using the `bq` command-line tool:
-    ```bash
-    bq mk --table [YOUR_PROJECT_ID]:[YOUR_DATASET].image_enrichment_history src/backend/schema_image_enrichment_history.json
-    ```
-    Replace `[YOUR_PROJECT_ID]` and `[YOUR_DATASET]` with the values from your `app-config.yaml`.
+    These scripts will create the `veo_history`, `imagen_history`, and `image_enrichment_history` tables.
 
 ### 8. Create a Service Account
 
@@ -476,8 +471,8 @@ It is recommended to create a dedicated service account for this application to 
     ```
 
 5.  **Configure the Application**:
-    -   In `src/backend/`, update the values in `app-config.yaml` with your Google Cloud project details.
-    -   In `src/backend/`, update the models in `models.yaml` as needed.
+    -   In `src/backend/configs/`, update the values in `app-config.yaml` with your Google Cloud project details.
+    -   In `src/backend/configs/`, update the models in `models.yaml` as needed.
 
 6.  **Run the Server**:
     From the `src/backend` directory, run the following command:
