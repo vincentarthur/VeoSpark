@@ -1,6 +1,7 @@
 import yaml
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
+from pathlib import Path
 
 
 class QuotaSettings(BaseModel):
@@ -39,7 +40,8 @@ class AppConfig(BaseModel):
 
 
 def load_config() -> AppConfig:
-    with open('./app-config.yaml', 'r') as config_file:
+    config_path = Path(__file__).parent.parent / 'configs' / 'app-config.yaml'
+    with open(config_path, 'r') as config_file:
         config_data = yaml.safe_load(config_file)
     return AppConfig(**config_data)
 

@@ -30,7 +30,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
       <Tooltip title={t('imageCard.useAsFirstFrame', 'Use as First Frame')}>
         <Button
           icon={<PictureOutlined />}
-          onClick={() => onUseAsFirstFrame({ signedUrl: image.signed_url, gcsUri: image.output_image_gcs_path })}
+          onClick={() => onUseAsFirstFrame({ signedUrl: image.signed_url, gcsUri: image.output_image_gcs_path || image.gcs_uri })}
           disabled={!isActionable}
         />
       </Tooltip>

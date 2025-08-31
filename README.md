@@ -117,24 +117,28 @@ graph TD
 .
 ├── src
 │   ├── backend
-│   │   ├── routers
-│   │   │   ├── api.py
-│   │   │   ├── images.py
-│   │   │   └── videos.py
+│   │   ├── app
+│   │   │   ├── routers
+│   │   │   │   ├── api.py
+│   │   │   │   ├── images.py
+│   │   │   │   └── videos.py
+│   │   │   ├── config_manager.py
+│   │   │   ├── config.py
+│   │   │   ├── dependencies.py
+│   │   │   ├── prompts.py
+│   │   │   ├── schemas.py
+│   │   │   ├── services.py
+│   │   │   └── task_manager.py
+│   │   ├── configs
+│   │   │   ├── app-config.yaml
+│   │   │   ├── models.yaml
+│   │   │   ├── image-models.yaml
+│   │   │   └── image-enrichment-models.yaml
+│   │   ├── scripts
 │   │   ├── static
-│   │   ├── app-config.yaml
-│   │   ├── config_manager.py
-│   │   ├── config.py
-│   │   ├── dependencies.py
+│   │   ├── Dockerfile
 │   │   ├── main.py
-│   │   ├── models.yaml
-│   │   ├── image-models.yaml
-│   │   ├── image-enrichment-models.yaml
-│   │   ├── prompts.py
-│   │   ├── requirements.txt
-│   │   ├── schemas.py
-│   │   ├── services.py
-│   │   └── task_manager.py
+│   │   └── requirements.txt
 │   └── frontend
 │       ├── public
 │       └── src
@@ -524,6 +528,8 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v2.2**
+    - Fixed a bug in the `GenerationService` that caused an `AttributeError` due to a missing `storage_client`. The service now correctly initializes and reuses a single `storage_client` for all operations, improving both stability and performance.
 - **v2.1**
     - Improved the handling and display of Responsible AI (RAI) error messages. The application now correctly parses multiple error codes and displays them in a structured table format, providing users with more detailed and actionable feedback.
     - Added a new "Image Enrichment History" tab to the "My History" page.

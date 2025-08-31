@@ -1,17 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
-from schemas import TaskStatus
-from services import GenerationService, get_generation_service
-from config import settings
-from dependencies import get_bq_client, get_config_db, get_prompt_gallery_db, get_shared_videos_db, get_groups_db, get_creative_projects_db
-from video_processing import check_quota, process_video_from_gcs
-from services import log_generation_to_bq
-from config_manager import get_project_config, save_project_config, save_bulk_project_configs, get_config, save_config, get_image_models, get_models_config
+from app.schemas import TaskStatus
+from app.services import GenerationService, get_generation_service, log_generation_to_bq, VeoApiClient
+from app.config import settings
+from app.dependencies import get_bq_client, get_config_db, get_prompt_gallery_db, get_shared_videos_db, get_groups_db, get_creative_projects_db, get_user
+from app.video_processing import check_quota, process_video_from_gcs
+from app.config_manager import get_project_config, save_project_config, save_bulk_project_configs, get_config, save_config, get_image_models, get_models_config
 from google.cloud import bigquery, firestore, storage
-from dependencies import get_user
-from services import VeoApiClient
 import logging
 from datetime import datetime, timezone, timedelta
-from task_manager import get_task_status
+from app.task_manager import get_task_status
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 import json
@@ -75,7 +72,7 @@ def get_image_enrichment_models_endpoint():
     """
     Returns the available image enrichment models from the configuration.
     """
-    from config_manager import get_image_enrichment_models
+    from app.config_manager import get_image_enrichment_models
     return JSONResponse(get_image_enrichment_models())
 
 @router.get("/notification-banner", tags=["Configuration"])

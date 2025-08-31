@@ -1,6 +1,6 @@
 from functools import lru_cache
-from google.cloud import bigquery, firestore
-from config import settings
+from google.cloud import bigquery, firestore, storage
+from app.config import settings
 import google.auth
 import google.genai as genai
 from vertexai.preview.vision_models import ImageGenerationModel
@@ -21,6 +21,10 @@ def get_bq_client():
     if settings.ENABLE_BIGQUERY_LOGGING:
         return bigquery.Client(project=settings.PROJECT_ID)
     return None
+
+@lru_cache()
+def get_storage_client():
+    return storage.Client(project=settings.PROJECT_ID)
 
 @lru_cache()
 def get_db_client(database: str):

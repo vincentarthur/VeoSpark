@@ -2,6 +2,7 @@ from google.cloud import firestore
 import yaml
 from datetime import datetime
 from functools import lru_cache
+from pathlib import Path
 
 CONFIG_COLLECTION = 'system_config'
 CONFIG_DOCUMENT = 'quota_settings'
@@ -23,7 +24,8 @@ def get_models_config():
     Retrieves the models from the models.yaml file.
     """
     try:
-        with open('./models.yaml', 'r') as f:
+        config_path = Path(__file__).parent.parent / 'configs' / 'models.yaml'
+        with open(config_path, 'r') as f:
             return yaml.safe_load(f)
     except (FileNotFoundError, yaml.YAMLError):
         return {"models": []}
@@ -34,7 +36,8 @@ def get_image_models():
     Retrieves the image models from the image-models.yaml file.
     """
     try:
-        with open('./image-models.yaml', 'r') as f:
+        config_path = Path(__file__).parent.parent / 'configs' / 'image-models.yaml'
+        with open(config_path, 'r') as f:
             return yaml.safe_load(f)
     except (FileNotFoundError, yaml.YAMLError):
         return {"models": []}
@@ -45,7 +48,8 @@ def get_image_enrichment_models():
     Retrieves the image enrichment models from the image-enrichment-models.yaml file.
     """
     try:
-        with open('./image-enrichment-models.yaml', 'r') as f:
+        config_path = Path(__file__).parent.parent / 'configs' / 'image-enrichment-models.yaml'
+        with open(config_path, 'r') as f:
             return yaml.safe_load(f)
     except (FileNotFoundError, yaml.YAMLError):
         return {"models": []}

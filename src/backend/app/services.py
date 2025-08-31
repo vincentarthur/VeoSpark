@@ -6,9 +6,9 @@ import yaml
 from pathlib import Path
 import tempfile
 from typing import Dict, Any, Optional, List, Tuple
-from config import settings
-from dependencies import get_genai_client, get_imagen_client
-from config_manager import get_models_config, get_price_for_model
+from app.config import settings
+from app.dependencies import get_genai_client, get_imagen_client, get_storage_client
+from app.config_manager import get_models_config, get_price_for_model
 from google.cloud import storage
 import google.genai as genai
 from google.genai import types
@@ -17,7 +17,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from datetime import datetime, timedelta, timezone
 import logging
 from google.cloud import bigquery, firestore
-from prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION
+from app.prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION
 from PIL import Image
 from io import BytesIO
 
@@ -176,9 +176,10 @@ class VeoApiClient:
             return ""
 
 class GenerationService:
-    def __init__(self, genai_client, imagen_client):
+    def __init__(self, genai_client, imagen_client, storage_client):
         self.genai_client = genai_client
         self.imagen_client = imagen_client
+        self.storage_client = storage_client
 
     def on_video_generation_success(self, result: Dict[str, Any], **kwargs):
         """Callback for successful video generation."""
@@ -442,7 +443,8 @@ class GenerationService:
         """
         # Load safety filters from the YAML file.
         try:
-            with open(Path(__file__).parent / "safety_filters.yaml", "r") as f:
+            config_path = Path(__file__).parent.parent / 'configs' / 'safety_filters.yaml'
+            with open(config_path, "r") as f:
                 safety_filters = yaml.safe_load(f)
         except (FileNotFoundError, yaml.YAMLError) as e:
             logger.error(f"Failed to load or parse safety_filters.yaml: {e}")
@@ -582,7 +584,6 @@ class GenerationService:
         
         gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri]
         
-        storage_client = storage.Client(project=settings.PROJECT_ID)
         credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
         credentials.refresh(GoogleAuthRequest())
         video_data = []
@@ -670,20 +671,18 @@ class GenerationService:
                 user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
                 blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
                 
-                storage_client = storage.Client(project=settings.PROJECT_ID)
-                bucket = storage_client.bucket(settings.VIDEO_BUCKET_NAME)
+                bucket = self.storage_client.bucket(settings.VIDEO_BUCKET_NAME)
                 blob = bucket.blob(blob_name)
                 blob.upload_from_filename(temp_file.name)
                 
                 gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
-        storage_client = storage.Client(project=settings.PROJECT_ID)
         credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
         credentials.refresh(GoogleAuthRequest())
         image_data = []
         for uri in gcs_paths:
             bucket_name, blob_name = uri[5:].split("/", 1)
-            bucket = storage_client.bucket(bucket_name)
+            bucket = self.storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
             signed_url = blob.generate_signed_url(
                 version="v4",
@@ -717,8 +716,7 @@ class GenerationService:
     ) -> Dict[str, Any]:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
         gcs_uris = []
-        storage_client = storage.Client(project=settings.PROJECT_ID)
-        bucket = storage_client.bucket(settings.VIDEO_BUCKET_NAME)
+        bucket = self.storage_client.bucket(settings.VIDEO_BUCKET_NAME)
         
         if previous_image_gcs_paths:
             gcs_uris.extend(previous_image_gcs_paths)
@@ -779,7 +777,7 @@ class GenerationService:
         image_data = []
         for uri in gcs_paths:
             bucket_name, blob_name = uri[5:].split("/", 1)
-            bucket = storage_client.bucket(bucket_name)
+            bucket = self.storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
             signed_url = blob.generate_signed_url(
                 version="v4",
@@ -804,4 +802,4 @@ class GenerationService:
         }
 
 def get_generation_service() -> GenerationService:
-    return GenerationService(get_genai_client(), get_imagen_client())
+    return GenerationService(get_genai_client(), get_imagen_client(), get_storage_client())

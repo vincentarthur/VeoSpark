@@ -30,19 +30,19 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse, RedirectResponse, FileResponse
 from vertexai.preview.vision_models import ImageGenerationModel
 
-from config import settings
-from dependencies import (get_bq_client, get_config_db,
+from app.config import settings
+from app.dependencies import (get_bq_client, get_config_db,
                           get_creative_projects_db, get_db_client,
                           get_genai_client, get_groups_db, get_imagen_client,
                           get_prompt_gallery_db, get_shared_videos_db)
-from schemas import (ImageGenerationRequest, TaskResponse,
+from app.schemas import (ImageGenerationRequest, TaskResponse,
                      TaskStatus, VideoGenerationRequest)
-from services import GenerationService
-from task_manager import create_task, get_task_status
-from video_processing import check_quota, process_video_from_gcs
-from routers.api import router as api_router
-from routers.videos import router as videos_router
-from routers.images import router as images_router
+from app.services import GenerationService
+from app.task_manager import create_task, get_task_status
+from app.video_processing import check_quota, process_video_from_gcs
+from app.routers.api import router as api_router
+from app.routers.videos import router as videos_router
+from app.routers.images import router as images_router
 
 
 logging.basicConfig(level=logging.INFO)

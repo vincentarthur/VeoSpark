@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from schemas import VideoGenerationRequest, TaskResponse
-from services import GenerationService, get_generation_service
-from config import settings
-from dependencies import get_bq_client, get_config_db, get_creative_projects_db, get_shared_videos_db
-from video_processing import check_quota
-from config_manager import get_project_config, get_config
+from app.schemas import VideoGenerationRequest, TaskResponse
+from app.services import GenerationService, get_generation_service
+from app.config import settings
+from app.dependencies import get_bq_client, get_config_db, get_creative_projects_db, get_shared_videos_db
+from app.video_processing import check_quota
+from app.config_manager import get_project_config, get_config
 from google.cloud import bigquery, firestore
-from dependencies import get_user
-from services import VeoApiClient
+from app.dependencies import get_user
+from app.services import VeoApiClient
 import logging
 from datetime import datetime, timezone, timedelta
-from task_manager import create_task
+from app.task_manager import create_task
 from typing import Optional
 import json
 from pathlib import Path
