@@ -169,7 +169,8 @@ class VeoApiClient:
                 version="v4",
                 expiration=timedelta(minutes=expiration_minutes),
                 method="GET",
-                access_token=self._credentials.token
+                service_account_email=self._credentials.service_account_email,
+                access_token=self._credentials.token,
             )
         except Exception as e:
             self.logger.error(f"Failed to generate signed URL for {gcs_uri}: {e}", exc_info=True)
@@ -595,6 +596,7 @@ class GenerationService:
                 version="v4",
                 expiration=timedelta(minutes=60),
                 method="GET",
+                service_account_email=credentials.service_account_email,
                 access_token=credentials.token,
             )
             video_data.append({"gcs_uri": uri, "signed_url": signed_url})
@@ -688,6 +690,7 @@ class GenerationService:
                 version="v4",
                 expiration=timedelta(minutes=60),
                 method="GET",
+                service_account_email=credentials.service_account_email,
                 access_token=credentials.token,
             )
             image_data.append({"gcs_uri": uri, "signed_url": signed_url})
@@ -783,6 +786,7 @@ class GenerationService:
                 version="v4",
                 expiration=timedelta(minutes=60),
                 method="GET",
+                service_account_email=credentials.service_account_email,
                 access_token=credentials.token,
             )
             image_data.append({"gcs_uri": uri, "signed_url": signed_url})
