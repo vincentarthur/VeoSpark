@@ -208,7 +208,6 @@ const Dashboard = ({ initialFirstFrame }) => {
   useEffect(() => {
     if (isV3Model) {
       setEnhancePrompt(true);
-      setDuration(8);
     }
     if (isV2GenerateModel && generationMode === 'extend') {
       const fetchUserVideos = async () => {
@@ -418,11 +417,11 @@ const Dashboard = ({ initialFirstFrame }) => {
 
             <Form.Item name="duration" label={t('dashboard.durationLabel')}>
               <Slider
-                min={5}
+                min={4}
                 max={8}
-                step={1}
-                marks={{ 5: '5s', 8: '8s' }}
-                disabled={isV3Model || (isV2GenerateModel && generationMode === 'extend')}
+                step={2}
+                marks={{ 4: '4s', 6: '6s', 8: '8s' }}
+                disabled={(isV2GenerateModel && generationMode === 'extend')}
               />
             </Form.Item>
 
