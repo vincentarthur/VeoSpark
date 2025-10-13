@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import {
   Typography, Spin, Alert, Button,
-  DatePicker, Select, Row, Col, Pagination, Card
+  DatePicker, Select, Row, Col, Pagination, Card, Input
 } from 'antd';
 import { 
   FilterOutlined, ClearOutlined
@@ -13,8 +14,13 @@ import { useShareModal } from '../hooks/useShareModal';
 
 const { Option } = Select;
 
-const ImageHistory = ({ user, history, models, loading, error, hasFetched, totalRows, page, rowsPerPage, fetchHistory, setFilters, clearFilters, filters, onUseAsFirstFrame }) => {
+const ImageHistory = ({
+  user, history, models, loading, error, hasFetched, totalRows, page,
+  rowsPerPage, fetchHistory, setFilters, clearFilters, filters,
+  onUseAsFirstFrame, searchText, setSearchText, handleSearch
+}) => {
   const { t } = useTranslation();
+
   const {
     modalOpen: shareModalOpen,
     selectedItem: shareSelectedItem,
@@ -62,6 +68,19 @@ const ImageHistory = ({ user, history, models, loading, error, hasFetched, total
         </Col>
         <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory()}>{t('history.filters.apply')}</Button></Col>
         <Col><Button icon={<ClearOutlined />} onClick={clearFilters} /></Col>
+      </Row>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col flex="auto">
+          <Input
+            placeholder={t('history.search.similarityPlaceholder')}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onPressEnter={handleSearch}
+          />
+        </Col>
+        <Col>
+          <Button type="primary" onClick={handleSearch}>{t('history.search.button')}</Button>
+        </Col>
       </Row>
 
       {loading ? (

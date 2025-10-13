@@ -91,12 +91,13 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
     >
       <Card.Meta
         title={<Tooltip title={video.prompt}><Title level={5} ellipsis>{video.prompt || 'No prompt available'}</Title></Tooltip>}
-        description={
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Tag color={video.status === 'SUCCESS' ? 'success' : 'error'}>{video.status}</Tag>
-              <Text type="secondary">{new Date(video.trigger_time || video.shared_at).toLocaleString()}</Text>
-            </div>
+          description={
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Tag color={video.status === 'SUCCESS' ? 'success' : 'error'}>{video.status}</Tag>
+                <Text type="secondary">{new Date(video.trigger_time || video.shared_at).toLocaleString()}</Text>
+              </div>
+            {video.similarity && <Text type="secondary">{t('videoCard.similarity')}: {Math.round(video.similarity * 100)}%</Text>}
             {video.shared_by_user_email && (
               <Text type="secondary" style={{ display: 'block' }}>
                 {t('videoCard.sharedBy')}: {video.shared_by_user_email}

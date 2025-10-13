@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
   Row, Col, Typography, Spin, Alert, Button,
-  DatePicker, Select, Checkbox, Card, Pagination, Tabs
+  DatePicker, Select, Checkbox, Card, Pagination, Tabs, Input
 } from 'antd';
 import { 
   ReloadOutlined, FilterOutlined, ClearOutlined
@@ -32,6 +32,8 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [models, setModels] = useState([]);
+  const [searchText, setSearchText] = useState('');
+
 
   const [filters, setFilters] = useState({
     start_date: null,
@@ -89,6 +91,67 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     closeModal: closeShareModal,
     handleSubmit: handleShareSubmit,
   } = useShareModal(() => {});
+
+  const search_similarity_video = async (text) => {
+    setLoading(true);
+    setError(null);
+    setHasFetched(true);
+    try {
+      const response = await axios.post('/api/videos/search_similarity_video', { text });
+      setHistory(response.data.rows);
+      setTotalRows(response.data.total);
+      setPage(1);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not fetch similar videos.');
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const search_similarity_image = async (text) => {
+    setLoading(true);
+    setError(null);
+    setHasFetched(true);
+    try {
+      const response = await axios.post('/api/images/search_similarity_image', { text });
+      setHistory(response.data.rows);
+      setTotalRows(response.data.total);
+      setPage(1);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not fetch similar images.');
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const search_similarity_image_enrich = async (text) => {
+    setLoading(true);
+    setError(null);
+    setHasFetched(true);
+    try {
+      const response = await axios.post('/api/images/search_similarity_image_enrich', { text });
+      setHistory(response.data.rows);
+      setTotalRows(response.data.total);
+      setPage(1);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not fetch similar image enrichments.');
+      setHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (activeTab === 'video') {
+      await search_similarity_video(searchText);
+    } else if (activeTab === 'image') {
+      await search_similarity_image(searchText);
+    } else if (activeTab === 'image-enrichment') {
+      await search_similarity_image_enrich(searchText);
+    }
+  };
 
   const fetchHistory = async (isCleared = false, newPage = 1, newRowsPerPage = 10) => {
     setLoading(true);
@@ -212,6 +275,18 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
               <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory()}>{t('history.filters.apply')}</Button></Col>
               <Col><Button icon={<ClearOutlined />} onClick={clearFilters} /></Col>
             </Row>
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col flex="auto">
+                <Input
+                  placeholder={t('history.search.similarityPlaceholder')}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </Col>
+              <Col>
+                <Button type="primary" onClick={handleSearch}>{t('history.search.button')}</Button>
+              </Col>
+            </Row>
             {loading ? <Spin /> : error ? <Alert message={error} type="error" /> : (
               <>
                 <Row gutter={[16, 16]}>
@@ -239,8 +314,8 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
           </Card>
         </TabPane>
         <TabPane tab={t('history.tabs.imageHistory')} key="image">
-          <ImageHistory 
-            user={user} 
+          <ImageHistory
+            user={user}
             history={history}
             models={models}
             loading={loading}
@@ -254,6 +329,9 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
             clearFilters={clearFilters}
             filters={filters}
             onUseAsFirstFrame={onUseAsFirstFrame}
+            searchText={searchText}
+            setSearchText={setSearchText}
+            handleSearch={handleSearch}
           />
         </TabPane>
         <TabPane tab={t('history.tabs.imageEnrichmentHistory')} key="image-enrichment">
@@ -272,6 +350,9 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
             clearFilters={clearFilters}
             filters={filters}
             onUseAsFirstFrame={onUseAsFirstFrame}
+            searchText={searchText}
+            setSearchText={setSearchText}
+            handleSearch={handleSearch}
           />
         </TabPane>
       </Tabs>

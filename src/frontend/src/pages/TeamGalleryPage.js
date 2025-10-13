@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
@@ -34,7 +34,7 @@ const TeamGalleryPage = ({ user, onUseAsFirstFrame }) => {
     fetchGroups();
   }, []);
 
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     if (!selectedGroup) return;
     setLoading(true);
     setError(null);
@@ -46,7 +46,7 @@ const TeamGalleryPage = ({ user, onUseAsFirstFrame }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedGroup]);
 
   useEffect(() => {
     if (selectedGroup) {

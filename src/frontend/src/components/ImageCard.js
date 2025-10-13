@@ -87,6 +87,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
                 <Tag color={image.status === 'SUCCESS' ? 'success' : 'error'}>{image.status}</Tag>
                 <Text type="secondary">{formatDate(image.trigger_time || image.shared_at)}</Text>
               </div>
+              {image.similarity && <Text type="secondary">{t('imageCard.similarity')}: {Math.round(image.similarity * 100)}%</Text>}
               {image.shared_by_user_email && (
                 <Text type="secondary" style={{ display: 'block' }}>
                   {t('videoCard.sharedBy')}: {image.shared_by_user_email}
@@ -105,6 +106,7 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
             <Text strong>{t('history.fullPrompt')}:</Text> <Text>{image.prompt}</Text><br />
             <Text strong>{t('history.model')}:</Text> <Text>{modelName}</Text><br />
             {image.project_name && <><Text strong>{t('nav.creativeProjects')}:</Text> <Text>{image.project_name}</Text><br /></>}
+            {image.aspect_ratio && <><Text strong>{t('imageGenerator.aspectRatioLabel')}:</Text> <Text>{image.aspect_ratio}</Text><br /></>}
             <Text strong>{t('history.resolution')}:</Text> <Text>{image.resolution}</Text><br />
             <Text strong>{t('history.genDuration')}:</Text> <Text>{Math.round(image.operation_duration || 0)}s</Text><br />
             <Text strong>{t('history.completionTime')}:</Text> <Text>{formatDate(image.completion_time)}</Text><br />

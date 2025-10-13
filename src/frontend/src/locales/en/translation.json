@@ -111,7 +111,12 @@
       "clip": "Clipping Tool",
       "dub": "Dubbing Tool"
     },
-    "error": "Error"
+    "error": "Error",
+    "search": {
+      "placeholder": "Search by text",
+      "button": "Search",
+      "similarityPlaceholder": "Description for searching similarity results"
+    }
   },
   "imageHistory": {
     "title": "Image Generation History"
@@ -226,7 +231,8 @@
     "raiReasons": "RAI Safety Reasons",
     "code": "Code",
     "category": "Category",
-    "description": "Description"
+    "description": "Description",
+    "similarity": "Similarity"
   },
   "videoCard": {
     "sharedBy": "Shared by",
@@ -235,7 +241,8 @@
     "raiReasons": "RAI Safety Reasons",
     "code": "Code",
     "category": "Category",
-    "description": "Description"
+    "description": "Description",
+    "similarity": "Similarity"
   },
   "imageGenerator": {
     "title": "Image Generation",

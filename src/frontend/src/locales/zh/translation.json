@@ -108,6 +108,11 @@
     "editingTools": {
       "clip": "剪辑工具",
       "dub": "配音工具"
+    },
+    "search": {
+      "placeholder": "按文本搜索",
+      "button": "搜索",
+      "similarityPlaceholder": "用于搜索相似性结果的描述"
     }
   },
   "imageHistory": {
@@ -219,12 +224,14 @@
     "projectConsumption": "各创意项目成本"
   },
   "imageCard": {
-    "useAsFirstFrame": "用作第一帧"
+    "useAsFirstFrame": "用作第一帧",
+    "similarity": "相似度"
   },
   "videoCard": {
     "sharedBy": "分享者",
     "generatedBy": "生成者",
-    "deleteShare": "删除分享"
+    "deleteShare": "删除分享",
+    "similarity": "相似度"
   },
   "imageGenerator": {
     "title": "图片生成",
