@@ -37,6 +37,10 @@ class AppConfig(BaseModel):
     BANNER_MESSAGES: List[str] = []
     ENABLE_UPSCALE: bool = False
     quota: QuotaSettings = Field(default_factory=QuotaSettings)
+    FIND_SIMILAR_IMAGES_IMAGEN_HISTORY: str
+    FIND_SIMILAR_IMAGES_IMAGE_ENRICHMENT_HISTORY: str
+    # FIND_SIMILAR_VIDEO_VEO_HISTORY: str
+    FIND_SIMILAR_TOP_K: int
 
 
 def load_config() -> AppConfig:

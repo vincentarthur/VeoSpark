@@ -16,5 +16,7 @@
   { "name": "aspect_ratio", "type": "STRING", "mode": "NULLABLE" },
   { "name": "last_frame_gcs_uri", "type": "STRING", "mode": "NULLABLE" },
   { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" },
-  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" }
+  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" },
+  { "name": "desc_embedding", "type": "FLOAT", "mode": "REPEATED" },
+  { "name": "video_embedding", "type": "FLOAT", "mode": "REPEATED" }
 ]

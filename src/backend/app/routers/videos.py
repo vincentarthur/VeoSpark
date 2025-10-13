@@ -216,3 +216,11 @@ async def share_video(request: Request, user: dict = Depends(get_user), shared_v
     doc_ref.set(shared_video_payload)
     
     return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
+
+@router.post("/search_similarity_video")
+async def search_similarity_video(request: Request):
+    body = await request.json()
+    text = body.get("text")
+    # Placeholder function
+    logger.info(f"Searching for similar videos with text: {text}")
+    return JSONResponse({"message": f"Search for similar videos with text: {text}"})

@@ -14,5 +14,7 @@
   { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" },
   { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" },
   { "name": "input_token", "type": "INTEGER", "mode": "NULLABLE" },
-  { "name": "output_token", "type": "INTEGER", "mode": "NULLABLE" }
+  { "name": "output_token", "type": "INTEGER", "mode": "NULLABLE" },
+  { "name": "desc_embedding", "type": "FLOAT", "mode": "REPEATED" },
+  { "name": "image_embedding", "type": "FLOAT", "mode": "REPEATED" }
 ]

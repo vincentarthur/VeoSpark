@@ -327,3 +327,93 @@ def get_image_enrichment_history(
             row['signed_url'] = veo_client.generate_signed_gcs_url(gcs_uri)
 
     return JSONResponse({"rows": rows, "total": total_rows})
+
+
+@router.post("/search_similarity_image")
+async def search_similarity_image(
+    request: Request,
+    user: dict = Depends(get_user),
+    bq_client: bigquery.Client = Depends(get_bq_client),
+    creative_projects_db: firestore.Client = Depends(get_creative_projects_db)
+):
+    body = await request.json()
+    text = body.get("text")
+
+    user_email = user.get('email')
+    
+    # Utilize FindSimilarImage_{TABLE_NAME} function to retrieve images
+    # Define the query with named parameters (@param_name)
+    parameterized_sql_query = f"""
+        SELECT
+            user_email,
+            trigger_time,
+            completion_time,
+            prompt,
+            model_used,
+            output_image_gcs_path,
+            status,
+            resolution,
+            creative_project_id,
+            error_message,
+            operation_duration,
+            similarity
+        FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.FIND_SIMILAR_IMAGES_IMAGEN_HISTORY}`(
+            @query_text,
+            @user_email,
+            @top_k
+        )
+    """
+
+    # Define the job configuration with the parameters
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("query_text", "STRING", text),
+            bigquery.ScalarQueryParameter("user_email", "STRING", user_email),
+            bigquery.ScalarQueryParameter("top_k", "INT64", settings.FIND_SIMILAR_TOP_K),
+        ]
+    )
+
+    try:
+        # Execute the query with the configuration
+        query_job = bq_client.query(parameterized_sql_query, job_config=job_config)
+        rows = [dict(row) for row in query_job.result()]
+
+        project_ids = {row['creative_project_id'] for row in rows if row.get('creative_project_id')}
+        project_names = {}
+        if creative_projects_db and project_ids:
+            project_refs = [creative_projects_db.collection('projects').document(pid) for pid in project_ids]
+            project_docs = creative_projects_db.get_all(project_refs)
+            for doc in project_docs:
+                if doc.exists:
+                    project_names[doc.id] = doc.to_dict().get('name')
+
+        veo_client = VeoApiClient(settings.PROJECT_ID, settings.LOCATION, settings.VIDEO_BUCKET_NAME)
+        for row in rows:
+            gcs_path = row.get("output_image_gcs_path")
+            if gcs_path:
+                row["signed_url"] = veo_client.generate_signed_gcs_url(gcs_path)
+            if row.get('creative_project_id'):
+                row['project_name'] = project_names.get(row['creative_project_id'])
+            if 'trigger_time' in row and row['trigger_time'] and isinstance(row['trigger_time'], datetime):
+                row['trigger_time'] = row['trigger_time'].isoformat()
+            if 'completion_time' in row and row['completion_time'] and isinstance(row['completion_time'], datetime):
+                row['completion_time'] = row['completion_time'].isoformat()
+
+        return JSONResponse({"rows": rows, "total": len(rows)})
+
+    except Exception as e:
+        logger.error(f"Error of searching similar images from history for user {user_email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to search most similar images from image history.")
+
+
+@router.post("/search_similarity_image_enrich")
+def search_similarity_image_enrich(
+    request: Request,
+    user: dict = Depends(get_user),
+    bq_client: bigquery.Client = Depends(get_bq_client)
+):
+    body = request.json()
+    text = body.get("text")
+    # Placeholder function
+    logger.info(f"Searching for similar image enrichments with text: {text}")
+    return JSONResponse({"message": f"Search for similar image enrichments with text: {text}"})

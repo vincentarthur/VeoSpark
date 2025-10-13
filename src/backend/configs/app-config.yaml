@@ -52,6 +52,12 @@ SHARED_VIDEOS_COLLECTION: shared_videos
 # Configuration
 CONFIG_DB: "veo-app-config"
 
+# Similarity Search Config
+FIND_SIMILAR_IMAGES_IMAGEN_HISTORY: FindSimilarImages_ImagenHistory
+FIND_SIMILAR_IMAGES_IMAGE_ENRICHMENT_HISTORY: FindSimilarImages_EnrichmentHistory
+FIND_SIMILAR_VIDEOS_VEO_HISTORY: FindSimilarVideos_VeoHistory
+FIND_SIMILAR_TOP_K: 10
+
 # Notification Banner
 # Set a list of messages here to display banners to all users.
 # An empty list will hide the banner.

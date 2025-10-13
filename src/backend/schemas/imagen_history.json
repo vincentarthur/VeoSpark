@@ -12,5 +12,7 @@
   {"name": "output_image_gcs_path", "type": "STRING", "mode": "NULLABLE"},
   {"name": "resolution", "type": "STRING", "mode": "NULLABLE"},
   { "name": "creative_project_id", "type": "STRING", "mode": "NULLABLE" },
-  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" }
+  { "name": "cost", "type": "FLOAT", "mode": "NULLABLE" },
+  { "name": "desc_embedding", "type": "FLOAT", "mode": "REPEATED" },
+  { "name": "image_embedding", "type": "FLOAT", "mode": "REPEATED" }
 ]
