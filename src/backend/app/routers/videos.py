@@ -218,9 +218,79 @@ async def share_video(request: Request, user: dict = Depends(get_user), shared_v
     return JSONResponse({"message": "Shared successfully", "id": doc_ref.id}, status_code=201)
 
 @router.post("/search_similarity_video")
-async def search_similarity_video(request: Request):
+async def search_similarity_video(
+    request: Request,
+    user: dict = Depends(get_user),
+    bq_client: bigquery.Client = Depends(get_bq_client),
+    creative_projects_db: firestore.Client = Depends(get_creative_projects_db)
+):
     body = await request.json()
     text = body.get("text")
-    # Placeholder function
-    logger.info(f"Searching for similar videos with text: {text}")
-    return JSONResponse({"message": f"Search for similar videos with text: {text}"})
+
+    user_email = user.get('email')
+    
+    parameterized_sql_query = f"""
+        SELECT
+            user_email,
+            CAST(trigger_time AS STRING) AS trigger_time,
+            CAST(completion_time AS STRING) AS completion_time,
+            prompt,
+            model_used,
+            output_video_gcs_paths,
+            operation_duration,
+            video_duration,
+            status,
+            resolution,
+            creative_project_id,
+            similarity
+        FROM `{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{settings.FIND_SIMILAR_VIDEOS_VEO_HISTORY}`(
+            @query_text,
+            @user_email,
+            @top_k
+        )
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("query_text", "STRING", text),
+            bigquery.ScalarQueryParameter("user_email", "STRING", user_email),
+            bigquery.ScalarQueryParameter("top_k", "INT64", settings.FIND_SIMILAR_TOP_K),
+        ]
+    )
+
+    try:
+        query_job = bq_client.query(parameterized_sql_query, job_config=job_config)
+        rows = [dict(row) for row in query_job.result()]
+
+        project_ids = {row['creative_project_id'] for row in rows if row.get('creative_project_id')}
+        project_names = {}
+        if creative_projects_db and project_ids:
+            project_refs = [creative_projects_db.collection('projects').document(pid) for pid in project_ids]
+            project_docs = creative_projects_db.get_all(project_refs)
+            for doc in project_docs:
+                if doc.exists:
+                    project_names[doc.id] = doc.to_dict().get('name')
+
+        veo_client = VeoApiClient(settings.PROJECT_ID, settings.LOCATION, settings.VIDEO_BUCKET_NAME)
+        for row in rows:
+            gcs_paths_str = row.get("output_video_gcs_paths", "[]")
+            try:
+                gcs_paths = json.loads(gcs_paths_str)
+                signed_urls = [veo_client.generate_signed_gcs_url(uri) for uri in gcs_paths]
+                row["signed_urls"] = [url for url in signed_urls if url]
+                if gcs_paths:
+                    row["video_name"] = Path(gcs_paths[0]).name
+                else:
+                    row["video_name"] = None
+            except (json.JSONDecodeError, TypeError):
+                row["signed_urls"] = []
+                row["video_name"] = None
+            
+            if row.get('creative_project_id'):
+                row['project_name'] = project_names.get(row['creative_project_id'])
+
+        return JSONResponse({"rows": rows, "total": len(rows)})
+
+    except Exception as e:
+        logger.error(f"Error of searching similar videos from history for user {user_email}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to search most similar videos from video history.")
