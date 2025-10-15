@@ -84,9 +84,6 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.videoGenerator')} key="2">
                   <Dashboard initialFirstFrame={firstFrame} />
                 </TabPane>
-                <TabPane tab={t('nav.promptFromImages')} key="3">
-                  <ImagePromptGenerator />
-                </TabPane>
                 <TabPane tab={t('nav.imageEnrichment')} key="4">
                   <ConversationalImageEnrichment 
                     user={user} 

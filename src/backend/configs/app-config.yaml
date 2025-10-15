@@ -70,6 +70,5 @@ MAX_WORKER_COUNT: 6
 # Set a list of messages here to display banners to all users.
 # An empty list will hide the banner.
 BANNER_MESSAGES:
-  - "Veo3 & Imagen 4 series are ready"
-  - "Veo3 16:9 & 9:16 are ready"
-  - "Gemini 2.5 Flash Image (nano-banana) is ready"
+  - "Gemini 2.5 Flash Image (nano-banana) now supports multiple aspect ratio."
+  - "Veo 3.1 Preview is ready."

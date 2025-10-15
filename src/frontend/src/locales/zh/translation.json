@@ -37,11 +37,11 @@
     "aspectRatioLabel": "宽高比",
     "resolutionLabel": "分辨率",
     "videoCountLabel": "生成视频数量",
-    "v3options": "Veo 3.0 选项",
+    "v3options": "Veo 3.x 选项",
     "v2options": "Veo 2.0 选项",
     "generateAudio": "生成音频",
     "enhancePrompt": "优化提示词",
-    "enhancePromptWithHint": "优化提示词 (3.0 默认)",
+    "enhancePromptWithHint": "优化提示词 (3.x 默认)",
     "cameraControlLabel": "镜头控制 (实验性)",
     "generateButton": "生成视频",
     "generatingStatus": "正在生成您的杰作... 这可能需要几分钟。",
@@ -307,7 +307,7 @@
     "generating": "生成中..."
   },
   "footer": {
-    "poweredBy": "由 Google Cloud 强力驱动"
+    "poweredBy": "由 Google Cloud 提供支持"
   },
   "configurations": {
     "title": "配置",

@@ -168,7 +168,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
       }
     }
     formData.append('sub_prompt', values.prompt);
-    formData.append('model', 'gemini-2.5-flash-image-preview'); // Hardcoded as per requirement
+    formData.append('model', 'gemini-2.5-flash-image'); // Hardcoded as per requirement
     formData.append('sample_count', values.sample_count);
     formData.append('aspect_ratio', values.aspect_ratio);
     formData.append('creative_project_id', values.creative_project_id);

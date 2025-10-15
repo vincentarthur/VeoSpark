@@ -6,3 +6,10 @@ models:
       - effective_date: "2025-07-01"
         cost_per_million_input_token: 0.30
         cost_per_million_output_token: 30
+  - id: "gemini-2.5-flash-image"
+    name: "Gemini 2.5 Flash Image"
+    type: "gemini-2.5"
+    pricing:
+      - effective_date: "2025-07-01"
+        cost_per_million_input_token: 0.30
+        cost_per_million_output_token: 30

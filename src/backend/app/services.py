@@ -344,8 +344,6 @@ class GenerationService:
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
-                    "video_embedding": Vector(embedding_data.video_embedding),
-                    "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 

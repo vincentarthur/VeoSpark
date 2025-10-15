@@ -169,7 +169,7 @@ const Dashboard = ({ initialFirstFrame }) => {
     setFinalFrameUploadError(null);
   };
 
-  const isV3Model = model.startsWith('veo-3.0');
+  const isV3Model = model.startsWith('veo-3.');
   const isV2GenerateModel = model === 'veo-2.0-generate-001';
   const isVeo2Model = model.startsWith('veo-2.0');
 
