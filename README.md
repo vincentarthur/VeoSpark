@@ -525,8 +525,10 @@ It is recommended to create a dedicated service account for this application to 
 ## Change Log
 
 - **v2.2**
+    - Implement **Mutiple Images** generation for Image Enrichment, supporting selectable output sample count.
+    - Support AspectRatio for Image Enrichment
     - Added **Video & Image Similarity Search** to the "My History" page, allowing users to find visually similar content using text descriptions. This feature is powered by vector search in Google BigQuery.
-- **v2.1**
+- **v.2.1**
     - Improved the handling and display of Responsible AI (RAI) error messages. The application now correctly parses multiple error codes and displays them in a structured table format, providing users with more detailed and actionable feedback.
     - Added a new "Image Enrichment History" tab to the "My History" page.
     - Removed auto-fetching of data for both video and image history. Data is now fetched only when the user clicks the "Fetch History" button.
