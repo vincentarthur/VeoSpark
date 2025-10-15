@@ -37,6 +37,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 -   **Prompt Gallery**: A collaborative space to share and discover creative prompts.
 -   **Group Management**: Admins can create user groups and manage memberships, including bulk add/remove functionality.
 -   **Improved UI/UX**: The Image Generator now features a two-column layout, and tooltips on item cards have been improved to be more concise and visually appealing.
+-   **Video & Image Similarity Search**: In the "My History" page, users can now search for visually similar videos and images based on a text description. This feature leverages BigQuery's vector search capabilities to find the most relevant content from your generation history.
 -   **Enhanced Error Handling**: The application now provides detailed information about Responsible AI (RAI) violations, including multiple error codes and descriptions, in a clear and structured table format.
 
 ## Tech Stack
@@ -523,6 +524,8 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v2.2**
+    - Added **Video & Image Similarity Search** to the "My History" page, allowing users to find visually similar content using text descriptions. This feature is powered by vector search in Google BigQuery.
 - **v2.1**
     - Improved the handling and display of Responsible AI (RAI) error messages. The application now correctly parses multiple error codes and displays them in a structured table format, providing users with more detailed and actionable feedback.
     - Added a new "Image Enrichment History" tab to the "My History" page.
