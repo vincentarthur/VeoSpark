@@ -17,6 +17,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from datetime import datetime, timedelta, timezone
 import logging
 from google.cloud import bigquery, firestore
+from google.cloud.firestore_v1.vector import Vector
 from app.prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION
 from PIL import Image
 from io import BytesIO
@@ -366,6 +367,8 @@ class GenerationService:
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
+                    "video_embedding": Vector(embedding_data.video_embedding),
+                    "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
@@ -430,6 +433,8 @@ class GenerationService:
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
+                    "image_embedding": Vector(embedding_data.image_embedding),
+                    "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
@@ -505,6 +510,8 @@ class GenerationService:
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
+                    "image_embedding": Vector(embedding_data.image_embedding),
+                    "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
