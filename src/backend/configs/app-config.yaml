@@ -7,6 +7,8 @@ LOCATION: global
 VIDEO_BUCKET_NAME: 504683450406-veo-generation
 SECRET_ID: veo-oauth-secret
 
+GEMINI_MODEL: 'gemini-2.5-flash-preview-09-2025'
+
 # FRONTEND_URL: https://veo.vc7.info
 # REDIRECT_URI: https://veo.vc7.info/auth
 FRONTEND_URL: http://localhost:7860
@@ -57,6 +59,9 @@ FIND_SIMILAR_IMAGES_IMAGEN_HISTORY: FindSimilarImages_ImagenHistory
 FIND_SIMILAR_IMAGES_IMAGE_ENRICHMENT_HISTORY: FindSimilarImages_EnrichmentHistory
 FIND_SIMILAR_VIDEOS_VEO_HISTORY: FindSimilarVideos_VeoHistory
 FIND_SIMILAR_TOP_K: 10
+
+# Multimodal Embedding Model Location
+LOCATION_MULTIMODAL_EMBEDDING_MODEL: "us-central1"
 
 # Notification Banner
 # Set a list of messages here to display banners to all users.

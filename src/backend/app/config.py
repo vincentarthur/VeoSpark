@@ -33,7 +33,7 @@ class AppConfig(BaseModel):
     FRONTEND_URL: str
     REDIRECT_URI: str
     ENABLE_BIGQUERY_LOGGING: bool = False
-    GEMINI_MODEL: str = "veo-2.0-generate-001"
+    GEMINI_MODEL: str
     BANNER_MESSAGES: List[str] = []
     ENABLE_UPSCALE: bool = False
     quota: QuotaSettings = Field(default_factory=QuotaSettings)
@@ -41,6 +41,7 @@ class AppConfig(BaseModel):
     FIND_SIMILAR_IMAGES_IMAGE_ENRICHMENT_HISTORY: str
     FIND_SIMILAR_VIDEOS_VEO_HISTORY: str
     FIND_SIMILAR_TOP_K: int
+    LOCATION_MULTIMODAL_EMBEDDING_MODEL: str
 
 
 def load_config() -> AppConfig:

@@ -7,8 +7,8 @@ models:
         video_with_audio: 0.50
         video_without_audio: 0.50
       - effective_date: "2025-10-01"
-        video_with_audio: 0.25
-        video_without_audio: 0.30
+        video_with_audio: 0.50
+        video_without_audio: 0.50
   - id: "veo-3.0-generate-preview"
     name: "Veo 3.0 Preview"
     type: "veo-3.0"
@@ -16,9 +16,9 @@ models:
       - effective_date: "2025-01-01"
         video_with_audio: 0.75
         video_without_audio: 0.50
-      - effective_date: "2025-10-01"
-        video_with_audio: 0.35
-        video_without_audio: 0.40
+      - effective_date: "2025-09-01"
+        video_with_audio: 0.40
+        video_without_audio: 0.20
   - id: "veo-3.0-fast-generate-preview"
     name: "Veo 3.0 Fast Preview"
     type: "veo-3.0"
@@ -26,6 +26,6 @@ models:
       - effective_date: "2025-01-01"
         video_with_audio: 0.40
         video_without_audio: 0.25
-      - effective_date: "2025-10-01"
-        video_with_audio: 0.50
-        video_without_audio: 0.35
+      - effective_date: "2025-09-01"
+        video_with_audio: 0.15
+        video_without_audio: 0.10

@@ -20,6 +20,9 @@ from google.cloud import bigquery, firestore
 from app.prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION
 from PIL import Image
 from io import BytesIO
+import vertexai
+from vertexai.vision_models import Image as VisionImage, Video as VisionVideo, MultiModalEmbeddingModel
+from google.api_core import exceptions as google_api_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +156,7 @@ class VeoApiClient:
             self.storage_client.get_bucket(self.default_bucket_name)
 
             self.genai_client = genai.Client(vertexai=True, project=self.project_id, location=self.location)
+            self.embedding_client = genai.Client(vertexai=True, project=self.project_id, location=settings.LOCATION_MULTIMODAL_EMBEDDING_MODEL)
             self.logger.info("VeoApiClient initialized successfully.")
         except Exception as e:
             self.logger.critical(f"Failed to initialize VeoApiClient. Error: {e}", exc_info=True)
@@ -181,6 +185,104 @@ class GenerationService:
         self.genai_client = genai_client
         self.imagen_client = imagen_client
         self.storage_client = storage_client
+        try:
+            vertexai.init(project=settings.PROJECT_ID, location=settings.LOCATION_MULTIMODAL_EMBEDDING_MODEL)
+            self.embedding_model = MultiModalEmbeddingModel.from_pretrained("multimodalembedding@001")
+            logger.info("MultiModalEmbeddingModel initialized successfully.")
+        except Exception as e:
+            logger.error(f"Failed to initialize MultiModalEmbeddingModel: {e}", exc_info=True)
+            self.embedding_model = None
+
+    def generate_video_embedding(self, gcs_uri: str) -> dict:
+        """
+        Generates a description and embeddings for a single video.
+        """
+        logger.info(f"Starting to process video: {gcs_uri}")
+
+        if not isinstance(gcs_uri, str) or not gcs_uri.startswith("gs://"):
+            raise ValueError(f"Invalid GCS URI provided: '{gcs_uri}'")
+
+        description = ""
+        try:
+            logger.info(f"Generating description for {gcs_uri} using model {settings.GEMINI_MODEL}.")
+            video_part = types.Part.from_uri(file_uri=gcs_uri, mime_type="video/mp4")
+            description_prompt = "Describe this video in detail. Focus on the main subjects, background, style, colors, mood and overall description. Output within 200 words"
+
+            response = self.genai_client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[description_prompt, video_part],
+                config=generate_content_config
+            )
+            description = response.text.strip()
+            logger.info(f"Successfully generated description for {gcs_uri}.")
+
+        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
+            logger.error(f"Failed to generate description for {gcs_uri}. Error: {e}")
+            raise
+
+        try:
+            logger.info(f"Generating embeddings for {gcs_uri}.")
+            embeddings = self.embedding_model.get_embeddings(
+                video=VisionVideo.load_from_file(gcs_uri),
+                contextual_text=description[:1000] # Ensure text is within model limits
+            )
+            logger.info(f"Successfully generated embeddings for {gcs_uri}.")
+
+            return {
+                "description": description,
+                "desc_embedding": embeddings.text_embedding,
+                "video_embedding": embeddings.video_embeddings[0].embedding,
+            }
+
+        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
+            logger.error(f"Failed to generate embeddings for {gcs_uri}. Error: {e}")
+            raise
+
+    def generate_image_embedding(self, gcs_uri: str) -> dict:
+        """
+        Generates a description and embeddings for a single image.
+        """
+        logger.info(f"Starting to process image: {gcs_uri}")
+
+        if not isinstance(gcs_uri, str) or not gcs_uri.startswith("gs://"):
+            raise ValueError(f"Invalid GCS URI provided: '{gcs_uri}'")
+
+        description = ""
+        try:
+            logger.info(f"Generating description for {gcs_uri} using model {settings.GEMINI_MODEL}.")
+            mime_type = 'image/png' if gcs_uri.endswith('.png') else 'image/jpeg'
+            image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
+            description_prompt = "Describe this image in detail. Focus on the main subjects, background, style, colors, mood and overall description. Output within 200 words"
+
+            response = self.genai_client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[description_prompt, image_part],
+                config=generate_content_config
+            )
+            description = response.text.strip()
+            logger.info(f"Successfully generated description for {gcs_uri}.")
+
+        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
+            logger.error(f"Failed to generate description for {gcs_uri}. Error: {e}")
+            raise
+
+        try:
+            logger.info(f"Generating embeddings for {gcs_uri}.")
+            embeddings = self.embedding_model.get_embeddings(
+                image=VisionImage.load_from_file(gcs_uri),
+                contextual_text=description[:1000] # Ensure text is within model limits
+            )
+            logger.info(f"Successfully generated embeddings for {gcs_uri}.")
+
+            return {
+                "description": description,
+                "desc_embedding": embeddings.text_embedding,
+                "image_embedding": embeddings.image_embedding,
+            }
+
+        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
+            logger.error(f"Failed to generate embeddings for {gcs_uri}. Error: {e}")
+            raise
 
     def on_video_generation_success(self, result: Dict[str, Any], **kwargs):
         """Callback for successful video generation."""
@@ -219,6 +321,14 @@ class GenerationService:
         
         for video in video_data:
             path = video['gcs_uri']
+
+            embedding_data = {}
+            if self.embedding_model:
+                try:
+                    embedding_data = self.generate_video_embedding(path)
+                except Exception as e:
+                    logger.error(f"Failed to process video and generate embedding for {path}: {e}")
+
             log_generation_to_bq(
                 asset_type='veo',
                 user_email=user_email,
@@ -236,7 +346,8 @@ class GenerationService:
                 last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
                 output_video_gcs_paths=json.dumps([path]),
                 creative_project_id=body.get('creative_project_id'),
-                cost=cost
+                cost=cost,
+                **embedding_data
             )
 
         creative_project_id = body.get('creative_project_id')
@@ -278,6 +389,14 @@ class GenerationService:
         
         for img in image_data:
             path = img['gcs_uri']
+
+            embedding_data = {}
+            if self.embedding_model:
+                try:
+                    embedding_data = self.generate_image_embedding(path)
+                except Exception as e:
+                    logger.error(f"Failed to process image and generate embedding for {path}: {e}")
+
             log_generation_to_bq(
                 asset_type='imgen',
                 user_email=user_email,
@@ -292,7 +411,8 @@ class GenerationService:
                 output_image_gcs_path=path,
                 resolution=body.get('image_size'),
                 creative_project_id=body.get('creative_project_id'),
-                cost=cost_per_image
+                cost=cost_per_image,
+                **embedding_data
             )
 
         creative_project_id = body.get('creative_project_id')
@@ -346,6 +466,14 @@ class GenerationService:
 
         for img in image_data:
             path = img['gcs_uri']
+
+            embedding_data = {}
+            if self.embedding_model:
+                try:
+                    embedding_data = self.generate_image_embedding(path)
+                except Exception as e:
+                    logger.error(f"Failed to process image and generate embedding for {path}: {e}")
+
             log_generation_to_bq(
                 asset_type='image_enrichment',
                 user_email=user_email,
@@ -361,7 +489,8 @@ class GenerationService:
                 creative_project_id=creative_project_id,
                 cost=cost_per_image,
                 input_token=input_token,
-                output_token=output_token
+                output_token=output_token,
+                **embedding_data
             )
 
         if creative_project_id and image_data:
