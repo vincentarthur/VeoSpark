@@ -73,6 +73,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
             operation_duration: result.duration,
             user_email: user.email,
             resolution: result.resolution,
+            aspect_ratio: result.aspect_ratio,
           })),
           revisedPrompt: result.revised_prompt,
           raiReasons: result.rai_reasons,
@@ -125,6 +126,10 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
     }
   };
 
+  const handleClearHistory = () => {
+    setConversation([]);
+  };
+
   const handleSubmit = async (values) => {
     if (imageFiles.length === 0 && conversation.length === 0) {
       setError(t('imageEnrichment.noImageError'));
@@ -139,7 +144,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
     setConversation(prev => [...prev, userMessage]);
     setLoading(true);
     setError(null);
-    form.resetFields();
+    form.resetFields(['prompt']);
     setImageFiles([]);
     setImagePreviews([]);
 
@@ -152,8 +157,6 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
       // Find the last generated image to use as input for the next turn
       const lastModelMessage = [...conversation].reverse().find(m => m.type === 'model' && m.images.length > 0);
       if (lastModelMessage) {
-        // This part needs backend support to work with GCS paths instead of file uploads
-        // For now, we assume the backend can handle a reference to the previous image
         lastModelMessage.images.forEach(image => {
           formData.append('previous_image_gcs_paths', image.gcs_uri);
         });
@@ -162,7 +165,15 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
     formData.append('sub_prompt', values.prompt);
     formData.append('model', 'gemini-2.5-flash-image-preview'); // Hardcoded as per requirement
     formData.append('sample_count', 1);
+    formData.append('aspect_ratio', values.aspect_ratio);
     formData.append('creative_project_id', values.creative_project_id);
+    if (conversation.length > 0) {
+      const textHistory = conversation.map(m => ({
+        type: m.type,
+        prompt: m.prompt || m.revisedPrompt
+      })).filter(m => m.prompt);
+      formData.append('conversation_history', JSON.stringify(textHistory));
+    }
 
     try {
       const response = await axios.post('/api/images/enrich', formData, {
@@ -181,7 +192,12 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 380px)', maxWidth: '1024px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)' }}>
+      <div style={{ padding: '10px 20px 0', textAlign: 'right' }}>
+        <Button onClick={handleClearHistory}>
+          {t('imageEnrichment.clearHistory')}
+        </Button>
+      </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
         <List
           dataSource={conversation}
@@ -197,9 +213,9 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
               )}
               {item.type === 'model' && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
-                  <Row gutter={[16, 16]} style={{ maxWidth: '60%' }}>
+                  <Row gutter={[16, 16]} style={{ width: '100%' }}>
                     {item.images.map((image, imgIndex) => (
-                      <Col xs={24} key={`${index}-${imgIndex}`}>
+                      <Col xs={24} sm={12} md={8} lg={6} key={`${index}-${imgIndex}`}>
                         <ImageCard 
                           image={image} 
                           models={models} 
@@ -220,18 +236,43 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
         {error && <Alert message={error} type="error" showIcon style={{ margin: '10px 0' }} />}
       </div>
       <div style={{ padding: '20px', borderTop: '1px solid #f0f0f0' }}>
-        <Form form={form} onFinish={handleSubmit}>
-          <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
-            <Select
-              placeholder="Select a project"
-              value={selectedProject}
-              onChange={onProjectSelect}
-            >
-              {projects.map((p) => (
-                <Option key={p.id} value={p.id}>{p.name}</Option>
-              ))}
-            </Select>
-          </Form.Item>
+        <Form form={form} onFinish={handleSubmit} initialValues={{ aspect_ratio: '1:1' }}>
+          <Row gutter={16}>
+            <Col>
+              <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
+                <Select
+                  placeholder="Select a project"
+                  value={selectedProject}
+                  onChange={onProjectSelect}
+                  style={{ width: 200 }}
+                >
+                  {projects.map((p) => (
+                    <Option key={p.id} value={p.id}>{p.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="aspect_ratio" label={t('imageEnrichment.aspectRatio')}>
+                <Select style={{ width: 120 }}>
+                  <Select.OptGroup label="Landscape">
+                    <Option value="21:9">21:9</Option>
+                    <Option value="16:9">16:9</Option>
+                    <Option value="4:3">4:3</Option>
+                    <Option value="3:2">3:2</Option>
+                  </Select.OptGroup>
+                  <Select.OptGroup label="Square">
+                    <Option value="1:1">1:1</Option>
+                  </Select.OptGroup>
+                  <Select.OptGroup label="Portrait">
+                    <Option value="9:16">9:16</Option>
+                    <Option value="3:4">3:4</Option>
+                    <Option value="2:3">2:3</Option>
+                  </Select.OptGroup>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Upload
               customRequest={({ file, onSuccess }) => {
@@ -241,7 +282,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
               showUploadList={false}
               accept="image/*"
               multiple
-              disabled={imageFiles.length >= 3}
+              disabled={imageFiles.length >= 3 || conversation.length > 0}
             >
               <Button icon={<PlusOutlined />} shape="circle" />
             </Upload>

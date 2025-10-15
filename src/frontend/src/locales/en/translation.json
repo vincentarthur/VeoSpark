@@ -311,7 +311,9 @@
     "generateButton": "Generate Enrichment",
     "noImageError": "Please upload an image first.",
     "dedicatedProjectLabel": "Dedicated Project",
-    "maxImagesTip": "(Max 3 images)"
+    "maxImagesTip": "(Max 3 images)",
+    "aspectRatio": "Aspect Ratio",
+    "clearHistory": "Clear History"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

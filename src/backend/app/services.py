@@ -50,25 +50,25 @@ generate_content_config = types.GenerateContentConfig(
     ),
   )
 
-gemini_2_5_flash_image_generate_content_config = types.GenerateContentConfig(
-        temperature=1,
-        top_p=0.95,
-        max_output_tokens=32768,
-        response_modalities=["TEXT", "IMAGE"],
-        safety_settings=[types.SafetySetting(
-            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold="OFF"
-        ), types.SafetySetting(
-            category="HARM_CATEGORY_HATE_SPEECH",
-            threshold="OFF"
-        ), types.SafetySetting(
-            category="HARM_CATEGORY_HARASSMENT",
-            threshold="OFF"
-        ), types.SafetySetting(
-            category="HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold="OFF"
-        )],
-    )
+# gemini_2_5_flash_image_generate_content_config = types.GenerateContentConfig(
+#         temperature=1,
+#         top_p=0.95,
+#         max_output_tokens=32768,
+#         response_modalities=["IMAGE"],
+#         safety_settings=[types.SafetySetting(
+#             category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+#             threshold="OFF"
+#         ), types.SafetySetting(
+#             category="HARM_CATEGORY_HATE_SPEECH",
+#             threshold="OFF"
+#         ), types.SafetySetting(
+#             category="HARM_CATEGORY_HARASSMENT",
+#             threshold="OFF"
+#         ), types.SafetySetting(
+#             category="HARM_CATEGORY_DANGEROUS_CONTENT",
+#             threshold="OFF"
+#         )],
+#     )
 
 def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], user_info: Dict[str, Any]):
     """
@@ -433,8 +433,8 @@ class GenerationService:
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
-                    "image_embedding": Vector(embedding_data.image_embedding),
-                    "desc_embedding": Vector(embedding_data.desc_embedding)
+                    # "image_embedding": Vector(embedding_data.image_embedding),
+                    # "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
@@ -450,6 +450,7 @@ class GenerationService:
         revised_prompt = result.get("revised_prompt")
         model = result.get("model")
         image_size = result.get("resolution")
+        aspect_ratio = result.get("aspect_ratio")
         input_token = result.get("input_token", 0)
         output_token = result.get("output_token", 0)
         
@@ -491,6 +492,7 @@ class GenerationService:
                 status="SUCCESS",
                 output_image_gcs_path=path,
                 resolution=image_size,
+                aspect_ratio=aspect_ratio,
                 creative_project_id=creative_project_id,
                 cost=cost_per_image,
                 input_token=input_token,
@@ -507,11 +509,12 @@ class GenerationService:
                     "prompt": revised_prompt,
                     "model_used": model,
                     "resolution": image_size,
+                    "aspect_ratio": aspect_ratio,
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
-                    "image_embedding": Vector(embedding_data.image_embedding),
-                    "desc_embedding": Vector(embedding_data.desc_embedding)
+                    # "image_embedding": Vector(embedding_data.image_embedding),
+                    # "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
@@ -847,10 +850,10 @@ class GenerationService:
             user_info: Optional[Dict[str, Any]],
             sub_prompt: str,
             model: str,
-            # sample_count: int,
-            # image_size: str,
+            aspect_ratio: str,
             files: Optional[List[Dict[str, Any]]] = None,
             previous_image_gcs_paths: Optional[List[str]] = None,
+            conversation_history: Optional[List[Dict[str, Any]]] = None,
             **kwargs
     ) -> Dict[str, Any]:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
@@ -874,13 +877,26 @@ class GenerationService:
 
         start_time = time.time()
 
+        contents = []
+        if conversation_history:
+            for entry in conversation_history:
+                if entry.get('type') == 'user':
+                    contents.append(types.Part.from_text(text=f"user: {entry['prompt']}"))
+                elif entry.get('type') == 'model':
+                    contents.append(types.Part.from_text(text=f"model: {entry['prompt']}"))
+
+        contents.append(types.Part.from_text(text=sub_prompt))
+        contents.extend(image_parts)
+
         response = self.genai_client.models.generate_content(
             model=model,
-            contents=[
-                types.Part.from_text(text=sub_prompt),
-                *image_parts
-            ],
-            config=gemini_2_5_flash_image_generate_content_config
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(
+                    aspect_ratio=aspect_ratio
+                )
+            )
         )
         op_duration = time.time() - start_time
 
@@ -889,6 +905,7 @@ class GenerationService:
 
         gcs_paths = []
         rai_reasons = []
+        resolution = None
 
         candidate = response.candidates[0]
         if candidate.safety_ratings:
@@ -903,14 +920,15 @@ class GenerationService:
             for part in candidate.content.parts:
                 if part.inline_data:
                     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-
-                        Image.open(BytesIO(part.inline_data.data)).save(temp_file.name)
-                        user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
-                        blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
-                        blob = bucket.blob(blob_name)
-                        blob.upload_from_filename(temp_file.name)
-                        gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
-
+                        pil_image = Image.open(BytesIO(part.inline_data.data))
+                        if not resolution:
+                            resolution = f"{pil_image.width}x{pil_image.height}"
+                        pil_image.save(temp_file.name)
+                    user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
+                    blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
+                    blob = bucket.blob(blob_name)
+                    blob.upload_from_filename(temp_file.name)
+                    gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
         credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
         credentials.refresh(GoogleAuthRequest())
         image_data = []
@@ -933,7 +951,8 @@ class GenerationService:
             "duration": op_duration,
             "revised_prompt": sub_prompt,
             "model": model,
-            "resolution": None,
+            "resolution": resolution,
+            "aspect_ratio": aspect_ratio,
             "rai_reasons": rai_reasons if rai_reasons else None,
             "gcs_paths": gcs_paths,
             "creative_project_id": kwargs.get('creative_project_id'),

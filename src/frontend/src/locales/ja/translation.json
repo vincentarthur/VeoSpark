@@ -299,7 +299,9 @@
     "noImageError": "最初に画像をアップロードしてください。",
     "sampleCount": "サンプル数",
     "dedicatedProjectLabel": "専用プロジェクト",
-    "maxImagesTip": "(最大3枚の画像)"
+    "maxImagesTip": "（最大3枚の画像）",
+    "aspectRatio": "アスペクト比",
+    "clearHistory": "履歴をクリア"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

@@ -60,8 +60,9 @@ async def enrich_image(
     sub_prompt: str = Form(""),
     model: str = Form(...),
     sample_count: int = Form(1),
-    image_size: str = Form("1K"),
+    aspect_ratio: str = Form("1:1"),
     creative_project_id: Optional[str] = Form(None),
+    conversation_history: Optional[str] = Form(None),
     generation_service: GenerationService = Depends(get_generation_service),
     bq_client: bigquery.Client = Depends(get_bq_client),
     config_db: firestore.Client = Depends(get_config_db)
@@ -93,9 +94,9 @@ async def enrich_image(
         "user_info": user,
         "sub_prompt": sub_prompt,
         "model": model,
-        # "sample_count": sample_count,
-        # "image_size": image_size,
+        "aspect_ratio": aspect_ratio,
         "creative_project_id": creative_project_id,
+        "conversation_history": json.loads(conversation_history) if conversation_history else None,
         "trigger_time": datetime.now(timezone.utc)
     }
 

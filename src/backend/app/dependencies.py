@@ -52,4 +52,3 @@ def get_genai_client():
 @lru_cache()
 def get_imagen_client():
     return genai.Client(vertexai=True, project=settings.PROJECT_ID, location='us-central1')
-
