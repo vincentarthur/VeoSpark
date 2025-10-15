@@ -301,7 +301,8 @@
     "dedicatedProjectLabel": "専用プロジェクト",
     "maxImagesTip": "（最大3枚の画像）",
     "aspectRatio": "アスペクト比",
-    "clearHistory": "履歴をクリア"
+    "clearHistory": "履歴をクリア",
+    "generating": "生成中..."
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

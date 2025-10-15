@@ -63,6 +63,9 @@ FIND_SIMILAR_TOP_K: 10
 # Multimodal Embedding Model Location
 LOCATION_MULTIMODAL_EMBEDDING_MODEL: "us-central1"
 
+# Max Worker Count
+MAX_WORKER_COUNT: 6
+
 # Notification Banner
 # Set a list of messages here to display banners to all users.
 # An empty list will hide the banner.

@@ -313,7 +313,9 @@
     "dedicatedProjectLabel": "Dedicated Project",
     "maxImagesTip": "(Max 3 images)",
     "aspectRatio": "Aspect Ratio",
-    "clearHistory": "Clear History"
+    "sampleCount": "Sample Count",
+    "clearHistory": "Clear History",
+    "generating": "Generating..."
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

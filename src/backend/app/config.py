@@ -42,6 +42,7 @@ class AppConfig(BaseModel):
     FIND_SIMILAR_VIDEOS_VEO_HISTORY: str
     FIND_SIMILAR_TOP_K: int
     LOCATION_MULTIMODAL_EMBEDDING_MODEL: str
+    MAX_WORKER_COUNT: int
 
 
 def load_config() -> AppConfig:

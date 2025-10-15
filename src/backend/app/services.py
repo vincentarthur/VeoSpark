@@ -50,26 +50,6 @@ generate_content_config = types.GenerateContentConfig(
     ),
   )
 
-# gemini_2_5_flash_image_generate_content_config = types.GenerateContentConfig(
-#         temperature=1,
-#         top_p=0.95,
-#         max_output_tokens=32768,
-#         response_modalities=["IMAGE"],
-#         safety_settings=[types.SafetySetting(
-#             category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-#             threshold="OFF"
-#         ), types.SafetySetting(
-#             category="HARM_CATEGORY_HATE_SPEECH",
-#             threshold="OFF"
-#         ), types.SafetySetting(
-#             category="HARM_CATEGORY_HARASSMENT",
-#             threshold="OFF"
-#         ), types.SafetySetting(
-#             category="HARM_CATEGORY_DANGEROUS_CONTENT",
-#             threshold="OFF"
-#         )],
-#     )
-
 def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], user_info: Dict[str, Any]):
     """
     Adds an asset to a creative project's subcollection in Firestore.
@@ -91,7 +71,6 @@ def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], u
             logger.error(f"Creative project with ID '{project_id}' not found.")
             return
 
-        # Optional: Check if user is a member of the project
         project_members = project_doc.to_dict().get('members', [])
         user_email = user_info.get('email')
         if user_email not in project_members and user_info.get('role') != 'APP_ADMIN':
@@ -127,7 +106,6 @@ def log_generation_to_bq(asset_type: str, **kwargs):
     
     table_id = f"{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{table_name}"
     
-    # Remove None values and serialize datetimes
     serialized_kwargs = {}
     for k, v in kwargs.items():
         if v is None:
@@ -225,7 +203,7 @@ class GenerationService:
             logger.info(f"Generating embeddings for {gcs_uri}.")
             embeddings = self.embedding_model.get_embeddings(
                 video=VisionVideo.load_from_file(gcs_uri),
-                contextual_text=description[:1000] # Ensure text is within model limits
+                contextual_text=description[:1000]
             )
             logger.info(f"Successfully generated embeddings for {gcs_uri}.")
 
@@ -271,7 +249,7 @@ class GenerationService:
             logger.info(f"Generating embeddings for {gcs_uri}.")
             embeddings = self.embedding_model.get_embeddings(
                 image=VisionImage.load_from_file(gcs_uri),
-                contextual_text=description[:1000] # Ensure text is within model limits
+                contextual_text=description[:1000]
             )
             logger.info(f"Successfully generated embeddings for {gcs_uri}.")
 
@@ -289,7 +267,6 @@ class GenerationService:
         """Callback for successful video generation."""
         if "error" in result:
             logger.error(f"Video generation failed, processing error callback. Error: {result['error']}")
-            # Call the generic error handler
             self.on_generation_error(
                 error=Exception(str(result["error"])),
                 asset_type='veo',
@@ -433,8 +410,6 @@ class GenerationService:
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
-                    # "image_embedding": Vector(embedding_data.image_embedding),
-                    # "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
@@ -449,7 +424,6 @@ class GenerationService:
         op_duration = result.get("duration", 0)
         revised_prompt = result.get("revised_prompt")
         model = result.get("model")
-        image_size = result.get("resolution")
         aspect_ratio = result.get("aspect_ratio")
         input_token = result.get("input_token", 0)
         output_token = result.get("output_token", 0)
@@ -466,13 +440,11 @@ class GenerationService:
             output_cost = (output_token / 1_000_000) * cost_per_million_output
             cost = input_cost + output_cost
 
-        # The cost is for the entire operation, which may generate multiple images.
-        # We distribute the cost evenly among the generated images.
         cost_per_image = cost / len(image_data) if image_data else 0
 
         for img in image_data:
             path = img['gcs_uri']
-
+            resolution = img.get('resolution')
             embedding_data = {}
             if self.embedding_model:
                 try:
@@ -491,7 +463,7 @@ class GenerationService:
                 model_used=model,
                 status="SUCCESS",
                 output_image_gcs_path=path,
-                resolution=image_size,
+                resolution=resolution,
                 aspect_ratio=aspect_ratio,
                 creative_project_id=creative_project_id,
                 cost=cost_per_image,
@@ -503,18 +475,17 @@ class GenerationService:
         if creative_project_id and image_data:
             for img in image_data:
                 path = img['gcs_uri']
+                resolution = img.get('resolution')
                 asset_data = {
                     "type": "image",
                     "gcs_uri": path,
                     "prompt": revised_prompt,
                     "model_used": model,
-                    "resolution": image_size,
+                    "resolution": resolution,
                     "aspect_ratio": aspect_ratio,
                     "status": "SUCCESS",
                     "trigger_time": trigger_time.isoformat(),
                     "completion_time": completion_time.isoformat(),
-                    # "image_embedding": Vector(embedding_data.image_embedding),
-                    # "desc_embedding": Vector(embedding_data.desc_embedding)
                 }
                 add_asset_to_creative_project(creative_project_id, asset_data, user_info)
 
@@ -581,7 +552,6 @@ class GenerationService:
         """
         Parses support codes from a generation error message and returns the mapped reasons.
         """
-        # Load safety filters from the YAML file.
         try:
             config_path = Path(__file__).parent.parent / 'configs' / 'safety_filters.yaml'
             with open(config_path, "r") as f:
@@ -590,7 +560,6 @@ class GenerationService:
             logger.error(f"Failed to load or parse safety_filters.yaml: {e}")
             safety_filters = {}
 
-        # Regex to find all support codes, which may be comma-separated.
         matches = re.findall(r"Support codes: ([\d, ]+)", error_message)
         if not matches:
             return None
@@ -719,7 +688,6 @@ class GenerationService:
                     if parsed:
                         rai_reasons.extend(parsed)
                     else:
-                        # Fallback for unparsable reasons
                         rai_reasons.append({"code": "Unknown", "description": r})
         
         gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri]
@@ -906,6 +874,7 @@ class GenerationService:
         gcs_paths = []
         rai_reasons = []
         resolution = None
+        image_data = []
 
         candidate = response.candidates[0]
         if candidate.safety_ratings:
@@ -921,37 +890,32 @@ class GenerationService:
                 if part.inline_data:
                     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
                         pil_image = Image.open(BytesIO(part.inline_data.data))
-                        if not resolution:
-                            resolution = f"{pil_image.width}x{pil_image.height}"
+                        resolution = f"{pil_image.width}x{pil_image.height}"
                         pil_image.save(temp_file.name)
                     user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
                     blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
                     blob = bucket.blob(blob_name)
                     blob.upload_from_filename(temp_file.name)
-                    gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
-        credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
-        credentials.refresh(GoogleAuthRequest())
-        image_data = []
-        for uri in gcs_paths:
-            bucket_name, blob_name = uri[5:].split("/", 1)
-            bucket = self.storage_client.bucket(bucket_name)
-            blob = bucket.blob(blob_name)
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=timedelta(minutes=60),
-                method="GET",
-                service_account_email=credentials.service_account_email,
-                access_token=credentials.token,
-            )
-            image_data.append({"gcs_uri": uri, "signed_url": signed_url})
+                    gcs_path = f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}"
+                    gcs_paths.append(gcs_path)
+                    
+                    credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                    credentials.refresh(GoogleAuthRequest())
+                    signed_url = blob.generate_signed_url(
+                        version="v4",
+                        expiration=timedelta(minutes=60),
+                        method="GET",
+                        service_account_email=credentials.service_account_email,
+                        access_token=credentials.token,
+                    )
+                    image_data.append({"gcs_uri": gcs_path, "signed_url": signed_url, "resolution": resolution})
             
         return {
-            "message": "Image imitation successful.",
+            "message": "Image enrichment successful.",
             "images": image_data,
             "duration": op_duration,
             "revised_prompt": sub_prompt,
             "model": model,
-            "resolution": resolution,
             "aspect_ratio": aspect_ratio,
             "rai_reasons": rai_reasons if rai_reasons else None,
             "gcs_paths": gcs_paths,

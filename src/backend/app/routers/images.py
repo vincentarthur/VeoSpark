@@ -14,6 +14,8 @@ from app.task_manager import create_task
 from typing import Optional, List
 from starlette.responses import JSONResponse
 import json
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -111,15 +113,43 @@ async def enrich_image(
     elif previous_image_gcs_paths:
         task_kwargs["previous_image_gcs_paths"] = previous_image_gcs_paths
 
-    logger.info("Submitting image enrichment task to the background processor.")
-    task_id = create_task(
-        generation_service.enrich_image,
+    def run_enrichment_tasks(**kwargs):
+        all_results = {
+            "images": [],
+            "duration": 0,
+            "revised_prompt": sub_prompt,
+            "model": model,
+            "aspect_ratio": aspect_ratio,
+            "rai_reasons": [],
+            "gcs_paths": [],
+            "creative_project_id": creative_project_id,
+            "input_token": 0,
+            "output_token": 0
+        }
+        with ThreadPoolExecutor(max_workers=settings.MAX_WORKER_COUNT) as executor:
+            futures = {executor.submit(generation_service.enrich_image, **task_kwargs, seed=i): i for i in range(sample_count)}
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        all_results["images"].extend(result.get("images", []))
+                        all_results["duration"] += result.get("duration", 0)
+                        all_results["rai_reasons"].extend(result.get("rai_reasons", []) or [])
+                        all_results["gcs_paths"].extend(result.get("gcs_paths", []))
+                        all_results["input_token"] += result.get("input_token", 0)
+                        all_results["output_token"] += result.get("output_token", 0)
+                except Exception as e:
+                    logger.error(f"Sub-task failed with exception: {e}")
+        return all_results
+
+    main_task_id = create_task(
+        run_enrichment_tasks,
         on_success=generation_service.on_image_enrichment_success,
         on_error=lambda e, **kwargs: generation_service.on_generation_error(e, asset_type="image_enrichment", **kwargs),
         **task_kwargs
     )
-    logger.info(f"Task {task_id} created for image enrichment.")
-    return TaskResponse(task_id=task_id)
+    
+    return TaskResponse(task_id=main_task_id)
 
 @router.get("/history")
 def get_image_history(
@@ -343,8 +373,6 @@ async def search_similarity_image(
 
     user_email = user.get('email')
     
-    # Utilize FindSimilarImage_{TABLE_NAME} function to retrieve images
-    # Define the query with named parameters (@param_name)
     parameterized_sql_query = f"""
         SELECT
             *
@@ -355,7 +383,6 @@ async def search_similarity_image(
         )
     """
 
-    # Define the job configuration with the parameters
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("query_text", "STRING", text),
@@ -365,7 +392,6 @@ async def search_similarity_image(
     )
 
     try:
-        # Execute the query with the configuration
         query_job = bq_client.query(parameterized_sql_query, job_config=job_config)
         rows = [dict(row) for row in query_job.result()]
 
@@ -409,8 +435,6 @@ async def search_similarity_image_enrich(
 
     user_email = user.get('email')
     
-    # Utilize FindSimilarImage_{TABLE_NAME} function to retrieve images
-    # Define the query with named parameters (@param_name)
     parameterized_sql_query = f"""
         SELECT
             *
@@ -421,7 +445,6 @@ async def search_similarity_image_enrich(
         )
     """
 
-    # Define the job configuration with the parameters
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("query_text", "STRING", text),
@@ -431,7 +454,6 @@ async def search_similarity_image_enrich(
     )
 
     try:
-        # Execute the query with the configuration
         query_job = bq_client.query(parameterized_sql_query, job_config=job_config)
         rows = [dict(row) for row in query_job.result()]
 

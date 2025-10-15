@@ -303,7 +303,8 @@
     "dedicatedProjectLabel": "专用项目",
     "maxImagesTip": "（最多3张图片）",
     "aspectRatio": "宽高比",
-    "clearHistory": "清除历史"
+    "clearHistory": "清除历史",
+    "generating": "生成中..."
   },
   "footer": {
     "poweredBy": "由 Google Cloud 强力驱动"

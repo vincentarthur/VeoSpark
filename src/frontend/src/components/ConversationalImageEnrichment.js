@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select, Tooltip
+  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select, Tooltip, Card
 } from 'antd';
 import { PlusOutlined, SendOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import ImageCard from './ImageCard';
 
-const { Paragraph } = Typography;
+const { Paragraph, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
@@ -23,6 +23,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pollingTaskId, setPollingTaskId] = useState(null);
+  const [generatingImages, setGeneratingImages] = useState(0);
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const shortcutText = isMac ? '⌘ + Enter' : 'Alt + Enter';
 
@@ -79,9 +80,11 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
           raiReasons: result.rai_reasons,
         };
         setConversation(prev => [...prev, newModelMessage]);
+        setGeneratingImages(0);
         setLoading(false);
         setPollingTaskId(null);
       } else if (status === 'failed') {
+        setGeneratingImages(0);
         setError(error || 'An unexpected error occurred during generation.');
         setLoading(false);
         setPollingTaskId(null);
@@ -91,6 +94,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
       }
     } catch (err) {
       setError('Failed to get task status.');
+      setGeneratingImages(0);
       setLoading(false);
       setPollingTaskId(null);
     }
@@ -143,6 +147,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
     };
     setConversation(prev => [...prev, userMessage]);
     setLoading(true);
+    setGeneratingImages(values.sample_count);
     setError(null);
     form.resetFields(['prompt']);
     setImageFiles([]);
@@ -164,7 +169,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
     }
     formData.append('sub_prompt', values.prompt);
     formData.append('model', 'gemini-2.5-flash-image-preview'); // Hardcoded as per requirement
-    formData.append('sample_count', 1);
+    formData.append('sample_count', values.sample_count);
     formData.append('aspect_ratio', values.aspect_ratio);
     formData.append('creative_project_id', values.creative_project_id);
     if (conversation.length > 0) {
@@ -183,10 +188,12 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
         setPollingTaskId(response.data.task_id);
       } else {
         setError('Failed to start generation task.');
+        setGeneratingImages(0);
         setLoading(false);
       }
     } catch (err) {
       setError(err.response?.data?.detail || 'An unexpected error occurred.');
+      setGeneratingImages(0);
       setLoading(false);
     }
   };
@@ -232,11 +239,26 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
             </List.Item>
           )}
         />
-        {loading && <div style={{ textAlign: 'center', padding: '20px' }}><Spin /></div>}
+        {generatingImages > 0 && (
+          <List.Item style={{ border: 'none', padding: '10px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+              <Row gutter={[16, 16]} style={{ width: '100%' }}>
+                {[...Array(generatingImages)].map((_, i) => (
+                  <Col xs={24} sm={12} md={8} lg={6} key={`generating-${i}`}>
+                    <Card style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <Spin size="large" />
+                      <Text style={{ marginTop: '10px' }}>{t('imageEnrichment.generating', 'Generating...')}</Text>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </List.Item>
+        )}
         {error && <Alert message={error} type="error" showIcon style={{ margin: '10px 0' }} />}
       </div>
       <div style={{ padding: '20px', borderTop: '1px solid #f0f0f0' }}>
-        <Form form={form} onFinish={handleSubmit} initialValues={{ aspect_ratio: '1:1' }}>
+        <Form form={form} onFinish={handleSubmit} initialValues={{ aspect_ratio: '1:1', sample_count: 1 }}>
           <Row gutter={16}>
             <Col>
               <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
@@ -248,6 +270,15 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
                 >
                   {projects.map((p) => (
                     <Option key={p.id} value={p.id}>{p.name}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col>
+              <Form.Item name="sample_count" label={t('imageEnrichment.sampleCount')}>
+                <Select style={{ width: 120 }}>
+                  {[...Array(6).keys()].map(i => (
+                    <Option key={i + 1} value={i + 1}>{i + 1}</Option>
                   ))}
                 </Select>
               </Form.Item>
