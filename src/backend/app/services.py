@@ -629,11 +629,14 @@ class GenerationService:
         if body.get('resolution') is not None:
             config.resolution = body['resolution']
         
-        if body.get('extend_duration') is not None:
+        is_veo2_model = model_id.startswith('veo-2.')
+        is_veo31_model = model_id.startswith('veo-3.1')
+
+        if (is_veo2_model or is_veo31_model) and body.get('generationMode') == 'extend':
             sdk_call_kwargs['video'] = types.Video(uri=image_gcs_uri)
             sdk_call_kwargs.pop('image', None)
             config.duration_seconds = body['extend_duration']
-
+        
         operation = self.genai_client.models.generate_videos(
             model=model_id,
             prompt=prompt,

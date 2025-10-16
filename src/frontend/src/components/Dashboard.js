@@ -172,6 +172,7 @@ const Dashboard = ({ initialFirstFrame }) => {
   const isV3Model = model.startsWith('veo-3.');
   const isV2GenerateModel = model === 'veo-2.0-generate-001';
   const isVeo2Model = model.startsWith('veo-2.0');
+  const showFirstLastFrameUpload = isVeo2Model || model.startsWith('veo-3.1');
 
   useEffect(() => {
     if (initialFirstFrame) {
@@ -279,7 +280,7 @@ const Dashboard = ({ initialFirstFrame }) => {
     setRaiReasons([]);
 
     try {
-      const isExtending = isV2GenerateModel && generationMode === 'extend';
+      const isExtending = (isVeo2Model || model.startsWith('veo-3.1')) && generationMode === 'extend';
       const response = await axios.post('/api/videos/generate', {
         ...values,
         image_gcs_uri: isExtending ? selectedVideo : imageGcsUri,
@@ -333,9 +334,7 @@ const Dashboard = ({ initialFirstFrame }) => {
               </Select>
             </Form.Item>
 
-            <CameraMovements onMovementClick={handleMovementClick} />
-
-            {isV2GenerateModel && (
+            {showFirstLastFrameUpload && (
               <Form.Item>
                 <Radio.Group value={generationMode} onChange={(e) => setGenerationMode(e.target.value)}>
                   <Radio.Button value="generate">{t('dashboard.generateWithImage')}</Radio.Button>
@@ -344,9 +343,9 @@ const Dashboard = ({ initialFirstFrame }) => {
               </Form.Item>
             )}
 
-            {(!isV2GenerateModel || generationMode === 'generate') && (
+            {(!showFirstLastFrameUpload || generationMode === 'generate') && (
               <>
-                <Form.Item label={isV2GenerateModel ? t('dashboard.uploadFirstFrame') : t('dashboard.uploadImage')}>
+                <Form.Item label={showFirstLastFrameUpload ? t('dashboard.uploadFirstFrame') : t('dashboard.uploadImage')}>
                   <Upload
                     beforeUpload={handleImageUpload}
                     showUploadList={false}
@@ -366,7 +365,7 @@ const Dashboard = ({ initialFirstFrame }) => {
                   {uploadError && <Alert message={uploadError} type="error" showIcon />}
                 </Form.Item>
 
-                {isV2GenerateModel && (
+                {showFirstLastFrameUpload && (
                   <Form.Item label={t('dashboard.uploadLastFrame')}>
                     <Upload
                       beforeUpload={handleFinalFrameUpload}
@@ -390,7 +389,7 @@ const Dashboard = ({ initialFirstFrame }) => {
               </>
             )}
 
-            {isV2GenerateModel && generationMode === 'extend' && (
+            {showFirstLastFrameUpload && generationMode === 'extend' && (
               <Card title={t('dashboard.extendVideoTitle')} size="small">
                 <Form.Item label={t('dashboard.selectVideoLabel')}>
                   <Select
@@ -421,7 +420,7 @@ const Dashboard = ({ initialFirstFrame }) => {
                 max={8}
                 step={2}
                 marks={{ 4: '4s', 6: '6s', 8: '8s' }}
-                disabled={(isV2GenerateModel && generationMode === 'extend')}
+                disabled={(showFirstLastFrameUpload && generationMode === 'extend')}
               />
             </Form.Item>
 
@@ -431,7 +430,7 @@ const Dashboard = ({ initialFirstFrame }) => {
                 max={2}
                 step={1}
                 marks={{ 1: '1', 2: '2' }}
-                disabled={isV2GenerateModel && generationMode === 'extend'}
+                disabled={showFirstLastFrameUpload && generationMode === 'extend'}
               />
             </Form.Item>
 
@@ -509,7 +508,7 @@ const Dashboard = ({ initialFirstFrame }) => {
               style={{ width: '100%' }}
             />
           )}
-          {isV2GenerateModel && generationMode === 'extend' && selectedVideo && (
+          {showFirstLastFrameUpload && generationMode === 'extend' && selectedVideo && (
             <FilmStripPlayer
               title="EXTENDED VIDEO"
               video={userVideos.find(v => v.gcs_uri === selectedVideo)}
