@@ -335,27 +335,28 @@ To ensure your Firestore queries are efficient, you need to deploy the required 
     ./scripts/setup_creative_projects_firestore.sh
     ```
 
-### 6. BigQuery
+### 6. BigQuery Environment Setup
 
-You can create the required BigQuery dataset and table by running the provided setup script.
+The entire BigQuery environment, including datasets, tables, the Vertex AI connection, and query functions, can be configured by running a single, unified script.
 
 1.  **Navigate to the backend directory**:
     ```bash
     cd src/backend
     ```
 
-2.  **Make the script executable**:
+2.  **Run the setup script**:
     ```bash
-    chmod +x setup_veo_bigquery.sh
+    ./scripts/setup_bigquery.sh
     ```
 
-3.  **Run the script**:
-    ```bash
-    ./scripts/setup_veo_bigquery.sh
-    ```
-    The script will create the dataset and the table with the correct schema defined in `src/backend/schemas/veo_history.json`.
+This script will automatically:
+- Create the required BigQuery dataset and tables (`veo_history`, `imagen_history`, `image_enrichment_history`).
+- Create a BigQuery connection to allow communication with Vertex AI.
+- Prompt you to set the necessary IAM permissions for the connection's service account.
+- Create the `multimodal_embedding_model` and the `FindSimilar*` table functions required for the similarity search feature.
 
-### 7. BigQuery for Generation History
+<details>
+<summary>Legacy: Manual BigQuery Setup (Redundant)</summary>
 
 The application uses three separate tables to log the history for different generation types. Each table now includes a `cost` column to store the calculated cost at the time of generation.
 
@@ -380,6 +381,8 @@ You can create the required BigQuery tables by running the provided setup script
     ./scripts/setup_image_enrichment_bigquery.sh
     ```
     These scripts will create the `veo_history`, `imagen_history`, and `image_enrichment_history` tables.
+
+</details>
 
 ### 8. Create a Service Account
 

@@ -54,10 +54,26 @@ Handles user authentication, configuration, GCS operations, prompt gallery, imag
       {
         "id": "veo-2.0-generate-001",
         "name": "Veo 2.0",
-        "pricing": {
-          "video_with_audio": 0.02,
-          "video_without_audio": 0.015
-        }
+        "type": "veo-2.0",
+        "pricing": [
+          {
+            "effective_date": "2025-10-01",
+            "video_with_audio": 0.50,
+            "video_without_audio": 0.50
+          }
+        ]
+      },
+      {
+        "id": "veo-3.1-generate-preview",
+        "name": "Veo 3.1 Preview",
+        "type": "veo-3.1",
+        "pricing": [
+          {
+            "effective_date": "2025-09-01",
+            "video_with_audio": 0.40,
+            "video_without_audio": 0.20
+          }
+        ]
       }
     ]
   }
