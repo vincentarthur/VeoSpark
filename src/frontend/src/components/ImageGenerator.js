@@ -136,7 +136,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
             <Form.Item name="model" label={t('imageGenerator.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={(value) => {
                 setSelectedModel(value);
-                if (value === 'imagen-4.0-ultra-generate-preview-06-06') {
+                if (value === 'Imagen-4.0-ultra-generate-001') {
                   form.setFieldsValue({ sample_count: 1 });
                   setSampleCount(1);
                 }
@@ -187,7 +187,7 @@ const ImageGenerator = ({ user, onUseAsFirstFrame }) => {
                     step={1}
                     onChange={setSampleCount}
                     value={sampleCount}
-                    disabled={selectedModel === 'imagen-4.0-ultra-generate-preview-06-06'}
+                    disabled={selectedModel === 'imagen-4.0-ultra-generate-001'}
                   />
                 </Form.Item>
               </Col>

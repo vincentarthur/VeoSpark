@@ -11,7 +11,7 @@ import ImageCard from '../components/ImageCard';
 const { Title } = Typography;
 const { Option } = Select;
 
-const TeamGalleryPage = ({ user, onUseAsFirstFrame }) => {
+const TeamGalleryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const { t } = useTranslation();
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -111,7 +111,7 @@ const TeamGalleryPage = ({ user, onUseAsFirstFrame }) => {
           {items.map((item) => (
             <Col xs={24} sm={12} md={8} key={item.id}>
               {item.type === 'image' ? (
-                <ImageCard image={item} user={user} onShareDelete={handleDeleteClick} onUseAsFirstFrame={onUseAsFirstFrame} />
+                <ImageCard image={item} user={user} onShareDelete={handleDeleteClick} onUseAsFirstFrame={onUseAsFirstFrame} onUseAsLastFrame={onUseAsLastFrame} />
               ) : (
                 <VideoCard video={{...item, signed_urls: [item.signed_url]}} user={user} onShareDelete={handleDeleteClick} />
               )}
