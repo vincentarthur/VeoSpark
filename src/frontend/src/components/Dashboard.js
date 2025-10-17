@@ -563,7 +563,7 @@ const Dashboard = ({ initialFirstFrame }) => {
                 max={8}
                 step={2}
                 marks={{ 4: '4s', 6: '6s', 8: '8s' }}
-                disabled={(showFirstLastFrameUpload && generationMode === 'extend')}
+                disabled={(showFirstLastFrameUpload && generationMode === 'extend') || (isVeo31Model && v31GenerationMode === 'referenceImage')}
               />
             </Form.Item>
 
@@ -578,7 +578,7 @@ const Dashboard = ({ initialFirstFrame }) => {
             </Form.Item>
 
             <Form.Item name="aspectRatio" label={t('dashboard.aspectRatioLabel')}>
-              <Radio.Group>
+              <Radio.Group disabled={isVeo31Model && v31GenerationMode === 'referenceImage'}>
                 <Radio.Button value="16:9">16:9</Radio.Button>
                 <Radio.Button value="9:16">9:16</Radio.Button>
               </Radio.Group>
