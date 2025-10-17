@@ -325,9 +325,9 @@ class GenerationService:
                 video_duration=body.get('duration'),
                 with_audio=body.get('generateAudio', False),
                 resolution=body.get('resolution'),
-                first_frame_gcs_uri=body.get('image_gcs_uri'),
-                last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
-                reference_image_gcs_uris=json.dumps(body.get('reference_image_gcs_uris')) if body.get('reference_image_gcs_uris') else None,
+                first_frame_gcs_uri=result.get('image_gcs_uri'),
+                last_frame_gcs_uri=result.get('final_frame_gcs_uri'),
+                reference_image_gcs_uris=json.dumps(result.get('reference_image_gcs_uris')) if result.get('reference_image_gcs_uris') else None,
                 output_video_gcs_paths=json.dumps([path]),
                 creative_project_id=body.get('creative_project_id'),
                 cost=cost,
@@ -564,7 +564,7 @@ class GenerationService:
                 safety_filters = yaml.safe_load(f)
         except (FileNotFoundError, yaml.YAMLError) as e:
             logger.error(f"Failed to load or parse safety_filters.yaml: {e}")
-            safety_filters = {}
+            return None
 
         matches = re.findall(r"Support codes: ([\d, ]+)", error_message)
         if not matches:
@@ -639,16 +639,15 @@ class GenerationService:
             config.resolution = body['resolution']
 
         is_veo2_model = model_id.startswith('veo-2.')
-        is_veo31_model = model_id.startswith('veo-3.1')
+        is_v3_model = model_id.startswith('veo-3.')
 
-        if (is_veo2_model or is_veo31_model) and body.get('generationMode') == 'extend':
+        if (is_veo2_model or is_v3_model) and body.get('generationMode') == 'extend':
             sdk_call_kwargs['video'] = types.Video(uri=image_gcs_uri)
             sdk_call_kwargs.pop('image', None)
             # config.duration_seconds = body['extend_duration']
         
         if reference_image_gcs_uris:
             # Can only accept PRETTY CLEAN GenerateVideosConfig
-            print(f"reference_image_gcs_uris:{reference_image_gcs_uris}")
             # R2V - Reference to Video
             config = types.GenerateVideosConfig(
                 output_gcs_uri=output_gcs_prefix,
@@ -678,18 +677,18 @@ class GenerationService:
             time.sleep(15)
             operation = self.genai_client.operations.get(operation)
 
-        if operation.error:
-            error_str = str(operation.error)
-            rai_reasons = self._parse_rai_reason_from_error(error_str)
-            return {
-                "message": "Video generation failed.",
-                "error": error_str,
-                "videos": [],
-                "duration": time.time() - start_time,
-                "revisedPrompt": None,
-                "rai_reasons": rai_reasons,
-                "creative_project_id": kwargs.get('body').get('creative_project_id')
-            }
+        # if operation.error:
+        #     error_str = str(operation.error)
+        #     rai_reasons = self._parse_rai_reason_from_error(error_str)
+        #     return {
+        #         "message": "Video generation failed.",
+        #         "error": error_str,
+        #         "videos": [],
+        #         "duration": time.time() - start_time,
+        #         "revisedPrompt": None,
+        #         "rai_reasons": rai_reasons,
+        #         "creative_project_id": kwargs.get('body').get('creative_project_id')
+        #     }
         if not operation.response:
             return {
                 "message": "Operation finished but no response data found.",
@@ -702,47 +701,67 @@ class GenerationService:
             }
 
         result = operation.result
+        
         revised_prompt = result.revised_prompt if hasattr(result, 'revised_prompt') else None
-
-        generated_videos = result.generated_videos
+        generated_videos = result.generated_videos if hasattr(result, 'generated_videos') else []
+        
         rai_reasons = None
-        if not generated_videos:
-            if hasattr(result, 'rai_media_filtered_reasons') and result.rai_media_filtered_reasons:
-                rai_reasons = []
-                for r in result.rai_media_filtered_reasons:
-                    parsed = self._parse_rai_reason_from_error(r)
-                    if parsed:
-                        rai_reasons.extend(parsed)
-                    else:
-                        rai_reasons.append({"code": "Unknown", "description": r})
+        if hasattr(result, 'rai_media_filtered_reasons') and result.rai_media_filtered_reasons:
+            rai_reasons = []
+            for reason_str in result.rai_media_filtered_reasons:
+                parsed_list = self._parse_rai_reason_from_error(reason_str)
+                if parsed_list:
+                    rai_reasons.extend(parsed_list)
+                else:
+                    # Fallback for unparsable reasons
+                    rai_reasons.append({
+                        "code": "Unknown",
+                        "category": "Safety Filter",
+                        "description": reason_str,
+                        "filtered": "N/A"
+                    })
 
-        gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri]
+        if generated_videos:
+            gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri] if generated_videos else []
 
-        credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
-        credentials.refresh(GoogleAuthRequest())
-        video_data = []
-        for uri in gcs_paths:
-            bucket_name, blob_name = uri[5:].split("/", 1)
-            bucket = self.storage_client.bucket(bucket_name)
-            blob = bucket.blob(blob_name)
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=timedelta(minutes=60),
-                method="GET",
-                service_account_email=credentials.service_account_email,
-                access_token=credentials.token,
-            )
-            video_data.append({"gcs_uri": uri, "signed_url": signed_url})
+            credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+            credentials.refresh(GoogleAuthRequest())
+            video_data = []
+            for uri in gcs_paths:
+                bucket_name, blob_name = uri[5:].split("/", 1)
+                bucket = self.storage_client.bucket(bucket_name)
+                blob = bucket.blob(blob_name)
+                signed_url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=timedelta(minutes=60),
+                    method="GET",
+                    service_account_email=credentials.service_account_email,
+                    access_token=credentials.token,
+                )
+                video_data.append({"gcs_uri": uri, "signed_url": signed_url})
 
-        return {
-            "message": "Video generation successful.",
-            "videos": video_data,
-            "duration": time.time() - start_time,
-            "revisedPrompt": revised_prompt,
-            "rai_reasons": rai_reasons,
-            "creative_project_id": kwargs.get('body').get('creative_project_id'),
-            "reference_image_gcs_uris": reference_image_gcs_uris
-        }
+            return {
+                "message": "Video generation successful.",
+                "videos": video_data,
+                "duration": time.time() - start_time,
+                "revisedPrompt": revised_prompt,
+                "rai_reasons": rai_reasons,
+                "creative_project_id": kwargs.get('body').get('creative_project_id'),
+                "reference_image_gcs_uris": reference_image_gcs_uris,
+                "image_gcs_uri": image_gcs_uri,
+                "final_frame_gcs_uri": final_frame_gcs_uri
+            }
+        
+        else:
+            return {
+                "message": "Video generation failed.",
+                "error": operation.error,
+                "videos": [],
+                "duration": time.time() - start_time,
+                "revisedPrompt": None,
+                "rai_reasons": rai_reasons,
+                "creative_project_id": kwargs.get('body').get('creative_project_id')
+            }
 
     def generate_image(
             self,
@@ -857,7 +876,7 @@ class GenerationService:
 
         if previous_image_gcs_paths:
             gcs_uris.extend(previous_image_gcs_paths)
-        elif files:
+        if files:
             user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
             for file in files:
                 file_extension = Path(file["file_filename"]).suffix
@@ -865,8 +884,6 @@ class GenerationService:
                 blob = bucket.blob(blob_name)
                 blob.upload_from_string(file["file_bytes"], content_type=file["file_content_type"])
                 gcs_uris.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
-        else:
-            raise ValueError("Either file data or previous_image_gcs_paths must be provided.")
 
         image_parts = [
             types.Part.from_uri(file_uri=uri, mime_type='image/png' if uri.endswith('.png') else 'image/jpeg') for uri

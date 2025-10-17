@@ -75,9 +75,6 @@ async def enrich_image(
     user_email = user.get('email', 'anonymous') if user else 'anonymous'
     logger.info(f"Received image enrichment request from user: {user_email} with sub_prompt: '{sub_prompt[:50]}...'")
 
-    if not files and not previous_image_gcs_paths:
-        raise HTTPException(status_code=400, detail="Either image files or previous_image_gcs_paths must be provided.")
-
     if files:
         if len(files) > 3:
             raise HTTPException(status_code=400, detail="You can upload a maximum of 3 images.")

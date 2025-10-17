@@ -11,7 +11,7 @@ const { Paragraph, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProject, onProjectSelect }) => {
+const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFrame, selectedProject, onProjectSelect }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -135,10 +135,10 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
   };
 
   const handleSubmit = async (values) => {
-    if (imageFiles.length === 0 && conversation.length === 0) {
-      setError(t('imageEnrichment.noImageError'));
-      return;
-    }
+    // if (imageFiles.length === 0 && conversation.length === 0) {
+    //   setError(t('imageEnrichment.noImageError'));
+    //   return;
+    // }
 
     const userMessage = {
       type: 'user',
@@ -228,6 +228,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
                           models={models} 
                           user={user} 
                           onUseAsFirstFrame={onUseAsFirstFrame} 
+                          onUseAsLastFrame={onUseAsLastFrame}
                           onShareClick={true}
                           showAddToProject={false}
                           />
@@ -313,7 +314,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, selectedProjec
               showUploadList={false}
               accept="image/*"
               multiple
-              disabled={imageFiles.length >= 3 || conversation.length > 0}
+              disabled={imageFiles.length >= 3}
             >
               <Button icon={<PlusOutlined />} shape="circle" />
             </Upload>

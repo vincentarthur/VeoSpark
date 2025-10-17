@@ -17,7 +17,7 @@ const { Option } = Select;
 const ImageEnrichmentHistory = ({
   user, history, models, loading, error, hasFetched, totalRows, page,
   rowsPerPage, fetchHistory, setFilters, clearFilters, filters,
-  onUseAsFirstFrame, searchText, setSearchText, handleSearch
+  onUseAsFirstFrame, onUseAsLastFrame, searchText, setSearchText, handleSearch
 }) => {
   const { t } = useTranslation();
 
@@ -66,7 +66,7 @@ const ImageEnrichmentHistory = ({
             ))}
           </Select>
         </Col>
-        <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory()}>{t('history.filters.apply')}</Button></Col>
+        <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory(false, 1, rowsPerPage, true)}>{t('history.filters.apply')}</Button></Col>
         <Col><Button icon={<ClearOutlined />} onClick={clearFilters} /></Col>
       </Row>
       <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -102,6 +102,7 @@ const ImageEnrichmentHistory = ({
                   user={user}
                   onShareClick={openShareModal}
                   onUseAsFirstFrame={onUseAsFirstFrame}
+                  onUseAsLastFrame={onUseAsLastFrame}
                 />
               </Col>
             ))}

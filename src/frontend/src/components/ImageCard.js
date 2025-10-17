@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, Typography, Button, Tooltip, Tag, Modal, Collapse } from 'antd';
-import { ShareAltOutlined, DeleteOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
+import { ShareAltOutlined, DeleteOutlined, PlusOutlined, BorderLeftOutlined, BorderRightOutlined } from '@ant-design/icons';
 import AddToProjectModal from './AddToProjectModal';
 import ShareToGroupModal from './ShareToGroupModal';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
-const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFirstFrame, showAddToProject = true }) => {
+const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFirstFrame, onUseAsLastFrame, showAddToProject = true }) => {
   const { t } = useTranslation();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isAddToProjectModalOpen, setIsAddToProjectModalOpen] = useState(false);
@@ -29,8 +29,19 @@ const ImageCard = ({ image, models, user, onShareClick, onShareDelete, onUseAsFi
     actions.push(
       <Tooltip title={t('imageCard.useAsFirstFrame', 'Use as First Frame')}>
         <Button
-          icon={<PictureOutlined />}
+          icon={<BorderLeftOutlined />}
           onClick={() => onUseAsFirstFrame({ signedUrl: image.signed_url, gcsUri: image.output_image_gcs_path || image.gcs_uri })}
+          disabled={!isActionable}
+        />
+      </Tooltip>
+    );
+  }
+  if (onUseAsLastFrame) {
+    actions.push(
+      <Tooltip title={t('imageCard.useAsLastFrame', 'Use as Last Frame')}>
+        <Button
+          icon={<BorderRightOutlined />}
+          onClick={() => onUseAsLastFrame({ signedUrl: image.signed_url, gcsUri: image.output_image_gcs_path || image.gcs_uri })}
           disabled={!isActionable}
         />
       </Tooltip>

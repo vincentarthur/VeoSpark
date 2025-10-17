@@ -24,6 +24,7 @@ const HomePage = ({ user }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [firstFrame, setFirstFrame] = useState(null);
+  const [lastFrame, setLastFrame] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
   const [selectedProject, setSelectedProject] = useState(null);
 
@@ -33,6 +34,12 @@ const HomePage = ({ user }) => {
 
   const handleUseAsFirstFrame = (frame) => {
     setFirstFrame(frame);
+    setActiveTab("2");
+    navigate('/');
+  };
+
+  const handleUseAsLastFrame = (frame) => {
+    setLastFrame(frame);
     setActiveTab("2");
     navigate('/');
   };
@@ -79,23 +86,24 @@ const HomePage = ({ user }) => {
             <Route path="/" element={
               <Tabs activeKey={activeTab} onChange={setActiveTab}>
                 <TabPane tab={t('nav.imageGenerator')} key="1">
-                  <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />
+                  <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />
                 </TabPane>
                 <TabPane tab={t('nav.videoGenerator')} key="2">
-                  <Dashboard initialFirstFrame={firstFrame} />
+                  <Dashboard initialFirstFrame={firstFrame} initialLastFrame={lastFrame} />
                 </TabPane>
                 <TabPane tab={t('nav.imageEnrichment')} key="4">
                   <ConversationalImageEnrichment 
                     user={user} 
                     onUseAsFirstFrame={handleUseAsFirstFrame} 
+                    onUseAsLastFrame={handleUseAsLastFrame}
                     selectedProject={selectedProject}
                     onProjectSelect={handleProjectSelect}
                   />
                 </TabPane>
               </Tabs>
             } />
-            <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
-            <Route path="/teamgallery" element={<TeamGalleryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} />} />
+            <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />} />
+            <Route path="/teamgallery" element={<TeamGalleryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />} />
             <Route path="/creative-projects" element={<CreativeProjectsPage user={user} />} />
             {user?.role === 'APP_ADMIN' && <Route path="/groups" element={<GroupsPage />} />}
             {user?.is_cost_manager && <Route path="/analytics" element={<AnalyticsPage />} />}

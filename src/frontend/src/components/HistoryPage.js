@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
@@ -20,10 +20,11 @@ const { Title } = Typography;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-const HistoryPage = ({ user, onUseAsFirstFrame }) => {
+const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const { t } = useTranslation();
-  const [history, setHistory] = useState([]);
   const [activeTab, setActiveTab] = useState("video");
+  const [history, setHistory] = useState([]);
+  const [historyCache, setHistoryCache] = useState({});
   const [hasFetched, setHasFetched] = useState(false);
   const [, setConfig] = useState({ enable_upscale: false });
   const [totalRows, setTotalRows] = useState(0);
@@ -69,7 +70,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
       is_edited: false,
       only_success: false,
     });
-    fetchHistory(true);
+    fetchHistory(true, 1, rowsPerPage, true);
   };
 
   const { 
@@ -80,7 +81,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     closeModal, 
     handleSubmit 
   } = useEditingModal(() => {
-    fetchHistory();
+    fetchHistory(false, page, rowsPerPage, true);
   });
 
 
@@ -96,6 +97,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     setLoading(true);
     setError(null);
     setHasFetched(true);
+    setHistoryCache({});
     try {
       const response = await axios.post('/api/videos/search_similarity_video', { text });
       setHistory(response.data.rows);
@@ -113,6 +115,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     setLoading(true);
     setError(null);
     setHasFetched(true);
+    setHistoryCache({});
     try {
       const response = await axios.post('/api/images/search_similarity_image', { text });
       setHistory(response.data.rows);
@@ -130,6 +133,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     setLoading(true);
     setError(null);
     setHasFetched(true);
+    setHistoryCache({});
     try {
       const response = await axios.post('/api/images/search_similarity_image_enrich', { text });
       setHistory(response.data.rows);
@@ -144,6 +148,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
   };
 
   const handleSearch = async () => {
+    setHistoryCache({});
     if (activeTab === 'video') {
       await search_similarity_video(searchText);
     } else if (activeTab === 'image') {
@@ -153,7 +158,18 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     }
   };
 
-  const fetchHistory = async (isCleared = false, newPage = 1, newRowsPerPage = 10) => {
+  const fetchHistory = useCallback(async (isCleared = false, newPage = 1, newRowsPerPage = 10, forceRefresh = false) => {
+    const cacheKey = `${activeTab}-${JSON.stringify(filters)}-${newPage}-${newRowsPerPage}`;
+    if (!forceRefresh && historyCache[cacheKey]) {
+      const data = historyCache[cacheKey];
+      setHistory(data.rows);
+      setTotalRows(data.total);
+      setPage(newPage);
+      setRowsPerPage(newRowsPerPage);
+      setHasFetched(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setHasFetched(true);
@@ -184,19 +200,21 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
           ...activeFilters,
           page: newPage,
           page_size: newRowsPerPage
-        } 
+        }
       });
-      setHistory(response.data.rows);
-      setTotalRows(response.data.total);
+      const data = response.data;
+      setHistory(data.rows);
+      setTotalRows(data.total);
       setPage(newPage);
       setRowsPerPage(newRowsPerPage);
+      setHistoryCache(prevCache => ({ ...prevCache, [cacheKey]: data }));
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch history.');
       setHistory([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, filters, historyCache, page, rowsPerPage]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -225,7 +243,6 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
     };
     fetchConfig();
     fetchModels();
-    // fetchHistory();
   }, [activeTab]);
 
   return (
@@ -238,7 +255,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
           <Button
             type="primary"
             icon={<ReloadOutlined />}
-            onClick={() => fetchHistory()}
+            onClick={() => fetchHistory(false, page, rowsPerPage, true)}
             loading={loading}
           >
             {t('history.fetchButton')}
@@ -272,7 +289,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
               </Col>
               <Col><Checkbox onChange={(e) => handleFilterChange('is_edited', e.target.checked)}>{t('history.filters.editedOnly')}</Checkbox></Col>
               <Col><Checkbox onChange={(e) => handleFilterChange('only_success', e.target.checked)}>{t('history.filters.onlySuccess')}</Checkbox></Col>
-              <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory()}>{t('history.filters.apply')}</Button></Col>
+              <Col><Button icon={<FilterOutlined />} onClick={() => fetchHistory(false, 1, rowsPerPage, true)}>{t('history.filters.apply')}</Button></Col>
               <Col><Button icon={<ClearOutlined />} onClick={clearFilters} /></Col>
             </Row>
             <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -329,6 +346,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
             clearFilters={clearFilters}
             filters={filters}
             onUseAsFirstFrame={onUseAsFirstFrame}
+            onUseAsLastFrame={onUseAsLastFrame}
             searchText={searchText}
             setSearchText={setSearchText}
             handleSearch={handleSearch}
@@ -350,6 +368,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame }) => {
             clearFilters={clearFilters}
             filters={filters}
             onUseAsFirstFrame={onUseAsFirstFrame}
+            onUseAsLastFrame={onUseAsLastFrame}
             searchText={searchText}
             setSearchText={setSearchText}
             handleSearch={handleSearch}

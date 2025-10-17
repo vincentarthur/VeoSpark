@@ -47,7 +47,7 @@ const FilmStripPlayer = ({ video, onEditClick, title }) => {
   )
 };
 
-const Dashboard = ({ initialFirstFrame }) => {
+const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -227,7 +227,11 @@ const Dashboard = ({ initialFirstFrame }) => {
       setImageGcsUri(initialFirstFrame.gcsUri);
       setImagePreview(initialFirstFrame.signedUrl);
     }
-  }, [initialFirstFrame]);
+    if (initialLastFrame) {
+      setFinalFrameGcsUri(initialLastFrame.gcsUri);
+      setFinalFramePreview(initialLastFrame.signedUrl);
+    }
+  }, [initialFirstFrame, initialLastFrame]);
 
   useEffect(() => {
     const fetchModels = async () => {
