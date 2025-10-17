@@ -213,6 +213,14 @@ const Dashboard = ({ initialFirstFrame }) => {
   const isVeo2Model = model.startsWith('veo-2.0');
   const isVeo31Model = model.startsWith('veo-3.1');
   const showFirstLastFrameUpload = isVeo2Model || isVeo31Model;
+  const selectedModelName = models.find(m => m.id === model)?.name;
+  const showReferenceImageOption = selectedModelName === 'Veo 3.1 Preview';
+
+  useEffect(() => {
+    if (!showReferenceImageOption && v31GenerationMode === 'referenceImage') {
+      setV31GenerationMode('frameControl');
+    }
+  }, [model, models, v31GenerationMode]);
 
   useEffect(() => {
     if (initialFirstFrame) {
@@ -384,25 +392,45 @@ const Dashboard = ({ initialFirstFrame }) => {
               </Select>
             </Form.Item>
 
-            {isVeo31Model && (
-              <Form.Item label="Control Mode">
-                <Radio.Group value={v31GenerationMode} onChange={(e) => setV31GenerationMode(e.target.value)}>
-                  <Radio.Button value="frameControl">First/Last Frame</Radio.Button>
-                  <Radio.Button value="referenceImage">Reference Image</Radio.Button>
-                </Radio.Group>
-              </Form.Item>
-            )}
+            {(() => {
+              const handleControlModeChange = (e) => {
+                const newMode = e.target.value;
+                if (newMode === 'generate') {
+                  setGenerationMode('generate');
+                  if (isVeo31Model) setV31GenerationMode('frameControl');
+                } else if (newMode === 'extend') {
+                  setGenerationMode('extend');
+                  if (isVeo31Model) setV31GenerationMode('frameControl');
+                } else if (newMode === 'referenceImage') {
+                  setV31GenerationMode('referenceImage');
+                  setGenerationMode('generate'); // Keep it clean
+                }
+              };
 
-            {showFirstLastFrameUpload && (!isVeo31Model || v31GenerationMode === 'frameControl') && (
-              <Form.Item>
-                <Radio.Group value={generationMode} onChange={(e) => setGenerationMode(e.target.value)}>
-                  <Radio.Button value="generate">{t('dashboard.generateWithImage')}</Radio.Button>
-                  <Radio.Button value="extend">{t('dashboard.extendVideo')}</Radio.Button>
-                </Radio.Group>
-              </Form.Item>
-            )}
+              let currentControlMode;
+              if (isVeo31Model && v31GenerationMode === 'referenceImage') {
+                currentControlMode = 'referenceImage';
+              } else {
+                currentControlMode = generationMode;
+              }
 
-            {isVeo31Model && v31GenerationMode === 'referenceImage' && (
+              const showControlModes = showFirstLastFrameUpload;
+
+              if (showControlModes) {
+                return (
+                  <Form.Item label="Control Mode">
+                    <Radio.Group value={currentControlMode} onChange={handleControlModeChange}>
+                      <Radio.Button value="generate">{t('dashboard.generateWithImage')}</Radio.Button>
+                      <Radio.Button value="extend">{t('dashboard.extendVideo')}</Radio.Button>
+                      {isVeo31Model && showReferenceImageOption && <Radio.Button value="referenceImage">Reference Image</Radio.Button>}
+                    </Radio.Group>
+                  </Form.Item>
+                );
+              }
+              return null;
+            })()}
+
+            {isVeo31Model && showReferenceImageOption && v31GenerationMode === 'referenceImage' && (
               <Card size="small" title="Reference Images (Up to 3)">
                 <Upload.Dragger
                   customRequest={({ file, onSuccess }) => { onSuccess('ok') }}
