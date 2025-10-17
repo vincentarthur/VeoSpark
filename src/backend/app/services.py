@@ -28,27 +28,28 @@ from google.api_core import exceptions as google_api_exceptions
 logger = logging.getLogger(__name__)
 
 generate_content_config = types.GenerateContentConfig(
-    temperature = 0,
-    top_p = 1,
-    seed = 0,
-    max_output_tokens = 65535,
-    safety_settings = [types.SafetySetting(
-      category="HARM_CATEGORY_HATE_SPEECH",
-      threshold="OFF"
-    ),types.SafetySetting(
-      category="HARM_CATEGORY_DANGEROUS_CONTENT",
-      threshold="OFF"
-    ),types.SafetySetting(
-      category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-      threshold="OFF"
-    ),types.SafetySetting(
-      category="HARM_CATEGORY_HARASSMENT",
-      threshold="OFF"
+    temperature=0,
+    top_p=1,
+    seed=0,
+    max_output_tokens=65535,
+    safety_settings=[types.SafetySetting(
+        category="HARM_CATEGORY_HATE_SPEECH",
+        threshold="OFF"
+    ), types.SafetySetting(
+        category="HARM_CATEGORY_DANGEROUS_CONTENT",
+        threshold="OFF"
+    ), types.SafetySetting(
+        category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        threshold="OFF"
+    ), types.SafetySetting(
+        category="HARM_CATEGORY_HARASSMENT",
+        threshold="OFF"
     )],
     thinking_config=types.ThinkingConfig(
-      thinking_budget=0,
+        thinking_budget=0,
     ),
-  )
+)
+
 
 def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], user_info: Dict[str, Any]):
     """
@@ -89,6 +90,7 @@ def add_asset_to_creative_project(project_id: str, asset_data: Dict[str, Any], u
     except Exception as e:
         logger.error(f"Failed to add asset to creative project '{project_id}'. Error: {e}", exc_info=True)
 
+
 def log_generation_to_bq(asset_type: str, **kwargs):
     if not settings.ENABLE_BIGQUERY_LOGGING:
         return
@@ -103,9 +105,9 @@ def log_generation_to_bq(asset_type: str, **kwargs):
     else:
         logger.error(f"Unknown BigQuery table type: {asset_type}")
         return
-    
+
     table_id = f"{settings.PROJECT_ID}.{settings.ANALYSIS_DATASET}.{table_name}"
-    
+
     serialized_kwargs = {}
     for k, v in kwargs.items():
         if v is None:
@@ -114,10 +116,11 @@ def log_generation_to_bq(asset_type: str, **kwargs):
             serialized_kwargs[k] = v.isoformat()
         else:
             serialized_kwargs[k] = v
-    
+
     errors = bq_client.insert_rows_json(table_id, [serialized_kwargs])
     if errors:
         logging.error(f"Encountered errors while inserting rows: {errors}")
+
 
 class VeoApiClient:
     def __init__(self, project_id: str, location: str, default_bucket_name: str):
@@ -135,7 +138,8 @@ class VeoApiClient:
             self.storage_client.get_bucket(self.default_bucket_name)
 
             self.genai_client = genai.Client(vertexai=True, project=self.project_id, location=self.location)
-            self.embedding_client = genai.Client(vertexai=True, project=self.project_id, location=settings.LOCATION_MULTIMODAL_EMBEDDING_MODEL)
+            self.embedding_client = genai.Client(vertexai=True, project=self.project_id,
+                                                 location=settings.LOCATION_MULTIMODAL_EMBEDDING_MODEL)
             self.logger.info("VeoApiClient initialized successfully.")
         except Exception as e:
             self.logger.critical(f"Failed to initialize VeoApiClient. Error: {e}", exc_info=True)
@@ -158,6 +162,7 @@ class VeoApiClient:
         except Exception as e:
             self.logger.error(f"Failed to generate signed URL for {gcs_uri}: {e}", exc_info=True)
             return ""
+
 
 class GenerationService:
     def __init__(self, genai_client, imagen_client, storage_client):
@@ -283,7 +288,7 @@ class GenerationService:
         video_data = result.get("videos", [])
         op_duration = result.get("duration", 0)
         revised_prompt = result.get("revisedPrompt")
-        
+
         completion_time = datetime.now(timezone.utc)
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
 
@@ -296,7 +301,7 @@ class GenerationService:
             price_key = 'video_with_audio' if with_audio else 'video_without_audio'
             price_per_second = price_info.get(price_key, 0)
             cost = price_per_second * video_duration
-        
+
         for video in video_data:
             path = video['gcs_uri']
 
@@ -322,6 +327,7 @@ class GenerationService:
                 resolution=body.get('resolution'),
                 first_frame_gcs_uri=body.get('image_gcs_uri'),
                 last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
+                reference_image_gcs_uris=json.dumps(body.get('reference_image_gcs_uris')) if body.get('reference_image_gcs_uris') else None,
                 output_video_gcs_paths=json.dumps([path]),
                 creative_project_id=body.get('creative_project_id'),
                 cost=cost,
@@ -357,14 +363,14 @@ class GenerationService:
 
         image_data = result.get("images", [])
         op_duration = result.get("duration", 0)
-        
+
         completion_time = datetime.now(timezone.utc)
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
 
         model_id = body.get('model')
         price_info = get_price_for_model(model_id, trigger_time, 'image')
         cost_per_image = price_info.get('per_image', 0) if price_info else 0
-        
+
         for img in image_data:
             path = img['gcs_uri']
 
@@ -425,7 +431,7 @@ class GenerationService:
         aspect_ratio = result.get("aspect_ratio")
         input_token = result.get("input_token", 0)
         output_token = result.get("output_token", 0)
-        
+
         completion_time = datetime.now(timezone.utc)
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
 
@@ -495,7 +501,7 @@ class GenerationService:
         prompt = kwargs.get('prompt') or body.get('prompt')
         trigger_time = kwargs.get('trigger_time')
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
-        
+
         if asset_type == "imgen":
             log_generation_to_bq(
                 asset_type='imgen',
@@ -528,6 +534,8 @@ class GenerationService:
                 resolution=body.get('resolution'),
                 first_frame_gcs_uri=body.get('image_gcs_uri'),
                 last_frame_gcs_uri=body.get('final_frame_gcs_uri'),
+                reference_image_gcs_uris=json.dumps(body.get('reference_image_gcs_uris')) if body.get(
+                    'reference_image_gcs_uris') else None,
                 output_video_gcs_paths=json.dumps([]),
                 creative_project_id=body.get('creative_project_id')
             )
@@ -599,13 +607,14 @@ class GenerationService:
         sample_count = int(body.get('sampleCount', 1))
         image_gcs_uri = body.get('image_gcs_uri')
         final_frame_gcs_uri = body.get('final_frame_gcs_uri')
+        reference_image_gcs_uris = body.get('reference_image_gcs_uris')
 
         user_folder = "anonymous"
         if user_info and 'email' in user_info:
             user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_info['email']).lower()
 
         output_gcs_prefix = f"gs://{settings.VIDEO_BUCKET_NAME}/veo_outputs/{user_folder}/{uuid.uuid4().hex}"
-        
+
         sdk_call_kwargs = {}
 
         config = types.GenerateVideosConfig(
@@ -614,10 +623,10 @@ class GenerationService:
             duration_seconds=duration_seconds,
             number_of_videos=sample_count,
         )
-        
+
         if image_gcs_uri:
             sdk_call_kwargs['image'] = types.Image(gcs_uri=image_gcs_uri, mime_type="image/jpeg")
-        
+
         if final_frame_gcs_uri:
             config.last_frame = types.Image(gcs_uri=final_frame_gcs_uri, mime_type="image/jpeg")
 
@@ -628,15 +637,31 @@ class GenerationService:
             config.generate_audio = body['generateAudio']
         if body.get('resolution') is not None:
             config.resolution = body['resolution']
-        
+
         is_veo2_model = model_id.startswith('veo-2.')
         is_veo31_model = model_id.startswith('veo-3.1')
 
         if (is_veo2_model or is_veo31_model) and body.get('generationMode') == 'extend':
             sdk_call_kwargs['video'] = types.Video(uri=image_gcs_uri)
             sdk_call_kwargs.pop('image', None)
-            config.duration_seconds = body['extend_duration']
+            # config.duration_seconds = body['extend_duration']
         
+        if reference_image_gcs_uris:
+            # Can only accept PRETTY CLEAN GenerateVideosConfig
+            print(f"reference_image_gcs_uris:{reference_image_gcs_uris}")
+            # R2V - Reference to Video
+            config = types.GenerateVideosConfig(
+                output_gcs_uri=output_gcs_prefix,
+                number_of_videos=sample_count,
+                reference_images=[
+                    types.VideoGenerationReferenceImage(
+                        image=types.Image(gcs_uri=uri, mime_type="image/jpeg"),
+                        reference_type=types.VideoGenerationReferenceType.ASSET
+                    )
+                    for uri in reference_image_gcs_uris
+                ]
+            )
+
         operation = self.genai_client.models.generate_videos(
             model=model_id,
             prompt=prompt,
@@ -678,7 +703,7 @@ class GenerationService:
 
         result = operation.result
         revised_prompt = result.revised_prompt if hasattr(result, 'revised_prompt') else None
-        
+
         generated_videos = result.generated_videos
         rai_reasons = None
         if not generated_videos:
@@ -690,9 +715,9 @@ class GenerationService:
                         rai_reasons.extend(parsed)
                     else:
                         rai_reasons.append({"code": "Unknown", "description": r})
-        
+
         gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri]
-        
+
         credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
         credentials.refresh(GoogleAuthRequest())
         video_data = []
@@ -715,7 +740,8 @@ class GenerationService:
             "duration": time.time() - start_time,
             "revisedPrompt": revised_prompt,
             "rai_reasons": rai_reasons,
-            "creative_project_id": kwargs.get('body').get('creative_project_id')
+            "creative_project_id": kwargs.get('body').get('creative_project_id'),
+            "reference_image_gcs_uris": reference_image_gcs_uris
         }
 
     def generate_image(
@@ -777,14 +803,14 @@ class GenerationService:
 
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
                 generated_image.image._pil_image.save(temp_file.name)
-                
+
                 user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
                 blob_name = f"image_outputs/{user_folder}/{uuid.uuid4().hex}.png"
-                
+
                 bucket = self.storage_client.bucket(settings.VIDEO_BUCKET_NAME)
                 blob = bucket.blob(blob_name)
                 blob.upload_from_filename(temp_file.name)
-                
+
                 gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
         credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
@@ -802,7 +828,7 @@ class GenerationService:
                 access_token=credentials.token,
             )
             image_data.append({"gcs_uri": uri, "signed_url": signed_url})
-        
+
         return {
             "message": "Image generation successful.",
             "images": image_data,
@@ -828,7 +854,7 @@ class GenerationService:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
         gcs_uris = []
         bucket = self.storage_client.bucket(settings.VIDEO_BUCKET_NAME)
-        
+
         if previous_image_gcs_paths:
             gcs_uris.extend(previous_image_gcs_paths)
         elif files:
@@ -842,7 +868,9 @@ class GenerationService:
         else:
             raise ValueError("Either file data or previous_image_gcs_paths must be provided.")
 
-        image_parts = [types.Part.from_uri(file_uri=uri, mime_type='image/png' if uri.endswith('.png') else 'image/jpeg') for uri in gcs_uris]
+        image_parts = [
+            types.Part.from_uri(file_uri=uri, mime_type='image/png' if uri.endswith('.png') else 'image/jpeg') for uri
+            in gcs_uris]
 
         start_time = time.time()
 
@@ -899,7 +927,7 @@ class GenerationService:
                     blob.upload_from_filename(temp_file.name)
                     gcs_path = f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}"
                     gcs_paths.append(gcs_path)
-                    
+
                     credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
                     credentials.refresh(GoogleAuthRequest())
                     signed_url = blob.generate_signed_url(
@@ -910,7 +938,7 @@ class GenerationService:
                         access_token=credentials.token,
                     )
                     image_data.append({"gcs_uri": gcs_path, "signed_url": signed_url, "resolution": resolution})
-            
+
         return {
             "message": "Image enrichment successful.",
             "images": image_data,
@@ -924,6 +952,7 @@ class GenerationService:
             "input_token": input_token,
             "output_token": output_token
         }
+
 
 def get_generation_service() -> GenerationService:
     return GenerationService(get_genai_client(), get_imagen_client(), get_storage_client())

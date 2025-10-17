@@ -4,11 +4,10 @@ import {
   Row, Col, Button, Input, Typography, Slider, Radio, Checkbox,
   Card, Spin, Alert, Select, Upload, Tooltip, Form, Table
 } from 'antd';
-import { ScissorOutlined, AudioOutlined, UploadOutlined, CloseOutlined } from '@ant-design/icons';
+import { ScissorOutlined, AudioOutlined, UploadOutlined, CloseOutlined, InboxOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useEditingModal } from '../hooks/useEditingModal';
 import EditingModal from './EditingModal';
-import CameraMovements from './CameraMovements';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -63,6 +62,14 @@ const Dashboard = ({ initialFirstFrame }) => {
   const [generateAudio, setGenerateAudio] = useState(true);
   const [enhancePrompt, setEnhancePrompt] = useState(true);
   const [sampleCount, setSampleCount] = useState(1);
+
+  // State for V3.1 reference images
+  const [referenceImageGcsUris, setReferenceImageGcsUris] = useState([]);
+  const [referenceImagePreviews, setReferenceImagePreviews] = useState([]);
+  const [referenceImageUploading, setReferenceImageUploading] = useState(false);
+  const [referenceImageUploadError, setReferenceImageUploadError] = useState(null);
+  const [v31GenerationMode, setV31GenerationMode] = useState('frameControl'); // 'referenceImage' or 'frameControl'
+
 
   // State for image-to-video
   const [imageGcsUri, setImageGcsUri] = useState(null);
@@ -136,6 +143,33 @@ const Dashboard = ({ initialFirstFrame }) => {
     }
   };
 
+  const handleReferenceImageUpload = async (file) => {
+    if (referenceImageGcsUris.length >= 3) {
+      setReferenceImageUploadError('You can upload at most 3 images.');
+      return;
+    }
+    setReferenceImageUploading(true);
+    setReferenceImageUploadError(null);
+
+    const newPreview = URL.createObjectURL(file);
+    setReferenceImagePreviews(prev => [...prev, newPreview]);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post('/api/images/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setReferenceImageGcsUris(prev => [...prev, response.data.gcs_uri]);
+    } catch (err) {
+      setReferenceImageUploadError(err.response?.data?.detail || 'Upload failed.');
+      setReferenceImagePreviews(prev => prev.filter(p => p !== newPreview)); // Remove preview on error
+    } finally {
+      setReferenceImageUploading(false);
+    }
+  };
+
   const handleFinalFrameUpload = async (file) => {
     setFinalFrameUploading(true);
     setFinalFrameUploadError(null);
@@ -169,10 +203,16 @@ const Dashboard = ({ initialFirstFrame }) => {
     setFinalFrameUploadError(null);
   };
 
+  const clearReferenceImage = (index) => {
+    setReferenceImageGcsUris(prev => prev.filter((_, i) => i !== index));
+    setReferenceImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   const isV3Model = model.startsWith('veo-3.');
   const isV2GenerateModel = model === 'veo-2.0-generate-001';
   const isVeo2Model = model.startsWith('veo-2.0');
-  const showFirstLastFrameUpload = isVeo2Model || model.startsWith('veo-3.1');
+  const isVeo31Model = model.startsWith('veo-3.1');
+  const showFirstLastFrameUpload = isVeo2Model || isVeo31Model;
 
   useEffect(() => {
     if (initialFirstFrame) {
@@ -280,12 +320,22 @@ const Dashboard = ({ initialFirstFrame }) => {
     setRaiReasons([]);
 
     try {
-      const isExtending = (isVeo2Model || model.startsWith('veo-3.1')) && generationMode === 'extend';
-      const response = await axios.post('/api/videos/generate', {
+      const isExtending = (isVeo2Model || isVeo31Model) && generationMode === 'extend';
+      
+      let payload = {
         ...values,
         image_gcs_uri: isExtending ? selectedVideo : imageGcsUri,
         final_frame_gcs_uri: finalFrameGcsUri,
-      });
+        reference_image_gcs_uris: null,
+      };
+
+      if (isVeo31Model && v31GenerationMode === 'referenceImage') {
+        payload.reference_image_gcs_uris = referenceImageGcsUris;
+        payload.image_gcs_uri = null;
+        payload.final_frame_gcs_uri = null;
+      }
+
+      const response = await axios.post('/api/videos/generate', payload);
 
       if (response.data.task_id) {
         setPollingTaskId(response.data.task_id);
@@ -315,7 +365,7 @@ const Dashboard = ({ initialFirstFrame }) => {
             enhancePrompt: enhancePrompt,
             resolution: resolution,
             extend_duration: extendDuration,
-          }} action="#/">
+          }}>
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={setModel}>
                 {models.map((m) => (
@@ -334,7 +384,16 @@ const Dashboard = ({ initialFirstFrame }) => {
               </Select>
             </Form.Item>
 
-            {showFirstLastFrameUpload && (
+            {isVeo31Model && (
+              <Form.Item label="Control Mode">
+                <Radio.Group value={v31GenerationMode} onChange={(e) => setV31GenerationMode(e.target.value)}>
+                  <Radio.Button value="frameControl">First/Last Frame</Radio.Button>
+                  <Radio.Button value="referenceImage">Reference Image</Radio.Button>
+                </Radio.Group>
+              </Form.Item>
+            )}
+
+            {showFirstLastFrameUpload && (!isVeo31Model || v31GenerationMode === 'frameControl') && (
               <Form.Item>
                 <Radio.Group value={generationMode} onChange={(e) => setGenerationMode(e.target.value)}>
                   <Radio.Button value="generate">{t('dashboard.generateWithImage')}</Radio.Button>
@@ -343,10 +402,88 @@ const Dashboard = ({ initialFirstFrame }) => {
               </Form.Item>
             )}
 
-            {(!showFirstLastFrameUpload || generationMode === 'generate') && (
-              <>
-                <Form.Item label={showFirstLastFrameUpload ? t('dashboard.uploadFirstFrame') : t('dashboard.uploadImage')}>
+            {isVeo31Model && v31GenerationMode === 'referenceImage' && (
+              <Card size="small" title="Reference Images (Up to 3)">
+                <Upload.Dragger
+                  customRequest={({ file, onSuccess }) => { onSuccess('ok') }}
+                  beforeUpload={handleReferenceImageUpload}
+                  showUploadList={false}
+                  accept="image/*"
+                  multiple
+                  disabled={referenceImageGcsUris.length >= 3}
+                  height={100}
+                >
+                  <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                  <p className="ant-upload-text" style={{ fontSize: '12px' }}>Click or drag file(s)</p>
+                </Upload.Dragger>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+                  {referenceImagePreviews.map((preview, index) => (
+                    <div key={index} style={{ position: 'relative', textAlign: 'center' }}>
+                      <img src={preview} alt={`Preview ${index}`} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <Button icon={<CloseOutlined />} onClick={() => clearReferenceImage(index)} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
+                    </div>
+                  ))}
+                </div>
+                {referenceImageUploadError && <Alert message={referenceImageUploadError} type="error" showIcon style={{ marginTop: 8 }} />}
+              </Card>
+            )}
+
+            {((!showFirstLastFrameUpload || generationMode === 'generate') && (!isVeo31Model || v31GenerationMode === 'frameControl')) && (
+              showFirstLastFrameUpload ? (
+                <Card size="small" title="Frame Control">
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item label={<span style={{ fontSize: '12px' }}>{t('dashboard.uploadFirstFrame')}</span>}>
+                        {imagePreview ? (
+                          <div style={{ position: 'relative', textAlign: 'center' }}>
+                            <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
+                            <Button icon={<CloseOutlined />} onClick={clearImage} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
+                          </div>
+                        ) : (
+                          <Upload.Dragger
+                            customRequest={({ file, onSuccess }) => { onSuccess('ok') }}
+                            beforeUpload={handleImageUpload}
+                            showUploadList={false}
+                            accept="image/*"
+                            loading={uploading}
+                            height={100}
+                          >
+                            <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                            <p className="ant-upload-text" style={{ fontSize: '12px' }}>Click or drag file</p>
+                          </Upload.Dragger>
+                        )}
+                        {uploadError && <Alert message={uploadError} type="error" showIcon style={{ marginTop: 8 }} />}
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label={<span style={{ fontSize: '12px' }}>{t('dashboard.uploadLastFrame')}</span>}>
+                        {finalFramePreview ? (
+                          <div style={{ position: 'relative', textAlign: 'center' }}>
+                            <img src={finalFramePreview} alt="Final Frame Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
+                            <Button icon={<CloseOutlined />} onClick={clearFinalFrame} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
+                          </div>
+                        ) : (
+                          <Upload.Dragger
+                            customRequest={({ file, onSuccess }) => { onSuccess('ok') }}
+                            beforeUpload={handleFinalFrameUpload}
+                            showUploadList={false}
+                            accept="image/*"
+                            loading={finalFrameUploading}
+                            height={100}
+                          >
+                            <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                            <p className="ant-upload-text" style={{ fontSize: '12px' }}>Click or drag file</p>
+                          </Upload.Dragger>
+                        )}
+                        {finalFrameUploadError && <Alert message={finalFrameUploadError} type="error" showIcon style={{ marginTop: 8 }} />}
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Card>
+              ) : (
+                <Form.Item label={t('dashboard.uploadImage')}>
                   <Upload
+                    customRequest={({ file, onSuccess }) => { onSuccess('ok') }}
                     beforeUpload={handleImageUpload}
                     showUploadList={false}
                     accept="image/*"
@@ -364,29 +501,7 @@ const Dashboard = ({ initialFirstFrame }) => {
                   </Upload>
                   {uploadError && <Alert message={uploadError} type="error" showIcon />}
                 </Form.Item>
-
-                {showFirstLastFrameUpload && (
-                  <Form.Item label={t('dashboard.uploadLastFrame')}>
-                    <Upload
-                      beforeUpload={handleFinalFrameUpload}
-                      showUploadList={false}
-                      accept="image/*"
-                    >
-                      {finalFramePreview ? (
-                        <div style={{ position: 'relative' }}>
-                          <img src={finalFramePreview} alt="Final Frame Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} />
-                          <Button icon={<CloseOutlined />} onClick={clearFinalFrame} size="small" style={{ position: 'absolute', top: 0, right: 0 }} />
-                        </div>
-                      ) : (
-                        <Button icon={<UploadOutlined />} loading={finalFrameUploading}>
-                          {t('dashboard.uploadLastFrame')}
-                        </Button>
-                      )}
-                    </Upload>
-                    {finalFrameUploadError && <Alert message={finalFrameUploadError} type="error" showIcon />}
-                  </Form.Item>
-                )}
-              </>
+              )
             )}
 
             {showFirstLastFrameUpload && generationMode === 'extend' && (
@@ -427,9 +542,9 @@ const Dashboard = ({ initialFirstFrame }) => {
             <Form.Item name="sampleCount" label={t('dashboard.videoCountLabel')}>
               <Slider
                 min={1}
-                max={2}
+                max={4}
                 step={1}
-                marks={{ 1: '1', 2: '2' }}
+                marks={{ 1: '1', 2: '2', 3: '3', 4: '4' }}
                 disabled={showFirstLastFrameUpload && generationMode === 'extend'}
               />
             </Form.Item>

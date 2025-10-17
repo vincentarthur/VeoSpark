@@ -9,6 +9,7 @@ class VideoGenerationRequest(BaseModel):
     sampleCount: Optional[int] = 1
     image_gcs_uri: Optional[str] = None
     final_frame_gcs_uri: Optional[str] = None
+    reference_image_gcs_uris: Optional[List[str]] = None
     generateAudio: Optional[bool] = False
     enhancePrompt: Optional[bool] = True
     extend_duration: Optional[int] = None
