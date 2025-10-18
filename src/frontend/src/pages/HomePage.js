@@ -5,9 +5,10 @@ import { Layout, Menu, Tabs, Typography } from 'antd';
 import Header from '../components/Header';
 import NotificationBanner from '../components/NotificationBanner';
 import Dashboard from '../components/Dashboard';
-import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import ImageGenerator from '../components/ImageGenerator';
 import ConversationalImageEnrichment from '../components/ConversationalImageEnrichment';
+import VideoExtensionModal from '../components/VideoExtensionModal';
+import VideoExtensionPanel from '../components/VideoExtensionPanel';
 import HistoryPage from '../components/HistoryPage';
 import AnalyticsPage from '../components/AnalyticsPage';
 import ConfigurationsPage from '../components/ConfigurationsPage';
@@ -88,9 +89,6 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.imageGenerator')} key="1">
                   <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />
                 </TabPane>
-                <TabPane tab={t('nav.videoGenerator')} key="2">
-                  <Dashboard initialFirstFrame={firstFrame} initialLastFrame={lastFrame} />
-                </TabPane>
                 <TabPane tab={t('nav.imageEnrichment')} key="4">
                   <ConversationalImageEnrichment 
                     user={user} 
@@ -99,6 +97,15 @@ const HomePage = ({ user }) => {
                     selectedProject={selectedProject}
                     onProjectSelect={handleProjectSelect}
                   />
+                </TabPane>
+                <TabPane tab={t('nav.videoGenerator')} key="2">
+                  <Dashboard initialFirstFrame={firstFrame} initialLastFrame={lastFrame} />
+                </TabPane>
+                <TabPane tab="Video Extension (Modal)" key="5">
+                  <VideoExtensionModal />
+                </TabPane>
+                <TabPane tab="Video Extension (Panel)" key="6">
+                  <VideoExtensionPanel />
                 </TabPane>
               </Tabs>
             } />

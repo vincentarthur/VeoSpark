@@ -6,6 +6,8 @@
   },
   "nav": {
     "videoGenerator": "Video Generator",
+    "videoExtensionModal": "Video Extension (Modal)",
+    "videoExtensionPanel": "Video Extension (Panel)",
     "imageGenerator": "Image Generator",
     "promptFromImages": "Prompt from Images",
     "imageEnrichment": "Image Enrichment",
@@ -51,7 +53,8 @@
     "generateWithImage": "Generate with Image",
     "extendVideo": "Extend Video",
     "extendVideoTitle": "Extend Video",
-    "selectVideoLabel": "Select a video to extend",
+    "selectVideoLabel": "Selected Video",
+    "selectVideoToExtend": "Select a video to extend",
     "extendDurationLabel": "Extend Duration",
     "gcsPrefixLabel": "GCS Prefix",
     "loadingVideos": "Loading Videos...",
@@ -65,6 +68,7 @@
   "history": {
     "title": "My Generation History",
     "fetchButton": "Fetch History",
+    "fetchAllVideos": "Fetch All Videos",
     "fetching": "Fetching...",
     "noHistory": "You haven't generated any videos yet.",
     "noResults": "No records found matching your filters.",
@@ -94,7 +98,8 @@
       "videoHistory": "Video History",
       "imageHistory": "Image History",
       "imageEnrichmentHistory": "Image Enrichment History",
-      "upscaleJobs": "Upscale Jobs"
+      "upscaleJobs": "Upscale Jobs",
+      "allVideos": "All Videos"
     },
     "filters": {
       "startDate": "Start Date",
@@ -115,6 +120,7 @@
     "search": {
       "placeholder": "Search by text",
       "button": "Search",
+      "video": "Search Video",
       "similarityPlaceholder": "Description for searching similarity results"
     }
   },
@@ -211,7 +217,8 @@
     "close": "Close",
     "actions": "Actions",
     "confirm": "Confirm",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "change": "Change"
   },
   "analytics": {
     "title": "Model Cost Analytics",

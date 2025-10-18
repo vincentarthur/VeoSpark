@@ -26,7 +26,6 @@ const CreativeProjectsPage = ({ user }) => {
   const [error, setError] = useState(null);
   const [newProjectName, setNewProjectName] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [, setIsConfigModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [activeKeys, setActiveKeys] = useState([]);
 

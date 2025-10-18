@@ -54,19 +54,19 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   const [models, setModels] = useState([]);
   const [model, setModel] = useState('');
   const [projects, setProjects] = useState([]);
-  const [prompt, setPrompt] = useState('A dramatic timelapse of a storm cloud over a desert');
+  const [prompt] = useState('A dramatic timelapse of a storm cloud over a desert');
   const [generationMode, setGenerationMode] = useState('generate'); // 'generate' or 'extend'
-  const [duration, setDuration] = useState(8);
-  const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [resolution, setResolution] = useState('1080p');
-  const [generateAudio, setGenerateAudio] = useState(true);
+  const [duration] = useState(8);
+  const [aspectRatio] = useState('16:9');
+  const [resolution] = useState('1080p');
+  const [generateAudio] = useState(true);
   const [enhancePrompt, setEnhancePrompt] = useState(true);
-  const [sampleCount, setSampleCount] = useState(1);
+  const [sampleCount] = useState(1);
 
   // State for V3.1 reference images
   const [referenceImageGcsUris, setReferenceImageGcsUris] = useState([]);
   const [referenceImagePreviews, setReferenceImagePreviews] = useState([]);
-  const [referenceImageUploading, setReferenceImageUploading] = useState(false);
+  const [, setReferenceImageUploading] = useState(false);
   const [referenceImageUploadError, setReferenceImageUploadError] = useState(null);
   const [v31GenerationMode, setV31GenerationMode] = useState('frameControl'); // 'referenceImage' or 'frameControl'
 
@@ -83,13 +83,6 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   const [finalFrameUploading, setFinalFrameUploading] = useState(false);
   const [finalFrameUploadError, setFinalFrameUploadError] = useState(null);
 
-  // State for video extension
-  const [userVideos, setUserVideos] = useState([]);
-  const [selectedVideo, setSelectedVideo] = useState('');
-  const [extendDuration, setExtendDuration] = useState(5);
-  const [gcsFetchError, setGcsFetchError] = useState(null);
-  const [gcsPrefix, setGcsPrefix] = useState('');
-  const [isFetchingGcs, setIsFetchingGcs] = useState(false);
 
 
   const [loading, setLoading] = useState(false);
@@ -116,11 +109,6 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
     );
   });
 
-  const handleMovementClick = (promptText) => {
-    const currentPrompt = form.getFieldValue('prompt') || '';
-    const newPrompt = `${currentPrompt} ${promptText}`;
-    form.setFieldsValue({ prompt: newPrompt });
-  };
 
   const handleImageUpload = async (file) => {
     setUploading(true);
@@ -220,7 +208,7 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
     if (!showReferenceImageOption && v31GenerationMode === 'referenceImage') {
       setV31GenerationMode('frameControl');
     }
-  }, [model, models, v31GenerationMode]);
+  }, [model, models, v31GenerationMode, showReferenceImageOption]);
 
   useEffect(() => {
     if (initialFirstFrame) {
@@ -262,23 +250,7 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
     if (isV3Model) {
       setEnhancePrompt(true);
     }
-    if (isV2GenerateModel && generationMode === 'extend') {
-      const fetchUserVideos = async () => {
-        setIsFetchingGcs(true);
-        try {
-          setGcsFetchError(null);
-          const response = await axios.get('/api/gcs/videos', { params: { prefix: gcsPrefix } });
-          setUserVideos(response.data.videos || []);
-          setGcsPrefix(response.data.prefix);
-        } catch (err) {
-          setGcsFetchError(err.response?.data?.detail || 'Failed to fetch user videos.');
-        } finally {
-          setIsFetchingGcs(false);
-        }
-      };
-      fetchUserVideos();
-    }
-  }, [model, isV3Model, isV2GenerateModel, generationMode, aspectRatio, gcsPrefix]);
+  }, [model, isV3Model, isV2GenerateModel, generationMode, aspectRatio]);
 
   useEffect(() => {
     if (!pollingTaskId) return;
@@ -332,11 +304,9 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
     setRaiReasons([]);
 
     try {
-      const isExtending = (isVeo2Model || isVeo31Model) && generationMode === 'extend';
-      
       let payload = {
         ...values,
-        image_gcs_uri: isExtending ? selectedVideo : imageGcsUri,
+        image_gcs_uri: imageGcsUri,
         final_frame_gcs_uri: finalFrameGcsUri,
         reference_image_gcs_uris: null,
       };
@@ -376,7 +346,6 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
             generateAudio: generateAudio,
             enhancePrompt: enhancePrompt,
             resolution: resolution,
-            extend_duration: extendDuration,
           }}>
             <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
               <Select onChange={setModel}>
@@ -425,7 +394,6 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
                   <Form.Item label="Control Mode">
                     <Radio.Group value={currentControlMode} onChange={handleControlModeChange}>
                       <Radio.Button value="generate">{t('dashboard.generateWithImage')}</Radio.Button>
-                      <Radio.Button value="extend">{t('dashboard.extendVideo')}</Radio.Button>
                       {isVeo31Model && showReferenceImageOption && <Radio.Button value="referenceImage">Reference Image</Radio.Button>}
                     </Radio.Group>
                   </Form.Item>
@@ -536,30 +504,6 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
               )
             )}
 
-            {showFirstLastFrameUpload && generationMode === 'extend' && (
-              <Card title={t('dashboard.extendVideoTitle')} size="small">
-                <Form.Item label={t('dashboard.selectVideoLabel')}>
-                  <Select
-                    value={selectedVideo}
-                    onChange={setSelectedVideo}
-                    loading={isFetchingGcs}
-                  >
-                    {userVideos.map((video) => (
-                      <Option key={video.gcs_uri} value={video.gcs_uri}>{video.name}</Option>
-                    ))}
-                  </Select>
-                  {gcsFetchError && <Alert message={gcsFetchError} type="error" showIcon />}
-                </Form.Item>
-                <Form.Item name="extend_duration" label={t('dashboard.extendDurationLabel')}>
-                  <Slider
-                    min={5}
-                    max={8}
-                    step={1}
-                    marks={{ 5: '5s', 8: '8s' }}
-                  />
-                </Form.Item>
-              </Card>
-            )}
 
             <Form.Item name="duration" label={t('dashboard.durationLabel')}>
               <Slider
@@ -567,7 +511,7 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
                 max={8}
                 step={2}
                 marks={{ 4: '4s', 6: '6s', 8: '8s' }}
-                disabled={(showFirstLastFrameUpload && generationMode === 'extend') || (isVeo31Model && v31GenerationMode === 'referenceImage')}
+                disabled={(isVeo31Model && v31GenerationMode === 'referenceImage')}
               />
             </Form.Item>
 
@@ -653,12 +597,6 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
               type="success"
               showIcon
               style={{ width: '100%' }}
-            />
-          )}
-          {showFirstLastFrameUpload && generationMode === 'extend' && selectedVideo && (
-            <FilmStripPlayer
-              title="EXTENDED VIDEO"
-              video={userVideos.find(v => v.gcs_uri === selectedVideo)}
             />
           )}
           {generatedVideos.map((video, index) => (

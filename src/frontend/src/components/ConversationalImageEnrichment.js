@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select, Tooltip, Card
+  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select, Card
 } from 'antd';
 import { PlusOutlined, SendOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -54,7 +54,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
     };
     fetchModels();
     fetchProjects();
-  }, [selectedProject]);
+  }, [selectedProject, onProjectSelect]);
 
   const pollTaskStatus = useCallback(async (taskId) => {
     try {

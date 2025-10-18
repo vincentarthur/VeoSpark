@@ -6,6 +6,8 @@
   },
   "nav": {
     "videoGenerator": "视频生成器",
+    "videoExtensionModal": "视频扩展 (模态)",
+    "videoExtensionPanel": "视频扩展 (面板)",
     "imageGenerator": "图片生成器",
     "promptFromImages": "从图片生成提示",
     "imageEnrichment": "图像增强",
@@ -51,7 +53,8 @@
     "generateWithImage": "使用图像生成",
     "extendVideo": "扩展视频",
     "extendVideoTitle": "扩展视频",
-    "selectVideoLabel": "选择要扩展的视频",
+    "selectVideoLabel": "已选视频",
+    "selectVideoToExtend": "选择要扩展的视频",
     "extendDurationLabel": "扩展时长",
     "loadingVideos": "正在加载视频...",
     "raiFilterTitle": "内容审核",
@@ -64,6 +67,7 @@
   "history": {
     "title": "我的生成历史",
     "fetchButton": "获取历史",
+    "fetchAllVideos": "获取所有视频",
     "fetching": "获取中...",
     "noHistory": "您还没有生成任何视频。",
     "noResults": "没有找到符合筛选条件的记录。",
@@ -93,7 +97,8 @@
       "videoHistory": "视频历史",
       "imageHistory": "图片历史",
       "imageEnrichmentHistory": "图像增强历史",
-      "upscaleJobs": "放大任务"
+      "upscaleJobs": "放大任务",
+      "allVideos": "所有视频"
     },
     "filters": {
       "startDate": "开始日期",
@@ -113,6 +118,7 @@
     "search": {
       "placeholder": "按文本搜索",
       "button": "搜索",
+      "video": "搜索视频",
       "similarityPlaceholder": "用于搜索相似性结果的描述"
     }
   },
@@ -209,7 +215,8 @@
     "close": "关闭",
     "actions": "操作",
     "confirm": "确认",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "change": "更改"
   },
   "analytics": {
     "title": "模型成本分析",

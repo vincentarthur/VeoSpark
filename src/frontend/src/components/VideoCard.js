@@ -18,7 +18,7 @@ const ResolutionIcon = ({ resolution }) => {
   return null;
 };
 
-const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete, showAddToProject = true }) => {
+const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete, showAddToProject = true, onCardClick, enableSelection = false }) => {
   const { t } = useTranslation();
   const [isAddToProjectModalOpen, setIsAddToProjectModalOpen] = useState(false);
   const [isShareToGroupModalOpen, setIsShareToGroupModalOpen] = useState(false);
@@ -69,11 +69,39 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
     );
   }
 
+  const isSelectable = !enableSelection || (video.resolution && video.resolution.includes('720'));
+  const isDisabled = !isSelectable;
+
+  const cardStyle = {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    ...(isDisabled && { filter: 'grayscale(100%)', cursor: 'not-allowed' })
+  };
+
+  const overlayStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: 'white',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    fontSize: '1.2rem',
+    fontWeight: 'bold',
+    zIndex: 1,
+  };
+
   return (
     <>
       <Card
-        hoverable
-        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+        hoverable={!isDisabled}
+        onClick={!isDisabled && onCardClick ? () => onCardClick(video) : null}
+        style={cardStyle}
       cover={
         video.signed_url || (video.signed_urls && video.signed_urls[0]) ? (
           <video
@@ -87,8 +115,9 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
           </div>
         )
       }
-      actions={actions}
+      actions={isDisabled ? [] : actions}
     >
+      {isDisabled && <div style={overlayStyle}>Not Selectable (Not 720p)</div>}
       <Card.Meta
         title={<Tooltip title={video.prompt}><Title level={5} ellipsis>{video.prompt || 'No prompt available'}</Title></Tooltip>}
           description={

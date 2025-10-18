@@ -6,6 +6,8 @@
   },
   "nav": {
     "videoGenerator": "ビデオジェネレーター",
+    "videoExtensionModal": "ビデオ拡張 (モーダル)",
+    "videoExtensionPanel": "ビデオ拡張 (パネル)",
     "imageGenerator": "画像ジェネレーター",
     "promptFromImages": "画像からプロンプト",
     "imageEnrichment": "画像エンリッチメント",
@@ -50,7 +52,8 @@
     "generateWithImage": "画像で生成",
     "extendVideo": "ビデオを延長",
     "extendVideoTitle": "ビデオを延長",
-    "selectVideoLabel": "延長するビデオを選択",
+    "selectVideoLabel": "選択したビデオ",
+    "selectVideoToExtend": "延長するビデオを選択",
     "extendDurationLabel": "延長期間",
     "loadingVideos": "ビデオを読み込み中...",
     "raiFilterTitle": "コンテンツモデレーション",
@@ -63,6 +66,7 @@
   "history": {
     "title": "私の生成履歴",
     "fetchButton": "履歴を取得",
+    "fetchAllVideos": "すべてのビデオを取得",
     "fetching": "取得中...",
     "noHistory": "まだビデオを生成していません。",
     "noResults": "フィルターに一致する記録は見つかりませんでした。",
@@ -92,7 +96,8 @@
       "videoHistory": "ビデオ履歴",
       "imageHistory": "画像履歴",
       "imageEnrichmentHistory": "画像エンリッチメント履歴",
-      "upscaleJobs": "アップスケールジョブ"
+      "upscaleJobs": "アップスケールジョブ",
+      "allVideos": "すべてのビデオ"
     },
     "filters": {
       "startDate": "開始日",
@@ -111,6 +116,7 @@
     "search": {
       "placeholder": "テキストで検索",
       "button": "検索",
+      "video": "ビデオを検索",
       "similarityPlaceholder": "類似性結果を検索するための説明"
     }
   },
@@ -207,7 +213,8 @@
     "close": "閉じる",
     "actions": "アクション",
     "confirm": "確認",
-    "refresh": "更新"
+    "refresh": "更新",
+    "change": "変更"
   },
   "analytics": {
     "title": "モデルコスト分析",
