@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import axios from 'axios';
 import { ConfigProvider, Spin } from 'antd';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { HistoryProvider } from './contexts/HistoryContext';
 import { lightTheme, darkTheme } from './antdTheme';
 
 // Import Page & Component assets
@@ -62,7 +63,9 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <HistoryProvider>
+        <AppContent />
+      </HistoryProvider>
     </ThemeProvider>
   );
 }

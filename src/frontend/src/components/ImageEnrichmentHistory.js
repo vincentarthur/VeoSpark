@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
 import {
   Typography, Spin, Alert, Button,
   DatePicker, Select, Row, Col, Pagination, Card, Input
@@ -32,18 +31,18 @@ const ImageEnrichmentHistory = ({
   });
 
   const handleFilterChange = (name, value) => {
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters({ ...filters, [name]: value });
   };
 
   const handleDateChange = (dates) => {
     if (dates) {
-      setFilters(prev => ({
-        ...prev,
+      setFilters({
+        ...filters,
         start_date: dates[0].format('YYYY-MM-DD'),
         end_date: dates[1].format('YYYY-MM-DD'),
-      }));
+      });
     } else {
-      setFilters(prev => ({ ...prev, start_date: null, end_date: null }));
+      setFilters({ ...filters, start_date: null, end_date: null });
     }
   };
 
@@ -52,14 +51,14 @@ const ImageEnrichmentHistory = ({
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col><DatePicker.RangePicker onChange={handleDateChange} /></Col>
         <Col>
-          <Select placeholder={t('history.filters.status')} style={{ width: 120 }} onChange={(value) => handleFilterChange('status', value)}>
+          <Select placeholder={t('history.filters.status')} style={{ width: 120 }} onChange={(value) => handleFilterChange('status', value)} value={filters.status}>
             <Option value="">{t('history.filters.all')}</Option>
             <Option value="SUCCESS">Success</Option>
             <Option value="FAILURE">Failure</Option>
           </Select>
         </Col>
         <Col>
-          <Select placeholder={t('history.filters.model')} style={{ width: 120 }} onChange={(value) => handleFilterChange('model', value)}>
+          <Select placeholder={t('history.filters.model')} style={{ width: 120 }} onChange={(value) => handleFilterChange('model', value)} value={filters.model}>
             <Option value="">{t('history.filters.all')}</Option>
             {models.map((m) => (
               <Option key={m.id} value={m.id}>{m.name}</Option>

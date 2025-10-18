@@ -15,6 +15,7 @@ import ShareModal from './ShareModal';
 import { useShareModal } from '../hooks/useShareModal';
 import ImageHistory from './ImageHistory';
 import ImageEnrichmentHistory from './ImageEnrichmentHistory';
+import { useHistoryState, useHistoryDispatch } from '../contexts/HistoryContext';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -23,63 +24,72 @@ const { TabPane } = Tabs;
 const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("video");
-  const [history, setHistory] = useState([]);
-  const [historyCache, setHistoryCache] = useState({});
-  const [hasFetched, setHasFetched] = useState(false);
-  const [, setConfig] = useState({ enable_upscale: false });
-  const [totalRows, setTotalRows] = useState(0);
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const historyState = useHistoryState();
+  const historyDispatch = useHistoryDispatch();
+
+  const { history, totalRows, page, rowsPerPage, filters, searchText, hasFetched, cache } = historyState[activeTab];
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [models, setModels] = useState([]);
-  const [searchText, setSearchText] = useState('');
-
-
-  const [filters, setFilters] = useState({
-    start_date: null,
-    end_date: null,
-    status: '',
-    model: '',
-    is_edited: false,
-    only_success: false,
-  });
+  const [, setConfig] = useState({ enable_upscale: false });
 
   const handleFilterChange = (name, value) => {
-    setFilters(prev => ({ ...prev, [name]: value }));
+    historyDispatch({
+      type: 'SET_FILTERS',
+      payload: { tab: activeTab, filters: { ...filters, [name]: value } },
+    });
   };
 
   const handleDateChange = (dates) => {
     if (dates) {
-      setFilters(prev => ({
-        ...prev,
-        start_date: dates[0].format('YYYY-MM-DD'),
-        end_date: dates[1].format('YYYY-MM-DD'),
-      }));
+      historyDispatch({
+        type: 'SET_FILTERS',
+        payload: {
+          tab: activeTab,
+          filters: {
+            ...filters,
+            start_date: dates[0].format('YYYY-MM-DD'),
+            end_date: dates[1].format('YYYY-MM-DD'),
+          },
+        },
+      });
     } else {
-      setFilters(prev => ({ ...prev, start_date: null, end_date: null }));
+      historyDispatch({
+        type: 'SET_FILTERS',
+        payload: {
+          tab: activeTab,
+          filters: { ...filters, start_date: null, end_date: null },
+        },
+      });
     }
   };
 
   const clearFilters = () => {
-    setFilters({
-      start_date: null,
-      end_date: null,
-      status: '',
-      model: '',
-      is_edited: false,
-      only_success: false,
+    historyDispatch({
+      type: 'SET_FILTERS',
+      payload: {
+        tab: activeTab,
+        filters: {
+          start_date: null,
+          end_date: null,
+          status: '',
+          model: '',
+          is_edited: false,
+          only_success: false,
+        },
+      },
     });
     fetchHistory(true, 1, rowsPerPage, true);
   };
 
-  const { 
-    modalOpen, 
-    selectedVideo, 
-    modalMode, 
-    openModal, 
-    closeModal, 
-    handleSubmit 
+  const {
+    modalOpen,
+    selectedVideo,
+    modalMode,
+    openModal,
+    closeModal,
+    handleSubmit,
   } = useEditingModal(() => {
     fetchHistory(false, page, rowsPerPage, true);
   });
@@ -96,16 +106,15 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const search_similarity_video = async (text) => {
     setLoading(true);
     setError(null);
-    setHasFetched(true);
-    setHistoryCache({});
+    historyDispatch({ type: 'CLEAR_CACHE', payload: { tab: 'video' } });
     try {
       const response = await axios.post('/api/videos/search_similarity_video', { text });
-      setHistory(response.data.rows);
-      setTotalRows(response.data.total);
-      setPage(1);
+      historyDispatch({
+        type: 'SET_DATA',
+        payload: { tab: 'video', data: response.data, page: 1, rowsPerPage },
+      });
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch similar videos.');
-      setHistory([]);
     } finally {
       setLoading(false);
     }
@@ -114,16 +123,15 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const search_similarity_image = async (text) => {
     setLoading(true);
     setError(null);
-    setHasFetched(true);
-    setHistoryCache({});
+    historyDispatch({ type: 'CLEAR_CACHE', payload: { tab: 'image' } });
     try {
       const response = await axios.post('/api/images/search_similarity_image', { text });
-      setHistory(response.data.rows);
-      setTotalRows(response.data.total);
-      setPage(1);
+      historyDispatch({
+        type: 'SET_DATA',
+        payload: { tab: 'image', data: response.data, page: 1, rowsPerPage },
+      });
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch similar images.');
-      setHistory([]);
     } finally {
       setLoading(false);
     }
@@ -132,23 +140,22 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const search_similarity_image_enrich = async (text) => {
     setLoading(true);
     setError(null);
-    setHasFetched(true);
-    setHistoryCache({});
+    historyDispatch({ type: 'CLEAR_CACHE', payload: { tab: 'image-enrichment' } });
     try {
       const response = await axios.post('/api/images/search_similarity_image_enrich', { text });
-      setHistory(response.data.rows);
-      setTotalRows(response.data.total);
-      setPage(1);
+      historyDispatch({
+        type: 'SET_DATA',
+        payload: { tab: 'image-enrichment', data: response.data, page: 1, rowsPerPage },
+      });
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch similar image enrichments.');
-      setHistory([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearch = async () => {
-    setHistoryCache({});
+    historyDispatch({ type: 'CLEAR_CACHE', payload: { tab: activeTab } });
     if (activeTab === 'video') {
       await search_similarity_video(searchText);
     } else if (activeTab === 'image') {
@@ -160,19 +167,14 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
 
   const fetchHistory = useCallback(async (isCleared = false, newPage = 1, newRowsPerPage = 10, forceRefresh = false) => {
     const cacheKey = `${activeTab}-${JSON.stringify(filters)}-${newPage}-${newRowsPerPage}`;
-    if (!forceRefresh && historyCache[cacheKey]) {
-      const data = historyCache[cacheKey];
-      setHistory(data.rows);
-      setTotalRows(data.total);
-      setPage(newPage);
-      setRowsPerPage(newRowsPerPage);
-      setHasFetched(true);
+    if (!forceRefresh && cache[cacheKey]) {
+      const data = cache[cacheKey];
+      historyDispatch({ type: 'SET_DATA', payload: { tab: activeTab, data, page: newPage, rowsPerPage: newRowsPerPage } });
       return;
     }
 
     setLoading(true);
     setError(null);
-    setHasFetched(true);
 
     const activeFilters = isCleared ? {} : Object.entries(filters).reduce((acc, [key, value]) => {
       if (value) {
@@ -203,18 +205,14 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
         }
       });
       const data = response.data;
-      setHistory(data.rows);
-      setTotalRows(data.total);
-      setPage(newPage);
-      setRowsPerPage(newRowsPerPage);
-      setHistoryCache(prevCache => ({ ...prevCache, [cacheKey]: data }));
+      historyDispatch({ type: 'SET_DATA', payload: { tab: activeTab, data, page: newPage, rowsPerPage: newRowsPerPage } });
+      historyDispatch({ type: 'SET_CACHE', payload: { tab: activeTab, cacheKey, data } });
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not fetch history.');
-      setHistory([]);
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filters, historyCache, page, rowsPerPage]);
+  }, [activeTab, filters, cache, historyDispatch]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -263,11 +261,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
         </Col>
       </Row>
 
-      <Tabs activeKey={activeTab} onChange={(key) => {
-        setActiveTab(key);
-        setHistory([]);
-        setHasFetched(false);
-      }}>
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab={t('history.tabs.videoHistory')} key="video">
           <Card>
             <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -297,7 +291,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
                 <Input
                   placeholder={t('history.search.similarityPlaceholder')}
                   value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
+                  onChange={(e) => historyDispatch({ type: 'SET_SEARCH_TEXT', payload: { tab: activeTab, searchText: e.target.value } })}
                 />
               </Col>
               <Col>
@@ -323,7 +317,10 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
                   current={page}
                   pageSize={rowsPerPage}
                   total={totalRows}
-                  onChange={(newPage, newRowsPerPage) => fetchHistory(false, newPage, newRowsPerPage)}
+                  onChange={(newPage, newRowsPerPage) => {
+                    historyDispatch({ type: 'SET_PAGE', payload: { tab: activeTab, page: newPage, rowsPerPage: newRowsPerPage } });
+                    fetchHistory(false, newPage, newRowsPerPage);
+                  }}
                   style={{ marginTop: 16, textAlign: 'center' }}
                 />
               </>
@@ -342,13 +339,13 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
             page={page}
             rowsPerPage={rowsPerPage}
             fetchHistory={fetchHistory}
-            setFilters={setFilters}
+            setFilters={(newFilters) => historyDispatch({ type: 'SET_FILTERS', payload: { tab: 'image', filters: newFilters } })}
             clearFilters={clearFilters}
             filters={filters}
             onUseAsFirstFrame={onUseAsFirstFrame}
             onUseAsLastFrame={onUseAsLastFrame}
             searchText={searchText}
-            setSearchText={setSearchText}
+            setSearchText={(text) => historyDispatch({ type: 'SET_SEARCH_TEXT', payload: { tab: 'image', searchText: text } })}
             handleSearch={handleSearch}
           />
         </TabPane>
@@ -364,13 +361,13 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
             page={page}
             rowsPerPage={rowsPerPage}
             fetchHistory={fetchHistory}
-            setFilters={setFilters}
+            setFilters={(newFilters) => historyDispatch({ type: 'SET_FILTERS', payload: { tab: 'image-enrichment', filters: newFilters } })}
             clearFilters={clearFilters}
             filters={filters}
             onUseAsFirstFrame={onUseAsFirstFrame}
             onUseAsLastFrame={onUseAsLastFrame}
             searchText={searchText}
-            setSearchText={setSearchText}
+            setSearchText={(text) => historyDispatch({ type: 'SET_SEARCH_TEXT', payload: { tab: 'image-enrichment', searchText: text } })}
             handleSearch={handleSearch}
           />
         </TabPane>
