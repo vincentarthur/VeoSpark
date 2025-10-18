@@ -25,7 +25,7 @@ VeoSpark is a powerful, web-based application designed to generate high-quality 
 -   **Image-to-Prompt Generation**: Upload a character, background, and/or prop image to generate a descriptive prompt using Gemini 2.5 Pro.
 -   **Image Imitation**: Upload an image, get a description from Gemini, customize the prompt, and generate a new image.
 -   **Prompt Translation**: Instantly translate generated prompts into different languages using Gemini 2.5 Flash.
--   **Generation History & Caching**: Keep track of all your video and image generations. The history page now caches data for faster load times when switching between tabs.
+-   **Generation History & Caching**: Keep track of all your video and image generations. The history page now uses a session-level cache, so data is preserved when navigating between tabs, reducing redundant data fetching and improving performance.
 -   **Comprehensive Cost Analytics**: Monitor your spending with a detailed dashboard that provides a complete overview of both video and image creation costs.
 -   **Cost by Creative Project**: Analyze costs broken down by creative projects, allowing for better budget tracking and project management.
 -   **Project-Specific Cost-Limitation**: In addition to global cost controls, administrators can set specific cost limits for each creative project. This includes daily, weekly, and total cost limits, as well as the option to mark a project as unrestricted.
@@ -528,6 +528,11 @@ It is recommended to create a dedicated service account for this application to 
 ## Change Log
 
 - **v2.2**
+    - Integrated the **Veo 3.1 model** and introduced several new video generation features:
+        - **First & Last Frame Generation**: Allows users to specify the starting and ending frames of a video for more creative control.
+        - **Reference Image Support**: Users can now provide a reference image to guide the generation process.
+        - UI enhancements and feature refinements for the new capabilities.
+    - Implemented a session-level cache for the "My History" page to persist data when navigating away and returning, improving user experience and performance.
     - Implement **Mutiple Images** generation for Image Enrichment, supporting selectable output sample count.
     - Support AspectRatio for Image Enrichment
     - Added **Video & Image Similarity Search** to the "My History" page, allowing users to find visually similar content using text descriptions. This feature is powered by vector search in Google BigQuery.
