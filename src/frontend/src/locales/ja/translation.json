@@ -91,6 +91,7 @@
     "tabs": {
       "videoHistory": "ビデオ履歴",
       "imageHistory": "画像履歴",
+      "imageEnrichmentHistory": "画像エンリッチメント履歴",
       "upscaleJobs": "アップスケールジョブ"
     },
     "filters": {
@@ -223,6 +224,7 @@
   },
   "imageCard": {
     "useAsFirstFrame": "最初のフレームとして使用",
+    "useAsLastFrame": "最後のフレームとして使用",
     "similarity": "類似性"
   },
   "videoCard": {

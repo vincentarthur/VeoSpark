@@ -92,6 +92,7 @@
     "tabs": {
       "videoHistory": "视频历史",
       "imageHistory": "图片历史",
+      "imageEnrichmentHistory": "图像增强历史",
       "upscaleJobs": "放大任务"
     },
     "filters": {
@@ -225,6 +226,7 @@
   },
   "imageCard": {
     "useAsFirstFrame": "用作第一帧",
+    "useAsLastFrame": "用作最后一帧",
     "similarity": "相似度"
   },
   "videoCard": {

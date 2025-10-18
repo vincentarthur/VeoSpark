@@ -71,4 +71,5 @@ MAX_WORKER_COUNT: 6
 # An empty list will hide the banner.
 BANNER_MESSAGES:
   - "Gemini 2.5 Flash Image (nano-banana) now supports multiple aspect ratio."
-  - "Veo 3.1 Preview is ready."
+  - "Image Enrichment now supports multiple samples generation." 
+  - "Veo 3.1 Preview is ready (First/Last Frame, R2V-Reference Image to Video)."

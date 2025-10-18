@@ -228,6 +228,7 @@
   },
   "imageCard": {
     "useAsFirstFrame": "Use as First Frame",
+    "useAsLastFrame": "Use as Last Frame",
     "raiReasons": "RAI Safety Reasons",
     "code": "Code",
     "category": "Category",
