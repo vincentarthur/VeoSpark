@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, Typography, Button, Tooltip, Tag, Collapse } from 'antd';
-import { ScissorOutlined, AudioOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined, PlusOutlined } from '@ant-design/icons';
+import { ScissorOutlined, AudioOutlined, ShareAltOutlined, DeleteOutlined, VideoCameraOutlined, PlusOutlined, ArrowsAltOutlined } from '@ant-design/icons';
 import AddToProjectModal from './AddToProjectModal';
 import ShareToGroupModal from './ShareToGroupModal';
 
@@ -18,7 +18,7 @@ const ResolutionIcon = ({ resolution }) => {
   return null;
 };
 
-const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete, showAddToProject = true, onCardClick, enableSelection = false }) => {
+const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDelete, showAddToProject = true, onCardClick, enableSelection = false, onExtendClick }) => {
   const { t } = useTranslation();
   const [isAddToProjectModalOpen, setIsAddToProjectModalOpen] = useState(false);
   const [isShareToGroupModalOpen, setIsShareToGroupModalOpen] = useState(false);
@@ -35,6 +35,13 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
   const modelName = getModelName(video.model_used);
 
   const actions = [];
+  if (onExtendClick) {
+    actions.push(
+      <Tooltip title={t('dashboard.extendVideo')}>
+        <Button icon={<ArrowsAltOutlined />} onClick={() => onExtendClick(video)} disabled={!isActionable} />
+      </Tooltip>
+    );
+  }
   if (onEditClick) {
     actions.push(
       <Tooltip title={t('history.actions.clip')}>

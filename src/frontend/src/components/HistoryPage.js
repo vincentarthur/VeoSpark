@@ -16,6 +16,7 @@ import { useShareModal } from '../hooks/useShareModal';
 import ImageHistory from './ImageHistory';
 import ImageEnrichmentHistory from './ImageEnrichmentHistory';
 import { useHistoryState, useHistoryDispatch } from '../contexts/HistoryContext';
+import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -23,6 +24,7 @@ const { TabPane } = Tabs;
 
 const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("video");
   const historyState = useHistoryState();
   const historyDispatch = useHistoryDispatch();
@@ -81,6 +83,10 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
       },
     });
     fetchHistory(true, 1, rowsPerPage, true);
+  };
+
+  const handleExtendClick = (video) => {
+    navigate('/', { state: { video, tab: '6' } });
   };
 
   const {
@@ -309,6 +315,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
                         user={user}
                         onEditClick={openModal}
                         onShareClick={openShareModal}
+                        onExtendClick={handleExtendClick}
                       />
                     </Col>
                   ))}

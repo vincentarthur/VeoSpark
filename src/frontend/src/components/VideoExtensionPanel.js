@@ -33,14 +33,14 @@ const FilmStripPlayer = ({ video, title }) => {
   )
 };
 
-const VideoExtensionPanel = () => {
+const VideoExtensionPanel = ({ video }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
   const [models, setModels] = useState([]);
   const [model, setModel] = useState('');
   const [projects, setProjects] = useState([]);
-  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(video);
   const [extendDuration, setExtendDuration] = useState(5);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -106,6 +106,10 @@ const VideoExtensionPanel = () => {
 
     return () => clearInterval(interval);
   }, [pollingTaskId]);
+
+  const handleExtendClick = (video) => {
+    setSelectedVideo(video);
+  };
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -194,7 +198,7 @@ const VideoExtensionPanel = () => {
       <Col xs={24} md={16}>
         <Collapse style={{ marginBottom: 16 }}>
           <Collapse.Panel header={t('dashboard.selectVideoToExtend')} key="1">
-            <VideoHistorySelector onVideoSelect={setSelectedVideo} />
+            <VideoHistorySelector onVideoSelect={setSelectedVideo} onExtendClick={handleExtendClick} />
           </Collapse.Panel>
         </Collapse>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>

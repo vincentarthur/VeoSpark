@@ -4,17 +4,18 @@ import {
   Row, Col, Button, Input, Typography, Slider, Radio, Checkbox,
   Card, Spin, Alert, Select, Upload, Tooltip, Form, Table
 } from 'antd';
-import { ScissorOutlined, AudioOutlined, UploadOutlined, CloseOutlined, InboxOutlined } from '@ant-design/icons';
+import { ScissorOutlined, AudioOutlined, UploadOutlined, CloseOutlined, InboxOutlined, ArrowsAltOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useEditingModal } from '../hooks/useEditingModal';
 import EditingModal from './EditingModal';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
 // A simple component for displaying the generated video
-const FilmStripPlayer = ({ video, onEditClick, title }) => {
+const FilmStripPlayer = ({ video, onEditClick, title, onExtendClick }) => {
   const { t } = useTranslation();
   if (!video || !video.signed_url) {
     return null;
@@ -33,22 +34,30 @@ const FilmStripPlayer = ({ video, onEditClick, title }) => {
       headStyle={{ color: 'white', borderBottom: '1px solid #444' }}
     >
       <video src={video.signed_url} width="400" controls autoPlay loop muted style={{ borderRadius: '4px' }} />
-      {onEditClick && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-          <Tooltip title={t('history.actions.clip')}>
-            <Button icon={<ScissorOutlined />} onClick={() => onEditClick(video, 'clip')} type="text" style={{ color: 'white' }} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+        {onExtendClick && (
+          <Tooltip title={t('dashboard.extendVideo')}>
+            <Button icon={<ArrowsAltOutlined />} onClick={() => onExtendClick(video)} type="text" style={{ color: 'white' }} />
           </Tooltip>
-          <Tooltip title={t('history.actions.dub')}>
-            <Button icon={<AudioOutlined />} onClick={() => onEditClick(video, 'dub')} type="text" style={{ color: 'white' }} />
-          </Tooltip>
-        </div>
-      )}
+        )}
+        {onEditClick && (
+          <>
+            <Tooltip title={t('history.actions.clip')}>
+              <Button icon={<ScissorOutlined />} onClick={() => onEditClick(video, 'clip')} type="text" style={{ color: 'white' }} />
+            </Tooltip>
+            <Tooltip title={t('history.actions.dub')}>
+              <Button icon={<AudioOutlined />} onClick={() => onEditClick(video, 'dub')} type="text" style={{ color: 'white' }} />
+            </Tooltip>
+          </>
+        )}
+      </div>
     </Card>
   )
 };
 
 const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
 
   const [models, setModels] = useState([]);
@@ -92,6 +101,10 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   const [raiReasons, setRaiReasons] = useState([]);
   const [pollingTaskId, setPollingTaskId] = useState(null);
   const promptInputRef = useRef(null);
+
+  const handleExtendClick = (video) => {
+    navigate('/', { state: { video, tab: '6' } });
+  };
 
   const {
     modalOpen,
@@ -604,6 +617,7 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
               key={video.gcs_uri || index}
               video={video}
               onEditClick={openModal}
+              onExtendClick={handleExtendClick}
               title={`PREVIEW VIDEO ${index + 1}`}
             />
           ))}

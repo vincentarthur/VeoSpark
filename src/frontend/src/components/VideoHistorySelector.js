@@ -12,7 +12,7 @@ import VideoCard from './VideoCard';
 
 const { TabPane } = Tabs;
 
-const VideoHistorySelector = ({ onVideoSelect }) => {
+const VideoHistorySelector = ({ onVideoSelect, onExtendClick }) => {
   const { t } = useTranslation();
   const [history, setHistory] = useState([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -117,6 +117,7 @@ const VideoHistorySelector = ({ onVideoSelect }) => {
                 models={models}
                 user={{}}
                 onCardClick={() => onVideoSelect(video)}
+                onExtendClick={onExtendClick}
                 enableSelection={true}
               />
             </Col>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Menu, Tabs, Typography } from 'antd';
@@ -28,6 +28,14 @@ const HomePage = ({ user }) => {
   const [lastFrame, setLastFrame] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
   const [selectedProject, setSelectedProject] = useState(null);
+  const [videoToExtend, setVideoToExtend] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.video) {
+      setVideoToExtend(location.state.video);
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
 
   const handleProjectSelect = (projectId) => {
     setSelectedProject(projectId);
@@ -105,7 +113,7 @@ const HomePage = ({ user }) => {
                   <VideoExtensionModal />
                 </TabPane>
                 <TabPane tab="Video Extension (Panel)" key="6">
-                  <VideoExtensionPanel />
+                  <VideoExtensionPanel video={videoToExtend} />
                 </TabPane>
               </Tabs>
             } />

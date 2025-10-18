@@ -85,6 +85,11 @@ const VideoExtensionModal = () => {
     return () => clearInterval(interval);
   }, [pollingTaskId]);
 
+  const handleExtendClick = (video) => {
+    setSelectedVideo(video);
+    setIsModalVisible(false);
+  };
+
   const onFinish = async (values) => {
     setLoading(true);
     setError(null);
@@ -194,7 +199,7 @@ const VideoExtensionModal = () => {
         footer={null}
         width="66%"
       >
-        <VideoHistorySelector onVideoSelect={handleVideoSelect} />
+        <VideoHistorySelector onVideoSelect={handleVideoSelect} onExtendClick={handleExtendClick} />
       </Modal>
     </>
   );
