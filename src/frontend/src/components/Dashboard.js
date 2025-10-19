@@ -221,6 +221,10 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
     if (!showReferenceImageOption && v31GenerationMode === 'referenceImage') {
       setV31GenerationMode('frameControl');
     }
+    if (!showReferenceImageOption) {
+      setReferenceImageGcsUris([]);
+      setReferenceImagePreviews([]);
+    }
   }, [model, models, v31GenerationMode, showReferenceImageOption]);
 
   useEffect(() => {
@@ -383,13 +387,26 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
                 const newMode = e.target.value;
                 if (newMode === 'generate') {
                   setGenerationMode('generate');
-                  if (isVeo31Model) setV31GenerationMode('frameControl');
+                  if (isVeo31Model) {
+                    setV31GenerationMode('frameControl');
+                    // Clear reference image state
+                    setReferenceImageGcsUris([]);
+                    setReferenceImagePreviews([]);
+                  }
                 } else if (newMode === 'extend') {
                   setGenerationMode('extend');
-                  if (isVeo31Model) setV31GenerationMode('frameControl');
+                  if (isVeo31Model) {
+                    setV31GenerationMode('frameControl');
+                    // Clear reference image state
+                    setReferenceImageGcsUris([]);
+                    setReferenceImagePreviews([]);
+                  }
                 } else if (newMode === 'referenceImage') {
                   setV31GenerationMode('referenceImage');
                   setGenerationMode('generate'); // Keep it clean
+                  // Clear single frame state
+                  clearImage();
+                  clearFinalFrame();
                 }
               };
 

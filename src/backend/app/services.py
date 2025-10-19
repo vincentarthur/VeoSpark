@@ -609,6 +609,8 @@ class GenerationService:
         final_frame_gcs_uri = body.get('final_frame_gcs_uri')
         reference_image_gcs_uris = body.get('reference_image_gcs_uris')
 
+        print("reference_image_gcs_uris: {reference_image_gcs_uris}")
+
         user_folder = "anonymous"
         if user_info and 'email' in user_info:
             user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_info['email']).lower()

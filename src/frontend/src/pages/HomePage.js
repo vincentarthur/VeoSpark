@@ -109,12 +109,12 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.videoGenerator')} key="2">
                   <Dashboard initialFirstFrame={firstFrame} initialLastFrame={lastFrame} />
                 </TabPane>
-                <TabPane tab="Video Extension (Modal)" key="5">
+                {/* <TabPane tab="Video Extension (Modal)" key="5">
                   <VideoExtensionModal />
                 </TabPane>
                 <TabPane tab="Video Extension (Panel)" key="6">
                   <VideoExtensionPanel video={videoToExtend} />
-                </TabPane>
+                </TabPane> */}
               </Tabs>
             } />
             <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />} />
