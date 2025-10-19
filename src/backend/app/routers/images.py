@@ -93,6 +93,7 @@ async def enrich_image(
         "user_info": user,
         "sub_prompt": sub_prompt,
         "model": model,
+        "sample_count": sample_count,
         "aspect_ratio": aspect_ratio,
         "creative_project_id": creative_project_id,
         "conversation_history": json.loads(conversation_history) if conversation_history else None,
@@ -110,21 +111,21 @@ async def enrich_image(
     elif previous_image_gcs_paths:
         task_kwargs["previous_image_gcs_paths"] = previous_image_gcs_paths
 
-    def run_enrichment_tasks(**kwargs):
+    def run_enrichment_tasks(sample_count, **kwargs):
         all_results = {
             "images": [],
             "duration": 0,
-            "revised_prompt": sub_prompt,
-            "model": model,
-            "aspect_ratio": aspect_ratio,
+            "revised_prompt": kwargs.get("sub_prompt"),
+            "model": kwargs.get("model"),
+            "aspect_ratio": kwargs.get("aspect_ratio"),
             "rai_reasons": [],
             "gcs_paths": [],
-            "creative_project_id": creative_project_id,
+            "creative_project_id": kwargs.get("creative_project_id"),
             "input_token": 0,
             "output_token": 0
         }
         with ThreadPoolExecutor(max_workers=settings.MAX_WORKER_COUNT) as executor:
-            futures = {executor.submit(generation_service.enrich_image, **task_kwargs, seed=i): i for i in range(sample_count)}
+            futures = {executor.submit(generation_service.enrich_image, **kwargs, seed=i): i for i in range(sample_count)}
             for future in as_completed(futures):
                 try:
                     result = future.result()
