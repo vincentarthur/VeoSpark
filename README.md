@@ -115,40 +115,56 @@ graph TD
 ## Project Structure
 
 ```
-.
-├── src
-│   ├── backend
-│   │   ├── app
-│   │   │   ├── routers
-│   │   │   │   ├── api.py
-│   │   │   │   ├── images.py
-│   │   │   │   └── videos.py
-│   │   │   ├── config_manager.py
-│   │   │   ├── config.py
-│   │   │   ├── dependencies.py
-│   │   │   ├── prompts.py
-│   │   │   ├── schemas.py
-│   │   │   ├── services.py
-│   │   │   └── task_manager.py
-│   │   ├── configs
-│   │   │   ├── app-config.yaml
-│   │   │   ├── veo-models.yaml
-│   │   │   ├── image-models.yaml
-│   │   │   └── image-enrichment-models.yaml
-│   │   ├── scripts
-│   │   ├── static
-│   │   ├── Dockerfile
-│   │   ├── main.py
-│   │   └── requirements.txt
-│   └── frontend
-│       ├── public
-│       └── src
-│           ├── components
-│           ├── contexts
-│           ├── hooks
-│           ├── locales
-│           └── pages
-└── README.md
+src
+├── backend
+│   ├── app
+│   │   ├── routers
+│   │   │   ├── api.py
+│   │   │   ├── images.py
+│   │   │   └── videos.py
+│   │   ├── config_manager.py
+│   │   ├── config.py
+│   │   ├── dependencies.py
+│   │   ├── prompts.py
+│   │   ├── schemas.py
+│   │   ├── services.py
+│   │   ├── task_manager.py
+│   │   └── video_processing.py
+│   ├── configs
+│   │   ├── app-config.yaml
+│   │   ├── image-enrichment-models.yaml
+│   │   ├── image-models.yaml
+│   │   ├── safety_filters.yaml
+│   │   └── veo-models.yaml
+│   ├── schemas
+│   │   ├── firestore_index.json
+│   │   ├── firestore_index_shared_video.json
+│   │   ├── image_enrichment_history.json
+│   │   ├── imagen_history.json
+│   │   └── veo_history.json
+│   ├── scripts
+│   │   ├── setup_bigquery.sh
+│   │   ├── setup_creative_projects_firestore.sh
+│   │   └── setup_firestore.sh
+│   ├── static/
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+└── frontend
+    ├── public
+    │   ├── index.html
+    │   └── ...
+    ├── src
+    │   ├── components/
+    │   ├── contexts/
+    │   ├── hooks/
+    │   ├── locales/
+    │   ├── pages/
+    │   ├── App.js
+    │   ├── i18n.js
+    │   └── index.js
+    ├── Dockerfile
+    └── package.json
 ```
 
 ## Cost and Pricing System

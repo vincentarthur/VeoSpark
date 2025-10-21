@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import NotificationBanner from '../components/NotificationBanner';
 import Dashboard from '../components/Dashboard';
 import ImageGenerator from '../components/ImageGenerator';
+import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import ConversationalImageEnrichment from '../components/ConversationalImageEnrichment';
 import VideoExtensionModal from '../components/VideoExtensionModal';
 import VideoExtensionPanel from '../components/VideoExtensionPanel';
@@ -97,6 +98,9 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.imageGenerator')} key="1">
                   <ImageGenerator user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />
                 </TabPane>
+                <TabPane tab={t('nav.imagePromptGenerator')} key="3">
+                  <ImagePromptGenerator user={user} />
+                </TabPane>
                 <TabPane tab={t('nav.imageEnrichment')} key="4">
                   <ConversationalImageEnrichment 
                     user={user} 
@@ -109,12 +113,12 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.videoGenerator')} key="2">
                   <Dashboard initialFirstFrame={firstFrame} initialLastFrame={lastFrame} />
                 </TabPane>
-                {/* <TabPane tab="Video Extension (Modal)" key="5">
+                <TabPane tab="Video Extension (Modal)" key="5">
                   <VideoExtensionModal />
                 </TabPane>
                 <TabPane tab="Video Extension (Panel)" key="6">
                   <VideoExtensionPanel video={videoToExtend} />
-                </TabPane> */}
+                </TabPane>
               </Tabs>
             } />
             <Route path="/history" element={<HistoryPage user={user} onUseAsFirstFrame={handleUseAsFirstFrame} onUseAsLastFrame={handleUseAsLastFrame} />} />
