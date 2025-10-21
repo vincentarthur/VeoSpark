@@ -323,6 +323,7 @@
     "aspectRatio": "Aspect Ratio",
     "sampleCount": "Sample Count",
     "clearHistory": "Clear History",
+    "regenerate": "Regenerate",
     "generating": "Generating..."
   },
   "footer": {

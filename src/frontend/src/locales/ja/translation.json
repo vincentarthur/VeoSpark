@@ -311,6 +311,7 @@
     "maxImagesTip": "（最大3枚の画像）",
     "aspectRatio": "アスペクト比",
     "clearHistory": "履歴をクリア",
+    "regenerate": "再生成",
     "generating": "生成中..."
   },
   "footer": {

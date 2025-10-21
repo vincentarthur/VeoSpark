@@ -313,6 +313,7 @@
     "maxImagesTip": "（最多3张图片）",
     "aspectRatio": "宽高比",
     "clearHistory": "清除历史",
+    "regenerate": "重新生成",
     "generating": "生成中..."
   },
   "footer": {

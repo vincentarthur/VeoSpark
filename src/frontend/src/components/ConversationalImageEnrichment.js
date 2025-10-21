@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Select, Card
 } from 'antd';
-import { PlusOutlined, SendOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, SendOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import ImageCard from './ImageCard';
 
@@ -134,6 +134,63 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
     setConversation([]);
   };
 
+  const handleRegenerate = async (messageIndex) => {
+    const userMessage = conversation[messageIndex];
+    if (!userMessage || userMessage.type !== 'user') return;
+
+    const newConversation = conversation.slice(0, messageIndex + 1);
+    setConversation(newConversation);
+
+    setLoading(true);
+    setGeneratingImages(form.getFieldValue('sample_count') || 1);
+    setError(null);
+
+    const formData = new FormData();
+
+    if (userMessage.files && userMessage.files.length > 0) {
+      userMessage.files.forEach(file => {
+        formData.append('files', file);
+      });
+    } else {
+      const previousConversation = conversation.slice(0, messageIndex);
+      const lastModelMessage = [...previousConversation].reverse().find(m => m.type === 'model' && m.images.length > 0);
+      if (lastModelMessage) {
+          lastModelMessage.images.forEach(image => {
+              formData.append('previous_image_gcs_paths', image.gcs_uri);
+          });
+      }
+    }
+
+    formData.append('sub_prompt', userMessage.prompt);
+    formData.append('model', 'gemini-2.5-flash-image');
+    formData.append('sample_count', form.getFieldValue('sample_count') || 1);
+    formData.append('aspect_ratio', form.getFieldValue('aspect_ratio') || '1:1');
+    formData.append('creative_project_id', form.getFieldValue('creative_project_id'));
+    
+    const textHistory = newConversation.map(m => ({
+        type: m.type,
+        prompt: m.prompt || m.revisedPrompt
+    })).filter(m => m.prompt);
+    formData.append('conversation_history', JSON.stringify(textHistory));
+
+    try {
+        const response = await axios.post('/api/images/enrich', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        if (response.data.task_id) {
+            setPollingTaskId(response.data.task_id);
+        } else {
+            setError('Failed to start generation task.');
+            setGeneratingImages(0);
+            setLoading(false);
+        }
+    } catch (err) {
+        setError(err.response?.data?.detail || 'An unexpected error occurred.');
+        setGeneratingImages(0);
+        setLoading(false);
+    }
+  };
+
   const handleSubmit = async (values) => {
     // if (imageFiles.length === 0 && conversation.length === 0) {
     //   setError(t('imageEnrichment.noImageError'));
@@ -143,7 +200,8 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
     const userMessage = {
       type: 'user',
       prompt: values.prompt,
-      images: imagePreviews,
+      images: imagePreviews, // For display
+      files: [...imageFiles], // For regeneration
     };
     setConversation(prev => [...prev, userMessage]);
     setLoading(true);
@@ -211,7 +269,14 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
           renderItem={(item, index) => (
             <List.Item style={{ border: 'none', padding: '10px 0' }}>
               {item.type === 'user' && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
+                  <Button 
+                    icon={<SyncOutlined />} 
+                    onClick={() => handleRegenerate(index)}
+                    disabled={loading}
+                    style={{ marginRight: '10px' }}
+                    title={t('imageEnrichment.regenerate', 'Regenerate')}
+                  />
                   <div style={{ maxWidth: '60%' }}>
                     {item.images && item.images.map((img, i) => <img key={i} src={img} alt={`User input ${i}`} style={{ maxWidth: '100px', borderRadius: '8px', marginBottom: '8px', marginRight: '8px' }} />)}
                     <Paragraph style={{ background: '#f0f0f0', padding: '10px', borderRadius: '8px', textAlign: 'left' }}>{item.prompt}</Paragraph>
