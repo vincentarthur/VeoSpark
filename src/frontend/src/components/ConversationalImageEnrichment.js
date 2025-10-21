@@ -343,7 +343,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
             <Col>
               <Form.Item name="sample_count" label={t('imageEnrichment.sampleCount')}>
                 <Select style={{ width: 120 }}>
-                  {[...Array(6).keys()].map(i => (
+                  {[...Array(16).keys()].map(i => (
                     <Option key={i + 1} value={i + 1}>{i + 1}</Option>
                   ))}
                 </Select>

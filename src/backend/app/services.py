@@ -870,6 +870,7 @@ class GenerationService:
             files: Optional[List[Dict[str, Any]]] = None,
             previous_image_gcs_paths: Optional[List[str]] = None,
             conversation_history: Optional[List[Dict[str, Any]]] = None,
+            seed: int = 0,
             **kwargs
     ) -> Dict[str, Any]:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
@@ -911,7 +912,8 @@ class GenerationService:
                 response_modalities=["IMAGE"],
                 image_config=types.ImageConfig(
                     aspect_ratio=aspect_ratio
-                )
+                ),
+                seed=seed
             )
         )
         op_duration = time.time() - start_time
