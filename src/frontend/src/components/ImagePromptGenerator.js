@@ -1,190 +1,209 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Row, Col, Button, Typography, Input, Select, Alert, Upload, Card
+  Row, Col, Button, Input, Typography, Spin, Alert, Upload, Form, List, Card
 } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
-import CameraMovements from './CameraMovements';
+import { PlusOutlined, SendOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
+import axios from 'axios';
 
-const { Title } = Typography;
+const { Paragraph } = Typography;
 const { TextArea } = Input;
-const { Option } = Select;
 
-const ImagePromptGenerator = () => {
-  const { t, i18n } = useTranslation();
-  const [characterImage, setCharacterImage] = useState(null);
-  const [backgroundImage, setBackgroundImage] = useState(null);
-  const [propImage, setPropImage] = useState(null);
-  const [generatedPrompt, setGeneratedPrompt] = useState('');
+const ImagePromptGenerator = ({ user }) => {
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
+
+  const [conversation, setConversation] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [targetLanguage, setTargetLanguage] = useState(i18n.language);
-  const [translatedPrompt, setTranslatedPrompt] = useState('');
-  const [translating, setTranslating] = useState(false);
-  const [isPreviewVisible, setPreviewVisible] = useState(false);
-  const promptTextareaRef = useRef(null);
+  const [error, setError] = useState(null);
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const shortcutText = isMac ? '⌘ + Enter' : 'Alt + Enter';
 
-  const handleImageChange = (file, setImage) => {
-    setImage({
-      file: file,
-      preview: URL.createObjectURL(file),
-    });
-    return false; // Prevent upload
+  const handleImageUpload = (file) => {
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = async () => {
-    if (!characterImage && !backgroundImage && !propImage) {
-      Alert.error(t('imagePromptGenerator.pleaseUploadAtLeastOne'));
-      return;
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && (isMac ? e.metaKey : e.altKey)) {
+      e.preventDefault();
+      form.submit();
     }
+  };
+
+  const handleClearHistory = () => {
+    setConversation([]);
+  };
+
+  const handleRegenerate = async (messageIndex) => {
+    const userMessage = conversation[messageIndex];
+    if (!userMessage || userMessage.type !== 'user') return;
+
+    const newConversation = conversation.slice(0, messageIndex + 1);
+    setConversation(newConversation);
 
     setLoading(true);
-    setGeneratedPrompt('');
+    setError(null);
 
     const formData = new FormData();
-    if (characterImage) formData.append('character_image', characterImage.file);
-    if (backgroundImage) formData.append('background_image', backgroundImage.file);
-    if (propImage) formData.append('prop_image', propImage.file);
+    formData.append('file', userMessage.file);
+    formData.append('prompt', userMessage.prompt);
 
     try {
-      const response = await fetch('/api/generate-prompt-from-images', {
-        method: 'POST',
-        body: formData,
+      const response = await axios.post('/api/images/generate-prompt', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setGeneratedPrompt(data.prompt);
-      setTranslatedPrompt('');
-    } catch (error) {
-      console.error('Error generating prompt:', error);
-      Alert.error(t('imagePromptGenerator.failedToGenerate'));
+      const newModelMessage = {
+        type: 'model',
+        description: response.data.description,
+      };
+      setConversation(prev => [...prev, newModelMessage]);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMovementClick = (promptText) => {
-    const currentPrompt = generatedPrompt;
-    const newText = `${currentPrompt} ${promptText}`;
-    setGeneratedPrompt(newText);
-  };
+  const handleSubmit = async (values) => {
+    if (!imageFile) {
+      setError(t('imagePromptGenerator.noImageError'));
+      return;
+    }
 
-  const handleTranslate = async () => {
-    if (!generatedPrompt) return;
-    setTranslating(true);
+    const userMessage = {
+      type: 'user',
+      prompt: values.prompt,
+      image: imagePreview,
+      file: imageFile,
+    };
+    setConversation(prev => [...prev, userMessage]);
+    setLoading(true);
+    setError(null);
+    form.resetFields(['prompt']);
+    setImageFile(null);
+    setImagePreview(null);
+
+    const formData = new FormData();
+    formData.append('file', imageFile);
+    formData.append('prompt', values.prompt);
+
     try {
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: generatedPrompt, target_language: targetLanguage }),
+      const response = await axios.post('/api/images/generate-prompt', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setTranslatedPrompt(data.translated_text);
-    } catch (error) {
-      console.error('Error translating prompt:', error);
-      Alert.error(t('imagePromptGenerator.failedToTranslate'));
+
+      const newModelMessage = {
+        type: 'model',
+        description: response.data.description,
+      };
+      setConversation(prev => [...prev, newModelMessage]);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'An unexpected error occurred.');
     } finally {
-      setTranslating(false);
+      setLoading(false);
     }
   };
 
-  const ImageUpload = ({ title, image, onChange }) => (
-    <Col xs={24} sm={8}>
-      <Card>
-        <Title level={5}>{title}</Title>
-        <Upload.Dragger
-          beforeUpload={(file) => onChange(file)}
-          showUploadList={false}
-          accept="image/*"
-          height={200}
-        >
-          {image ? (
-            <img src={image.preview} alt={t('imagePromptGenerator.preview')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <>
-              <p className="ant-upload-drag-icon">
-                <UploadOutlined />
-              </p>
-              <p className="ant-upload-text">{t('imagePromptGenerator.clickToUpload')}</p>
-            </>
-          )}
-        </Upload.Dragger>
-      </Card>
-    </Col>
-  );
-
   return (
-    <Card>
-      <Title level={2} style={{ textAlign: 'center' }}>{t('imagePromptGenerator.title')}</Title>
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <ImageUpload
-          title={t('imagePromptGenerator.characterImage')}
-          image={characterImage}
-          onChange={(file) => handleImageChange(file, setCharacterImage)}
-        />
-        <ImageUpload
-          title={t('imagePromptGenerator.backgroundImage')}
-          image={backgroundImage}
-          onChange={(file) => handleImageChange(file, setBackgroundImage)}
-        />
-        <ImageUpload
-          title={t('imagePromptGenerator.propImage')}
-          image={propImage}
-          onChange={(file) => handleImageChange(file, setPropImage)}
-        />
-      </Row>
-      <Button onClick={handleSubmit} type="primary" size="large" block loading={loading} style={{ marginBottom: 16 }}>
-        {t('imagePromptGenerator.generatePrompt')}
-      </Button>
-
-      {generatedPrompt && (
-        <Card>
-          <Title level={5}>{t('imagePromptGenerator.generatedPrompt')}</Title>
-          <TextArea
-            ref={promptTextareaRef}
-            value={generatedPrompt}
-            onChange={(e) => setGeneratedPrompt(e.target.value)}
-            rows={4}
-          />
-          <CameraMovements onMovementClick={handleMovementClick} />
-          <Row justify="space-between" align="middle" style={{ marginTop: 16 }}>
-            <Col>
-              <Button onClick={() => setPreviewVisible(!isPreviewVisible)}>
-                {isPreviewVisible ? t('Hide Preview') : t('Show Preview')}
-              </Button>
-            </Col>
-            <Col>
-              <Row gutter={8}>
-                <Col>
-                  <Select value={targetLanguage} onChange={setTargetLanguage}>
-                    <Option value="en">English</Option>
-                    <Option value="ja">日本語</Option>
-                    <Option value="zh">中文</Option>
-                  </Select>
-                </Col>
-                <Col>
-                  <Button onClick={handleTranslate} type="primary" loading={translating}>
-                    {t('imagePromptGenerator.translate')}
-                  </Button>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-          {isPreviewVisible && (
-            <Alert message={t('Final Prompt Preview')} description={generatedPrompt} type="info" showIcon style={{ marginTop: 16 }} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)' }}>
+      <div style={{ padding: '10px 20px 0', textAlign: 'right' }}>
+        <Button onClick={handleClearHistory}>
+          {t('imagePromptGenerator.clearHistory')}
+        </Button>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <List
+          dataSource={conversation}
+          renderItem={(item, index) => (
+            <List.Item style={{ border: 'none', padding: '10px 0' }}>
+              {item.type === 'user' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
+                  <Button
+                    icon={<SyncOutlined />}
+                    onClick={() => handleRegenerate(index)}
+                    disabled={loading}
+                    style={{ marginRight: '10px' }}
+                    title={t('imagePromptGenerator.regenerate', 'Regenerate')}
+                  />
+                  <div style={{ maxWidth: '60%' }}>
+                    {item.image && <img src={item.image} alt="User input" style={{ maxWidth: '100px', borderRadius: '8px', marginBottom: '8px' }} />}
+                    <Paragraph style={{ background: '#f0f0f0', padding: '10px', borderRadius: '8px', textAlign: 'left' }}>{item.prompt}</Paragraph>
+                  </div>
+                </div>
+              )}
+              {item.type === 'model' && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+                   <Paragraph style={{ background: '#e6f7ff', padding: '10px', borderRadius: '8px', textAlign: 'left', whiteSpace: 'pre-wrap' }}>{item.description}</Paragraph>
+                </div>
+              )}
+            </List.Item>
           )}
-          {translatedPrompt && (
-            <Alert message={t('imagePromptGenerator.translatedPromptTitle')} description={translatedPrompt} type="success" showIcon style={{ marginTop: 16 }} />
-          )}
-        </Card>
-      )}
-    </Card>
+        />
+        {loading && (
+          <List.Item style={{ border: 'none', padding: '10px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+                <Card style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <Spin size="large" />
+                </Card>
+            </div>
+          </List.Item>
+        )}
+        {error && <Alert message={error} type="error" showIcon style={{ margin: '10px 0' }} />}
+      </div>
+      <div style={{ padding: '20px', borderTop: '1px solid #f0f0f0' }}>
+        <Form form={form} onFinish={handleSubmit}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Upload
+              customRequest={({ file, onSuccess }) => {
+                handleImageUpload(file);
+                onSuccess("ok");
+              }}
+              showUploadList={false}
+              accept="image/*"
+              disabled={!!imageFile}
+            >
+              <Button icon={<PlusOutlined />} shape="circle" />
+            </Upload>
+            {imagePreview && (
+              <div style={{ position: 'relative', marginLeft: '10px' }}>
+                <img src={imagePreview} alt="Preview" style={{ maxWidth: '50px', borderRadius: '4px', verticalAlign: 'middle' }} />
+                <Button
+                  icon={<DeleteOutlined />}
+                  size="small"
+                  shape="circle"
+                  style={{ position: 'absolute', top: '-5px', right: '-5px', zIndex: 1 }}
+                  onClick={handleRemoveImage}
+                />
+              </div>
+            )}
+            <Form.Item name="prompt" style={{ flex: 1, marginLeft: '10px', marginBottom: 0 }} rules={[{ required: true, message: 'Please enter your requirement' }]}>
+              <TextArea
+                rows={1}
+                placeholder="Write your prompt here..."
+                autoSize={{ minRows: 1, maxRows: 6 }}
+                onKeyDown={handleKeyDown}
+                style={{ height: '54px' }}
+              />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SendOutlined />} style={{ marginLeft: '10px', height: '54px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div>Generate</div>
+                <div style={{ fontSize: '10px', opacity: 0.8 }}>{shortcutText}</div>
+              </div>
+            </Button>
+          </div>
+        </Form>
+      </div>
+    </div>
   );
 };
 

@@ -54,6 +54,24 @@ async def generate_image(
     logger.info(f"Task {task_id} created for image generation.")
     return TaskResponse(task_id=task_id)
 
+@router.post("/generate-prompt")
+async def generate_prompt(
+    user: dict = Depends(get_user),
+    file: UploadFile = File(...),
+    prompt: str = Form(...),
+    generation_service: GenerationService = Depends(get_generation_service)
+):
+    if settings.ENABLE_OAUTH and not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    if not file.content_type.startswith("image/"):
+        logger.error(f"Validation Error: Invalid file type '{file.content_type}'. Only images are allowed.")
+        raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+
+    file_bytes = await file.read()
+    description = await generation_service.generate_image_prompt(file_bytes, prompt)
+    return {"description": description}
+
 @router.post("/enrich", response_model=TaskResponse)
 async def enrich_image(
     user: dict = Depends(get_user),

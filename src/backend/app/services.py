@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 from google.cloud import bigquery, firestore
 from google.cloud.firestore_v1.vector import Vector
-from app.prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION
+from app.prompts import IMAGE_ENRICHMENT_PROMPT_PREFIX, IMAGE_ENRICHMENT_PROMPT_SUFFIX, IMAGE_ENRICHMENT_PROMPT_COMBINATION, IMAGE_DESC_SYSTEM_PROMPT
 from PIL import Image
 from io import BytesIO
 import vertexai
@@ -46,8 +46,32 @@ generate_content_config = types.GenerateContentConfig(
         threshold="OFF"
     )],
     thinking_config=types.ThinkingConfig(
-        thinking_budget=0,
+        thinking_budget=-1,
     ),
+)
+
+generate_content_config_image_desc = types.GenerateContentConfig(
+    temperature=0,
+    top_p=1,
+    seed=0,
+    max_output_tokens=65535,
+    safety_settings=[types.SafetySetting(
+        category="HARM_CATEGORY_HATE_SPEECH",
+        threshold="OFF"
+    ), types.SafetySetting(
+        category="HARM_CATEGORY_DANGEROUS_CONTENT",
+        threshold="OFF"
+    ), types.SafetySetting(
+        category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        threshold="OFF"
+    ), types.SafetySetting(
+        category="HARM_CATEGORY_HARASSMENT",
+        threshold="OFF"
+    )],
+    thinking_config=types.ThinkingConfig(
+        thinking_budget=-1,
+    ),
+    system_instruction=[types.Part.from_text(text=IMAGE_DESC_SYSTEM_PROMPT)]
 )
 
 
@@ -973,6 +997,21 @@ class GenerationService:
             "input_token": input_token,
             "output_token": output_token
         }
+
+    async def generate_image_prompt(self, image_bytes: bytes, prompt: str) -> str:
+        try:
+            image_part = types.Part.from_bytes(data=image_bytes, mime_type="image/png")
+            full_prompt = f"{prompt}"
+            
+            response = self.genai_client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[full_prompt, image_part],
+                config=generate_content_config_image_desc
+            )
+            return response.text.strip()
+        except Exception as e:
+            logger.error(f"Failed to generate image prompt: {e}", exc_info=True)
+            raise
 
 
 def get_generation_service() -> GenerationService:

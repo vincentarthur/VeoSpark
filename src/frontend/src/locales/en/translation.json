@@ -9,6 +9,7 @@
     "videoExtensionModal": "Video Extension (Modal)",
     "videoExtensionPanel": "Video Extension (Panel)",
     "imageGenerator": "Image Generator",
+    "imagePromptGenerator": "Image Prompt Generator",
     "promptFromImages": "Prompt from Images",
     "imageEnrichment": "Image Enrichment",
     "generator": "Creative Production",
@@ -266,7 +267,10 @@
     "dedicatedProjectLabel": "Dedicated Project"
   },
   "imagePromptGenerator": {
-    "title": "Generate Prompt from Images",
+    "title": "Image Prompt Generator",
+    "noImageError": "Please upload an image.",
+    "clearHistory": "Clear History",
+    "regenerate": "Regenerate",
     "characterImage": "Character Image",
     "backgroundImage": "Background Image",
     "propImage": "Prop Image",

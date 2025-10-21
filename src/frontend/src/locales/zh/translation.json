@@ -9,6 +9,7 @@
     "videoExtensionModal": "视频扩展 (模态)",
     "videoExtensionPanel": "视频扩展 (面板)",
     "imageGenerator": "图片生成器",
+    "imagePromptGenerator": "图像提示生成器",
     "promptFromImages": "从图片生成提示",
     "imageEnrichment": "图像增强",
     "generator": "创意生产",
@@ -256,7 +257,10 @@
     "dedicatedProjectLabel": "专用项目"
   },
   "imagePromptGenerator": {
-    "title": "从图片生成提示",
+    "title": "图像提示生成器",
+    "noImageError": "请上传一张图片。",
+    "clearHistory": "清除历史",
+    "regenerate": "重新生成",
     "characterImage": "角色图片",
     "backgroundImage": "背景图片",
     "propImage": "道具图片",

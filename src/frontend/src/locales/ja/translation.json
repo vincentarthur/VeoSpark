@@ -9,7 +9,8 @@
     "videoExtensionModal": "ビデオ拡張 (モーダル)",
     "videoExtensionPanel": "ビデオ拡張 (パネル)",
     "imageGenerator": "画像ジェネレーター",
-    "promptFromImages": "画像からプロンプト",
+    "imagePromptGenerator": "画像プロンプトジェネレーター",
+    "promptFromImages": "画像からプロンプトを作成",
     "imageEnrichment": "画像エンリッチメント",
     "generator": "クリエイティブプロダクション",
     "history": "私の履歴",
@@ -254,7 +255,10 @@
     "dedicatedProjectLabel": "専用プロジェクト"
   },
   "imagePromptGenerator": {
-    "title": "画像からプロンプトを生成",
+    "title": "画像プロンプトジェネレーター",
+    "noImageError": "画像をアップロードしてください。",
+    "clearHistory": "履歴をクリア",
+    "regenerate": "再生成",
     "characterImage": "キャラクター画像",
     "backgroundImage": "背景画像",
     "propImage": "小道具画像",
