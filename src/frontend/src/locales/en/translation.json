@@ -63,6 +63,7 @@
     "raiFilterErrorCode": "Error Code",
     "raiFilterCategory": "Category",
     "raiFilterDescription": "Description",
+    "raiFilterErrorMessage": "Detail Message",
     "raiFilterFilteredContent": "Filtered Content",
     "dedicatedProjectLabel": "Dedicated Project"
   },

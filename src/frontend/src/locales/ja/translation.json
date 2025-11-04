@@ -61,6 +61,7 @@
     "raiFilterErrorCode": "エラーコード",
     "raiFilterCategory": "カテゴリー",
     "raiFilterDescription": "説明",
+    "raiFilterErrorMessage": "具体的な詳細",
     "raiFilterFilteredContent": "フィルタリングされたコンテンツ",
     "dedicatedProjectLabel": "専用プロジェクト"
   },

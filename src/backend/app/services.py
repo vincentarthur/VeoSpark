@@ -1,3 +1,4 @@
+import ast
 import time
 import uuid
 import re
@@ -46,7 +47,7 @@ generate_content_config = types.GenerateContentConfig(
         threshold="OFF"
     )],
     thinking_config=types.ThinkingConfig(
-        thinking_budget=-1,
+        thinking_budget=0,
     ),
 )
 
@@ -69,7 +70,7 @@ generate_content_config_image_desc = types.GenerateContentConfig(
         threshold="OFF"
     )],
     thinking_config=types.ThinkingConfig(
-        thinking_budget=-1,
+        thinking_budget=0,
     ),
     system_instruction=[types.Part.from_text(text=IMAGE_DESC_SYSTEM_PROMPT)]
 )
@@ -601,18 +602,21 @@ class GenerationService:
 
         if not all_codes:
             return None
-
+        
         reasons = []
         for code in all_codes:
             reason = safety_filters.get(code, {
                 "category": "Unknown",
                 "description": "An unknown safety filter was triggered.",
+                "error_message": ast.literal_eval(error_message).get('message'),
                 "filtered": "N/A"
             })
+
             reasons.append({
                 "code": code,
                 "category": reason.get("category", "Unknown"),
                 "description": reason.get("description", "No description available."),
+                "error_message": ast.literal_eval(error_message).get('message'),
                 "filtered": reason.get("filtered", "N/A")
             })
         return reasons
@@ -633,6 +637,8 @@ class GenerationService:
         final_frame_gcs_uri = body.get('final_frame_gcs_uri')
         reference_image_gcs_uris = body.get('reference_image_gcs_uris')
 
+        print(f"reference_image_gcs_uris: {reference_image_gcs_uris}")
+
         user_folder = "anonymous"
         if user_info and 'email' in user_info:
             user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_info['email']).lower()
@@ -646,6 +652,7 @@ class GenerationService:
             aspect_ratio=aspect_ratio,
             duration_seconds=duration_seconds,
             number_of_videos=sample_count,
+            person_generation=types.PersonGeneration.ALLOW_ALL
         )
 
         if image_gcs_uri:
@@ -682,7 +689,8 @@ class GenerationService:
                         reference_type=types.VideoGenerationReferenceType.ASSET
                     )
                     for uri in reference_image_gcs_uris
-                ]
+                ],
+                person_generation=types.PersonGeneration.ALLOW_ALL
             )
 
         operation = self.genai_client.models.generate_videos(
@@ -701,18 +709,22 @@ class GenerationService:
             time.sleep(15)
             operation = self.genai_client.operations.get(operation)
 
-        # if operation.error:
-        #     error_str = str(operation.error)
-        #     rai_reasons = self._parse_rai_reason_from_error(error_str)
-        #     return {
-        #         "message": "Video generation failed.",
-        #         "error": error_str,
-        #         "videos": [],
-        #         "duration": time.time() - start_time,
-        #         "revisedPrompt": None,
-        #         "rai_reasons": rai_reasons,
-        #         "creative_project_id": kwargs.get('body').get('creative_project_id')
-        #     }
+        print(operation)
+        print()
+
+        if operation.error:
+            error_str = str(operation.error)
+            rai_reasons = self._parse_rai_reason_from_error(error_str)
+            return {
+                "message": "Video generation failed.",
+                "error": error_str,
+                "videos": [],
+                "duration": time.time() - start_time,
+                "revisedPrompt": None,
+                "rai_reasons": rai_reasons,
+                "creative_project_id": kwargs.get('body').get('creative_project_id')
+            }
+        
         if not operation.response:
             return {
                 "message": "Operation finished but no response data found.",

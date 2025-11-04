@@ -608,6 +608,7 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
                     { title: t('dashboard.raiFilterErrorCode'), dataIndex: 'code', key: 'code' },
                     { title: t('dashboard.raiFilterCategory'), dataIndex: 'category', key: 'category' },
                     { title: t('dashboard.raiFilterDescription'), dataIndex: 'description', key: 'description' },
+                    { title: t('dashboard.raiFilterErrorMessage'), dataIndex: 'error_message', key: 'error_message' },
                     { title: t('dashboard.raiFilterFilteredContent'), dataIndex: 'filtered', key: 'filtered' },
                   ]}
                   pagination={false}

@@ -62,6 +62,7 @@
     "raiFilterErrorCode": "错误代码",
     "raiFilterCategory": "类别",
     "raiFilterDescription": "描述",
+    "raiFilterErrorMessage": "具体错误信息",
     "raiFilterFilteredContent": "过滤内容",
     "dedicatedProjectLabel": "专用项目"
   },
