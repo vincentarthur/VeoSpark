@@ -75,7 +75,7 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   // State for V3.1 reference images
   const [referenceImageGcsUris, setReferenceImageGcsUris] = useState([]);
   const [referenceImagePreviews, setReferenceImagePreviews] = useState([]);
-  const [, setReferenceImageUploading] = useState(false);
+  const [referenceImageUploading, setReferenceImageUploading] = useState(false);
   const [referenceImageUploadError, setReferenceImageUploadError] = useState(null);
   const [v31GenerationMode, setV31GenerationMode] = useState('frameControl'); // 'referenceImage' or 'frameControl'
 
@@ -314,6 +314,21 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
   }, [pollingTaskId]);
 
   const onFinish = async (values) => {
+    if (uploading || finalFrameUploading || referenceImageUploading) {
+      setError("Please wait for all image uploads to complete before generating.");
+      return;
+    }
+
+    // Safeguard to ensure that if a preview exists, the GCS URI must also exist.
+    if (
+      (imagePreview && !imageGcsUri) ||
+      (finalFramePreview && !finalFrameGcsUri) ||
+      (v31GenerationMode === 'referenceImage' && referenceImagePreviews.length > 0 && referenceImagePreviews.length !== referenceImageGcsUris.length)
+    ) {
+      setError("An image is selected but the upload is not complete. Please wait or remove the image.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setGeneratedVideos([]);
@@ -364,17 +379,17 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
             enhancePrompt: enhancePrompt,
             resolution: resolution,
           }}>
-            <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]}>
+            <Form.Item name="model" label={t('dashboard.modelLabel')} rules={[{ required: true }]} >
               <Select onChange={setModel}>
                 {models.map((m) => (
                   <Option key={m.id} value={m.id}>{m.name}</Option>
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="prompt" label={t('dashboard.promptLabel')} rules={[{ required: true }]}>
+            <Form.Item name="prompt" label={t('dashboard.promptLabel')} rules={[{ required: true }]} >
               <TextArea rows={4} ref={promptInputRef} />
             </Form.Item>
-            <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
+            <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]} >
               <Select placeholder="Select a project">
                 {projects.map((p) => (
                   <Option key={p.id} value={p.id}>{p.name}</Option>
@@ -587,9 +602,18 @@ const Dashboard = ({ initialFirstFrame, initialLastFrame }) => {
             )}
 
             <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                {t('dashboard.generateButton')}
-              </Button>
+              <Tooltip title={uploading || finalFrameUploading || referenceImageUploading ? "Please wait for image upload to complete" : ""}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={loading}
+                  disabled={uploading || finalFrameUploading || referenceImageUploading}
+                  block
+                  size="large"
+                >
+                  {t('dashboard.generateButton')}
+                </Button>
+              </Tooltip>
             </Form.Item>
           </Form>
         </Card>
