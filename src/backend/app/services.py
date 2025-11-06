@@ -1,4 +1,3 @@
-import ast
 import time
 import uuid
 import re
@@ -608,7 +607,7 @@ class GenerationService:
             reason = safety_filters.get(code, {
                 "category": "Unknown",
                 "description": "An unknown safety filter was triggered.",
-                "error_message": ast.literal_eval(error_message).get('message'),
+                "error_message": error_message,
                 "filtered": "N/A"
             })
 
@@ -616,7 +615,7 @@ class GenerationService:
                 "code": code,
                 "category": reason.get("category", "Unknown"),
                 "description": reason.get("description", "No description available."),
-                "error_message": ast.literal_eval(error_message).get('message'),
+                "error_message": error_message,
                 "filtered": reason.get("filtered", "N/A")
             })
         return reasons
