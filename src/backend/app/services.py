@@ -708,8 +708,7 @@ class GenerationService:
             time.sleep(15)
             operation = self.genai_client.operations.get(operation)
 
-        print(operation)
-        print()
+        # print(operation)
 
         if operation.error:
             error_str = str(operation.error)
