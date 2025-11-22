@@ -526,8 +526,11 @@ It is recommended to create a dedicated service account for this application to 
 ### Home Page
 ![Home Page](screenshots/HomePage.png)
 
-### Gemini 2.5 Flash Image Page
-![Gemini 2.5 Flash Image Page](screenshots/Gemini2.5FlashImage.png)
+### Gemini 3.0 Pro Image Page
+![Gemini 3.0 Pro Image Page](screenshots/Gemini3.0ProImage.png)
+
+### Infinite Video 
+![Infinite Video](screenshots/InfiniteVideo.png)
 
 ### RAI (Responsible AI)
 ![RAI](screenshots/RAI.png)
