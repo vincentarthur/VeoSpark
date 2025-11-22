@@ -72,3 +72,4 @@ MAX_WORKER_COUNT: 6
 BANNER_MESSAGES:
   - "Gemini 3.0 Pro Image Generation (Nano Banana Pro) is Ready."
   - "Nano Banana Pro supports 1/2/4K output and at most 14 images as input."
+  - "Infinite Video Flow is ready."

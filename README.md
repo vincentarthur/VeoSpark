@@ -543,6 +543,21 @@ It is recommended to create a dedicated service account for this application to 
 
 ## Change Log
 
+- **v2.3**
+    - **Nano Banana Pro**:
+        - Integrate Gemini-3.0-pro-image-generate (aka Nano Banana Pro)
+        - Support 1/2/4K output
+        - Support at most 14 images as input.
+    - **Infinite Video Enhancements**:
+        - Add infinite video generation flow allowing user to base on specific frame to extend the video.
+        - Streamlined the workflow in the "Infinite Video" tab. Users should now start the flow by selecting a video from the Dashboard or History. 
+        - Added full configuration options within the VideoNode in the Infinite Video flow, including Model, Duration (4/6/8s), Resolution, Aspect Ratio (16:9, 9:16), and Audio toggle.
+        - Added mandatory **Creative Project** selection to ensure all generations are properly categorized and tracked for cost analysis.
+        - Optimized the UI with a collapsible settings section and improved styling for the "With Audio" toggle.
+    - **Internationalization (i18n)**:
+        - Added comprehensive translation support for the "Infinite Video" tab.
+        - Added translations for the "Model" and "Resolution" labels in the "Image Enrichment" tab.
+        
 - **v2.2**
     - Integrated the **Veo 3.1 model** and introduced several new video generation features:
         - **First & Last Frame Generation**: Allows users to specify the starting and ending frames of a video for more creative control.

@@ -66,11 +66,11 @@ const useStore = create((set, get) => ({
     set((state) => ({ nodes: [...state.nodes, newNode] }));
   },
 
-  updateNodePrompt: (nodeId, prompt) => {
+  updateNodeData: (nodeId, partialData) => {
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
-          ? { ...node, data: { ...node.data, prompt } }
+          ? { ...node, data: { ...node.data, ...partialData } }
           : node
       ),
     }));
@@ -148,7 +148,13 @@ const useStore = create((set, get) => ({
       // 2. Generate Video
       const result = await api.generateVideo({
           prompt: sourceNode.data.prompt,
-          imageGcsUri: imageGcsUri
+          imageGcsUri: imageGcsUri,
+          model: sourceNode.data.model,
+          creative_project_id: sourceNode.data.creative_project_id,
+          duration: sourceNode.data.duration,
+          resolution: sourceNode.data.resolution,
+          aspectRatio: sourceNode.data.aspectRatio,
+          generateAudio: sourceNode.data.generateAudio
       });
       
       // 3. Update Node with Result

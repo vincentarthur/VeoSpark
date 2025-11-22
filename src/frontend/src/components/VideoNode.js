@@ -1,8 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
 import { useTranslation } from 'react-i18next';
-import { Play, Pause, Wand2, Loader2, Camera, X } from 'lucide-react';
+import { Play, Pause, Wand2, Loader2, Camera, X, Settings } from 'lucide-react';
 import useStore from '../stores/infiniteVideoStore';
+import axios from 'axios';
 
 const NODE_WIDTH = 400;
 const ASPECT_RATIO = 16 / 9;
@@ -16,8 +17,44 @@ export default function VideoNode({ id, data, isConnectable }) {
   const [duration, setDuration] = useState(0);
   const { getNode } = useReactFlow();
   const triggerGeneration = useStore((state) => state.triggerGeneration);
-  const updateNodePrompt = useStore((state) => state.updateNodePrompt);
+  const updateNodeData = useStore((state) => state.updateNodeData);
   const deleteNode = useStore((state) => state.deleteNode);
+  
+  const [projects, setProjects] = useState([]);
+  const [models, setModels] = useState([]);
+  const [showSettings, setShowSettings] = useState(true); // Default open to be visible
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const [projectsRes, modelsRes] = await Promise.all([
+          axios.get('/api/creative-projects'),
+          axios.get('/api/models')
+        ]);
+        setProjects(projectsRes.data);
+        const allModels = modelsRes.data.models || [];
+        const filteredModels = allModels.filter(m => !m.id.includes('veo-2.0'));
+        setModels(filteredModels);
+      } catch (error) {
+        console.error("Failed to fetch configuration:", error);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  // Set default values if not set
+  useEffect(() => {
+      if (!data.model && models.length > 0) {
+          updateNodeData(id, { model: 'veo-3.1-fast-generate-preview' }); // Default model
+      }
+      if (data.generateAudio === undefined) {
+          updateNodeData(id, { generateAudio: true });
+      }
+      if (!data.duration) updateNodeData(id, { duration: 8 });
+      if (!data.resolution) updateNodeData(id, { resolution: '1080p' });
+      if (!data.aspectRatio) updateNodeData(id, { aspectRatio: '16:9' });
+  }, [id, data.model, data.generateAudio, data.duration, data.resolution, data.aspectRatio, models, updateNodeData]);
+
 
   const disabledButtonStyle = {
     cursor: 'not-allowed',
@@ -139,20 +176,127 @@ export default function VideoNode({ id, data, isConnectable }) {
           <div style={promptAreaStyle}>
             <textarea
               value={data.prompt || ''}
-              onChange={(e) => updateNodePrompt(id, e.target.value)}
+              onChange={(e) => updateNodeData(id, { prompt: e.target.value })}
               placeholder={t('infiniteVideo.promptPlaceholder')}
               style={promptTextAreaStyle}
               className="nodrag"
             />
           </div>
+          
+          <div style={settingsAreaStyle}>
+             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                 <span style={{color: '#ddd', fontSize: '12px', fontWeight: 'bold'}}>Settings</span>
+                 <Settings size={14} color="#ddd" style={{cursor: 'pointer'}} onClick={() => setShowSettings(!showSettings)} />
+             </div>
+             
+             {showSettings && (
+                 <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                     {/* Creative Project - Mandatory */}
+                     <select 
+                        value={data.creative_project_id || ''} 
+                        onChange={(e) => updateNodeData(id, { creative_project_id: e.target.value })}
+                        style={{...selectStyle, borderColor: !data.creative_project_id ? '#ff4d4f' : '#444'}}
+                        className="nodrag"
+                     >
+                         <option value="" disabled>Select Project (Required)</option>
+                         {projects.map(p => (
+                             <option key={p.id} value={p.id}>{p.name}</option>
+                         ))}
+                     </select>
+
+                     {/* Model Selection */}
+                     <select 
+                        value={data.model || ''} 
+                        onChange={(e) => updateNodeData(id, { model: e.target.value })}
+                        style={selectStyle}
+                        className="nodrag"
+                     >
+                         {models.map(m => (
+                             <option key={m.id} value={m.id}>{m.name}</option>
+                         ))}
+                     </select>
+
+                     <div style={{display: 'flex', gap: '8px'}}>
+                         {/* Duration */}
+                         <select 
+                            value={data.duration || 8} 
+                            onChange={(e) => updateNodeData(id, { duration: parseInt(e.target.value) })}
+                            style={selectStyle}
+                            className="nodrag"
+                         >
+                             <option value={4}>4s</option>
+                             <option value={6}>6s</option>
+                             <option value={8}>8s</option>
+                         </select>
+
+                         {/* Resolution */}
+                         <select 
+                            value={data.resolution || '1080p'} 
+                            onChange={(e) => updateNodeData(id, { resolution: e.target.value })}
+                            style={selectStyle}
+                            className="nodrag"
+                         >
+                             <option value="720p">720p</option>
+                             <option value="1080p">1080p</option>
+                         </select>
+                     </div>
+
+                     <div style={{display: 'flex', gap: '8px'}}>
+                         {/* Aspect Ratio */}
+                         <select 
+                            value={data.aspectRatio || '16:9'} 
+                            onChange={(e) => updateNodeData(id, { aspectRatio: e.target.value })}
+                            style={selectStyle}
+                            className="nodrag"
+                         >
+                             <option value="16:9">16:9</option>
+                             <option value="9:16">9:16</option>
+                         </select>
+
+                         {/* Generate Audio Checkbox */}
+                         <label 
+                            style={{
+                                color: '#fff', 
+                                fontSize: '12px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                flex: 1, 
+                                justifyContent: 'center', 
+                                background: data.generateAudio !== false ? '#2b3245' : '#1f1f1f', 
+                                border: `1px solid ${data.generateAudio !== false ? '#6366f1' : '#444'}`,
+                                borderRadius: '4px', 
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                            title="Generate Audio"
+                         >
+                             <input 
+                                type="checkbox" 
+                                checked={data.generateAudio !== false} 
+                                onChange={(e) => updateNodeData(id, { generateAudio: e.target.checked })}
+                                className="nodrag"
+                                style={{ accentColor: '#6366f1' }}
+                             />
+                             Audio
+                         </label>
+                     </div>
+                 </div>
+             )}
+          </div>
+
           <div style={actionAreaStyle}>
             {/* Capture button is optional/disabled for now as generic capture logic is handled in generate */}
             <button
               onClick={handleGenerateNext}
-              style={{...generateButtonStyle, ...(!data.videoUrl ? disabledButtonStyle : {})}}
+              style={{...generateButtonStyle, ...((!data.videoUrl || !data.creative_project_id) ? disabledButtonStyle : {})}}
               className="nodrag"
-              title={!data.videoUrl ? t('infiniteVideo.noVideoForGen') : t('infiniteVideo.useCurrentFrame')}
-              disabled={!data.videoUrl}
+              title={
+                  !data.videoUrl ? t('infiniteVideo.noVideoForGen') : 
+                  !data.creative_project_id ? "Please select a Creative Project" :
+                  t('infiniteVideo.useCurrentFrame')
+              }
+              disabled={!data.videoUrl || !data.creative_project_id}
             >
               <Wand2 size={14} style={{ marginRight: 4 }} />
               {t('infiniteVideo.generateNext')}
@@ -236,6 +380,23 @@ const promptAreaStyle = {
     padding: '8px',
     background: '#222',
     borderTop: '1px solid #333'
+};
+
+const settingsAreaStyle = {
+    padding: '8px',
+    background: '#222',
+    borderTop: '1px solid #333'
+};
+
+const selectStyle = {
+    width: '100%',
+    background: '#111',
+    border: '1px solid #444',
+    color: 'white',
+    borderRadius: '4px',
+    padding: '6px',
+    fontSize: '12px',
+    outline: 'none'
 };
 
 const promptTextAreaStyle = {

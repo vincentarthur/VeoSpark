@@ -74,17 +74,18 @@ export const pollTask = async (taskId) => {
  * 2. Polls for completion
  * 3. Ensures the result has a valid signed URL (re-signing if necessary)
  */
-export const generateVideo = async ({ prompt, imageGcsUri }) => {
+export const generateVideo = async ({ prompt, imageGcsUri, model, creative_project_id, duration, resolution, aspectRatio, generateAudio }) => {
   // 1. Start Generation
   const payload = {
-    model: 'veo-3.1-fast-generate-preview',
+    model: model || 'veo-3.1-fast-generate-preview',
     prompt: prompt || "A cinematic shot",
     image_gcs_uri: imageGcsUri,
-    aspectRatio: '16:9',
-    duration: 8,
+    aspectRatio: aspectRatio || '16:9',
+    duration: duration || 8,
     sampleCount: 1,
-    resolution: '1080p',
-    generateAudio: true
+    resolution: resolution || '1080p',
+    generateAudio: generateAudio !== undefined ? generateAudio : true,
+    creative_project_id: creative_project_id
   };
 
   const startResponse = await axios.post('/api/videos/generate', payload);
