@@ -8,6 +8,7 @@ import Dashboard from '../components/Dashboard';
 import ImageGenerator from '../components/ImageGenerator';
 import ImagePromptGenerator from '../components/ImagePromptGenerator';
 import ConversationalImageEnrichment from '../components/ConversationalImageEnrichment';
+import InfiniteVideoFlow from '../components/InfiniteVideoFlow';
 import VideoExtensionModal from '../components/VideoExtensionModal';
 import VideoExtensionPanel from '../components/VideoExtensionPanel';
 import HistoryPage from '../components/HistoryPage';
@@ -113,6 +114,9 @@ const HomePage = ({ user }) => {
                 <TabPane tab={t('nav.videoGenerator')} key="2">
                   <Dashboard initialFirstFrame={firstFrame} initialLastFrame={lastFrame} />
                 </TabPane>
+                <TabPane tab={t('nav.infiniteVideo')} key="infinite-video">
+                  <InfiniteVideoFlow initialVideo={videoToExtend} />
+                </TabPane>
                 {/*
                 <TabPane tab="Video Extension (Modal)" key="5">
                   <VideoExtensionModal />
@@ -120,7 +124,6 @@ const HomePage = ({ user }) => {
                 <TabPane tab="Video Extension (Panel)" key="6">
                   <VideoExtensionPanel video={videoToExtend} />
                 </TabPane>
-
                 */}
                 
               </Tabs>

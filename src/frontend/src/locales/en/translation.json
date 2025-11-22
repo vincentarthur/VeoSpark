@@ -12,6 +12,7 @@
     "imagePromptGenerator": "Image Prompt Generator",
     "promptFromImages": "Prompt from Images",
     "imageEnrichment": "Image Enrichment",
+    "infiniteVideo": "Infinite Video",
     "generator": "Creative Production",
     "history": "My History",
     "analytics": "Analytics",
@@ -329,7 +330,22 @@
     "sampleCount": "Sample Count",
     "clearHistory": "Clear History",
     "regenerate": "Regenerate",
-    "generating": "Generating..."
+    "generating": "Generating...",
+    "modelLabel": "Model",
+    "resolutionLabel": "Resolution",
+    "generate": "Generate"
+  },
+  "infiniteVideo": {
+    "title": "Infinite Video Flow",
+    "emptyState": "Select a video from the Dashboard or History to extend.",
+    "uploadButton": "Upload Video",
+    "generating": "Generating w/ Veo3...",
+    "promptPlaceholder": "Enter a prompt for the next video...",
+    "generateNext": "Generate Next",
+    "noVideo": "Video URL not available",
+    "sourceFrame": "Source frame",
+    "noVideoForGen": "No video available for generation",
+    "useCurrentFrame": "Use current frame to generate next video"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

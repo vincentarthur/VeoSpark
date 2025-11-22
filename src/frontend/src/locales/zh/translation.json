@@ -12,6 +12,7 @@
     "imagePromptGenerator": "图像提示生成器",
     "promptFromImages": "从图片生成提示",
     "imageEnrichment": "图像增强",
+    "infiniteVideo": "无限视频",
     "generator": "创意生产",
     "history": "我的历史",
     "analytics": "分析",
@@ -319,7 +320,22 @@
     "aspectRatio": "宽高比",
     "clearHistory": "清除历史",
     "regenerate": "重新生成",
-    "generating": "生成中..."
+    "generating": "生成中...",
+    "modelLabel": "模型",
+    "resolutionLabel": "分辨率",
+    "generate": "生成"
+  },
+  "infiniteVideo": {
+    "title": "无限视频流",
+    "emptyState": "从仪表板或历史记录中选择视频进行扩展。",
+    "uploadButton": "上传视频",
+    "generating": "使用 Veo3 生成中...",
+    "promptPlaceholder": "输入下一个视频的提示词...",
+    "generateNext": "生成下一个",
+    "noVideo": "视频 URL 不可用",
+    "sourceFrame": "源帧",
+    "noVideoForGen": "没有可用于生成的视频",
+    "useCurrentFrame": "使用当前帧生成下一个视频"
   },
   "footer": {
     "poweredBy": "由 Google Cloud 提供支持"

@@ -43,6 +43,7 @@ from app.video_processing import check_quota, process_video_from_gcs
 from app.routers.api import router as api_router
 from app.routers.videos import router as videos_router
 from app.routers.images import router as images_router
+from app.routers.tools import router as tools_router
 
 
 logging.basicConfig(level=logging.INFO)
@@ -149,6 +150,7 @@ if settings.ENABLE_OAUTH:
 app.include_router(api_router, prefix="/api")
 app.include_router(videos_router, prefix="/api/videos", tags=["Video Generation"])
 app.include_router(images_router, prefix="/api/images", tags=["Image Generation"])
+app.include_router(tools_router, prefix="/api/tools", tags=["Tools"])
 
 
 # ==============================================================================

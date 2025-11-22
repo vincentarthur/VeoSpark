@@ -86,7 +86,7 @@ const HistoryPage = ({ user, onUseAsFirstFrame, onUseAsLastFrame }) => {
   };
 
   const handleExtendClick = (video) => {
-    navigate('/', { state: { video, tab: '6' } });
+    navigate('/', { state: { video, tab: 'infinite-video' } });
   };
 
   const {

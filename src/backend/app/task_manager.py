@@ -49,7 +49,7 @@ def create_task(
             # Check if the result indicates a graceful failure (e.g., RAI violation)
             if isinstance(result, dict) and "error" in result:
                 # Store the entire result so the frontend can get detailed RAI reasons
-                _task_store[task_id] = {"status": "completed", "result": result}
+                _task_store[task_id] = {"status": "SUCCESS", "result": result}
                 logger.warning(f"Task {task_id} completed with a handled error: {result['error']}")
                 if on_error:
                     try:
@@ -64,7 +64,7 @@ def create_task(
                         logger.error(f"Error in on_error callback for task {task_id}: {cb_e}", exc_info=True)
             else:
                 # Task succeeded
-                _task_store[task_id] = {"status": "completed", "result": result}
+                _task_store[task_id] = {"status": "SUCCESS", "result": result}
                 logger.info(f"Task {task_id} completed successfully.")
                 if on_success:
                     try:
@@ -74,7 +74,7 @@ def create_task(
                         logger.error(f"Error in on_success callback for task {task_id}: {cb_e}", exc_info=True)
 
         except Exception as e:
-            _task_store[task_id] = {"status": "failed", "error": str(e)}
+            _task_store[task_id] = {"status": "FAILURE", "error": str(e)}
             logger.error(f"Task {task_id} failed with an unhandled exception: {e}", exc_info=True)
             if on_error:
                 try:
@@ -88,7 +88,7 @@ def create_task(
     _executor.submit(task_wrapper, task_id)
     
     # Immediately store the initial status
-    _task_store[task_id] = {"status": "running"}
+    _task_store[task_id] = {"status": "RUNNING"}
     logger.info(f"Task {task_id} is now running.")
     
     return task_id

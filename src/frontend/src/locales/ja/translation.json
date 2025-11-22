@@ -12,6 +12,7 @@
     "imagePromptGenerator": "画像プロンプトジェネレーター",
     "promptFromImages": "画像からプロンプトを作成",
     "imageEnrichment": "画像エンリッチメント",
+    "infiniteVideo": "無限ビデオ",
     "generator": "クリエイティブプロダクション",
     "history": "私の履歴",
     "analytics": "アナリティクス",
@@ -317,7 +318,22 @@
     "aspectRatio": "アスペクト比",
     "clearHistory": "履歴をクリア",
     "regenerate": "再生成",
-    "generating": "生成中..."
+    "generating": "生成中...",
+    "modelLabel": "モデル",
+    "resolutionLabel": "解像度",
+    "generate": "生成"
+  },
+  "infiniteVideo": {
+    "title": "インフィニットビデオフロー",
+    "emptyState": "ダッシュボードまたは履歴からビデオを選択して拡張します。",
+    "uploadButton": "ビデオをアップロード",
+    "generating": "Veo3で生成中...",
+    "promptPlaceholder": "次のビデオのプロンプトを入力してください...",
+    "generateNext": "次を生成",
+    "noVideo": "ビデオURLが利用できません",
+    "sourceFrame": "ソースフレーム",
+    "noVideoForGen": "生成に使用できるビデオがありません",
+    "useCurrentFrame": "現在のフレームを使用して次のビデオを生成"
   },
   "footer": {
     "poweredBy": "Powered by Google Cloud"

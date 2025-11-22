@@ -373,7 +373,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
               </Form.Item>
             </Col>
             <Col>
-              <Form.Item name="model" label="Model">
+              <Form.Item name="model" label={t('imageEnrichment.modelLabel')}>
                 <Select style={{ width: 180 }}>
                   <Option value="gemini-2.5-flash-image-preview">Nano Banana</Option>
                   <Option value="gemini-3-pro-image-preview">Nano Banana Pro</Option>
@@ -410,7 +410,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
               </Form.Item>
             </Col>
             <Col>
-              <Form.Item name="resolution" label="Resolution">
+              <Form.Item name="resolution" label={t('imageEnrichment.resolutionLabel')}>
                  <Select style={{ width: 80 }}>
                    <Option value="1K">1K</Option>
                    <Option value="2K">2K</Option>
@@ -456,7 +456,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} icon={<SendOutlined />} style={{ marginLeft: '10px', height: '54px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div>Generate</div>
+                <div>{t('imageEnrichment.generate')}</div>
                 <div style={{ fontSize: '10px', opacity: 0.8 }}>{shortcutText}</div>
               </div>
             </Button>

@@ -126,7 +126,7 @@ const VideoCard = ({ video, models, user, onEditClick, onShareClick, onShareDele
     >
       {isDisabled && <div style={overlayStyle}>Not Selectable (Not 720p)</div>}
       <Card.Meta
-        title={<Tooltip title={video.prompt}><Title level={5} ellipsis>{video.prompt || 'No prompt available'}</Title></Tooltip>}
+        title={<Title level={5} ellipsis>{video.prompt || 'No prompt available'}</Title>}
           description={
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

@@ -25,6 +25,8 @@ python-dotenv
 
 # Image Processing
 Pillow
+opencv-python-headless
+numpy
 
 # Video and Audio Processing
 moviepy==1.0.3

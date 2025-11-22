@@ -460,7 +460,7 @@ It is recommended to create a dedicated service account for this application to 
 1.  **Install Frontend Dependencies**:
     ```bash
     cd src/frontend
-    npm install
+    npm install --legacy-peer-deps
     ```
 
 2.  **Build the Frontend**:
