@@ -24,6 +24,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
   const [error, setError] = useState(null);
   const [pollingTaskId, setPollingTaskId] = useState(null);
   const [generatingImages, setGeneratingImages] = useState(0);
+  const [maxImages, setMaxImages] = useState(3);
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const shortcutText = isMac ? '⌘ + Enter' : 'Alt + Enter';
 
@@ -78,6 +79,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
           })),
           revisedPrompt: result.revised_prompt,
           raiReasons: result.rai_reasons,
+          warnings: result.warnings,
         };
         setConversation(prev => [...prev, newModelMessage]);
         setGeneratingImages(0);
@@ -107,10 +109,23 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
   }, [pollingTaskId, pollTaskStatus]);
 
   const handleImageUpload = (files) => {
-    const newFiles = [...imageFiles, ...files].slice(0, 3);
+    const newFiles = [...imageFiles, ...files].slice(0, maxImages);
     setImageFiles(newFiles);
     const newPreviews = newFiles.map(f => URL.createObjectURL(f));
     setImagePreviews(newPreviews);
+  };
+
+  const onValuesChange = (changedValues) => {
+    if (changedValues.model) {
+      const newMax = changedValues.model === 'gemini-3-pro-image-preview' ? 14 : 3;
+      setMaxImages(newMax);
+      if (imageFiles.length > newMax) {
+        const trimmedFiles = imageFiles.slice(0, newMax);
+        const trimmedPreviews = imagePreviews.slice(0, newMax);
+        setImageFiles(trimmedFiles);
+        setImagePreviews(trimmedPreviews);
+      }
+    }
   };
 
   const handleRemoveImage = (index) => {
@@ -162,9 +177,10 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
     }
 
     formData.append('sub_prompt', userMessage.prompt);
-    formData.append('model', 'gemini-2.5-flash-image');
+    formData.append('model', form.getFieldValue('model') || 'gemini-2.5-flash-image-preview');
     formData.append('sample_count', form.getFieldValue('sample_count') || 1);
     formData.append('aspect_ratio', form.getFieldValue('aspect_ratio') || '1:1');
+    formData.append('resolution', form.getFieldValue('resolution') || '2K');
     formData.append('creative_project_id', form.getFieldValue('creative_project_id'));
     
     const textHistory = newConversation.map(m => ({
@@ -226,9 +242,10 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
       }
     }
     formData.append('sub_prompt', values.prompt);
-    formData.append('model', 'gemini-2.5-flash-image'); // Hardcoded as per requirement
+    formData.append('model', values.model);
     formData.append('sample_count', values.sample_count);
     formData.append('aspect_ratio', values.aspect_ratio);
+    formData.append('resolution', values.resolution);
     formData.append('creative_project_id', values.creative_project_id);
     if (conversation.length > 0) {
       const textHistory = conversation.map(m => ({
@@ -300,6 +317,21 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
                       </Col>
                     ))}
                   </Row>
+                  {item.warnings && item.warnings.length > 0 && (
+                    <Alert
+                      message="Warnings"
+                      description={
+                        <ul>
+                          {item.warnings.map((warning, i) => (
+                            <li key={i}>{warning}</li>
+                          ))}
+                        </ul>
+                      }
+                      type="warning"
+                      showIcon
+                      style={{ marginTop: '10px', width: '100%' }}
+                    />
+                  )}
                 </div>
               )}
             </List.Item>
@@ -324,7 +356,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
         {error && <Alert message={error} type="error" showIcon style={{ margin: '10px 0' }} />}
       </div>
       <div style={{ padding: '20px', borderTop: '1px solid #f0f0f0' }}>
-        <Form form={form} onFinish={handleSubmit} initialValues={{ aspect_ratio: '1:1', sample_count: 1 }}>
+        <Form form={form} onFinish={handleSubmit} onValuesChange={onValuesChange} initialValues={{ aspect_ratio: '1:1', sample_count: 1, model: 'gemini-2.5-flash-image-preview', resolution: '2K' }}>
           <Row gutter={16}>
             <Col>
               <Form.Item name="creative_project_id" label={t('dashboard.dedicatedProjectLabel')} rules={[{ required: true, message: 'Please select a project!' }]}>
@@ -341,9 +373,17 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
               </Form.Item>
             </Col>
             <Col>
+              <Form.Item name="model" label="Model">
+                <Select style={{ width: 180 }}>
+                  <Option value="gemini-2.5-flash-image-preview">Nano Banana</Option>
+                  <Option value="gemini-3-pro-image-preview">Nano Banana Pro</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col>
               <Form.Item name="sample_count" label={t('imageEnrichment.sampleCount')}>
-                <Select style={{ width: 120 }}>
-                  {[...Array(16).keys()].map(i => (
+                <Select style={{ width: 70 }}>
+                  {[...Array(4).keys()].map(i => (
                     <Option key={i + 1} value={i + 1}>{i + 1}</Option>
                   ))}
                 </Select>
@@ -351,7 +391,7 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
             </Col>
             <Col>
               <Form.Item name="aspect_ratio" label={t('imageEnrichment.aspectRatio')}>
-                <Select style={{ width: 120 }}>
+                <Select style={{ width: 100 }}>
                   <Select.OptGroup label="Landscape">
                     <Option value="21:9">21:9</Option>
                     <Option value="16:9">16:9</Option>
@@ -369,6 +409,15 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
                 </Select>
               </Form.Item>
             </Col>
+            <Col>
+              <Form.Item name="resolution" label="Resolution">
+                 <Select style={{ width: 80 }}>
+                   <Option value="1K">1K</Option>
+                   <Option value="2K">2K</Option>
+                   <Option value="4K">4K</Option>
+                 </Select>
+              </Form.Item>
+            </Col>
           </Row>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <Upload
@@ -379,11 +428,11 @@ const ConversationalImageEnrichment = ({ user, onUseAsFirstFrame, onUseAsLastFra
               showUploadList={false}
               accept="image/*"
               multiple
-              disabled={imageFiles.length >= 3}
+              disabled={imageFiles.length >= maxImages}
             >
               <Button icon={<PlusOutlined />} shape="circle" />
             </Upload>
-            <Typography.Text type="secondary" style={{ marginLeft: '10px' }}>{t('imageEnrichment.maxImagesTip')}</Typography.Text>
+            <Typography.Text type="secondary" style={{ marginLeft: '10px' }}>Max {maxImages} images</Typography.Text>
             {imagePreviews.map((preview, index) => (
               <div key={index} style={{ position: 'relative', marginLeft: '10px' }}>
                 <img src={preview} alt={`Preview ${index}`} style={{ maxWidth: '50px', borderRadius: '4px', verticalAlign: 'middle' }} />

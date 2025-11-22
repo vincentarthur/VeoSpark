@@ -13,3 +13,10 @@ models:
       - effective_date: "2025-07-01"
         cost_per_million_input_token: 0.30
         cost_per_million_output_token: 30
+  - id: "gemini-3-pro-image-preview"
+    name: "Nano Banana Pro"
+    type: "gemini-3"
+    pricing:
+      - effective_date: "2025-11-20"
+        cost_per_million_input_token: 2
+        cost_per_million_output_token: 120

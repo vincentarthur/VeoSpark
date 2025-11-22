@@ -48,6 +48,7 @@ generate_content_config = types.GenerateContentConfig(
     thinking_config=types.ThinkingConfig(
         thinking_budget=0,
     ),
+    # media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH
 )
 
 generate_content_config_image_desc = types.GenerateContentConfig(
@@ -201,6 +202,55 @@ class GenerationService:
             logger.error(f"Failed to initialize MultiModalEmbeddingModel: {e}", exc_info=True)
             self.embedding_model = None
 
+    def _generate_asset_description(self, gcs_uri: str, mime_type: str, prompt_text: str) -> str:
+        try:
+            logger.info(f"Generating description for {gcs_uri} using model {settings.GEMINI_MODEL}.")
+            asset_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
+
+            response = self.genai_client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[prompt_text, asset_part],
+                config=generate_content_config
+            )
+            description = response.text.strip()
+            logger.info(f"Successfully generated description for {gcs_uri}.")
+            return description
+
+        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
+            logger.error(f"Failed to generate description for {gcs_uri}. Error: {e}")
+            raise
+
+    def _generate_signed_urls(self, gcs_uris: List[str]) -> Dict[str, str]:
+        """Generates signed URLs for a list of GCS URIs."""
+        if not gcs_uris:
+            return {}
+
+        try:
+            credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+            credentials.refresh(GoogleAuthRequest())
+        except Exception as e:
+            logger.error(f"Failed to refresh credentials for signing URLs: {e}")
+            return {}
+
+        signed_urls = {}
+        for uri in gcs_uris:
+            try:
+                bucket_name, blob_name = uri[5:].split("/", 1)
+                bucket = self.storage_client.bucket(bucket_name)
+                blob = bucket.blob(blob_name)
+                url = blob.generate_signed_url(
+                    version="v4",
+                    expiration=timedelta(minutes=60),
+                    method="GET",
+                    service_account_email=credentials.service_account_email,
+                    access_token=credentials.token,
+                )
+                signed_urls[uri] = url
+            except Exception as e:
+                logger.error(f"Failed to generate signed URL for {uri}: {e}")
+                signed_urls[uri] = ""
+        return signed_urls
+
     def generate_video_embedding(self, gcs_uri: str) -> dict:
         """
         Generates a description and embeddings for a single video.
@@ -210,23 +260,8 @@ class GenerationService:
         if not isinstance(gcs_uri, str) or not gcs_uri.startswith("gs://"):
             raise ValueError(f"Invalid GCS URI provided: '{gcs_uri}'")
 
-        description = ""
-        try:
-            logger.info(f"Generating description for {gcs_uri} using model {settings.GEMINI_MODEL}.")
-            video_part = types.Part.from_uri(file_uri=gcs_uri, mime_type="video/mp4")
-            description_prompt = "Describe this video in detail. Focus on the main subjects, background, style, colors, mood and overall description. Output within 200 words"
-
-            response = self.genai_client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=[description_prompt, video_part],
-                config=generate_content_config
-            )
-            description = response.text.strip()
-            logger.info(f"Successfully generated description for {gcs_uri}.")
-
-        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
-            logger.error(f"Failed to generate description for {gcs_uri}. Error: {e}")
-            raise
+        description_prompt = "Describe this video in detail. Focus on the main subjects, background, style, colors, mood and overall description. Output within 200 words"
+        description = self._generate_asset_description(gcs_uri, "video/mp4", description_prompt)
 
         try:
             logger.info(f"Generating embeddings for {gcs_uri}.")
@@ -255,24 +290,9 @@ class GenerationService:
         if not isinstance(gcs_uri, str) or not gcs_uri.startswith("gs://"):
             raise ValueError(f"Invalid GCS URI provided: '{gcs_uri}'")
 
-        description = ""
-        try:
-            logger.info(f"Generating description for {gcs_uri} using model {settings.GEMINI_MODEL}.")
-            mime_type = 'image/png' if gcs_uri.endswith('.png') else 'image/jpeg'
-            image_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
-            description_prompt = "Describe this image in detail. Focus on the main subjects, background, style, colors, mood and overall description. Output within 200 words"
-
-            response = self.genai_client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=[description_prompt, image_part],
-                config=generate_content_config
-            )
-            description = response.text.strip()
-            logger.info(f"Successfully generated description for {gcs_uri}.")
-
-        except (google_api_exceptions.GoogleAPICallError, ValueError) as e:
-            logger.error(f"Failed to generate description for {gcs_uri}. Error: {e}")
-            raise
+        mime_type = 'image/png' if gcs_uri.endswith('.png') else 'image/jpeg'
+        description_prompt = "Describe this image in detail. Focus on the main subjects, background, style, colors, mood and overall description. Output within 200 words"
+        description = self._generate_asset_description(gcs_uri, mime_type, description_prompt)
 
         try:
             logger.info(f"Generating embeddings for {gcs_uri}.")
@@ -758,21 +778,8 @@ class GenerationService:
         if generated_videos:
             gcs_paths = [v.video.uri for v in generated_videos if v.video and v.video.uri] if generated_videos else []
 
-            credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
-            credentials.refresh(GoogleAuthRequest())
-            video_data = []
-            for uri in gcs_paths:
-                bucket_name, blob_name = uri[5:].split("/", 1)
-                bucket = self.storage_client.bucket(bucket_name)
-                blob = bucket.blob(blob_name)
-                signed_url = blob.generate_signed_url(
-                    version="v4",
-                    expiration=timedelta(minutes=60),
-                    method="GET",
-                    service_account_email=credentials.service_account_email,
-                    access_token=credentials.token,
-                )
-                video_data.append({"gcs_uri": uri, "signed_url": signed_url})
+            signed_urls_map = self._generate_signed_urls(gcs_paths)
+            video_data = [{"gcs_uri": uri, "signed_url": signed_urls_map.get(uri, "")} for uri in gcs_paths]
 
             return {
                 "message": "Video generation successful.",
@@ -866,21 +873,8 @@ class GenerationService:
 
                 gcs_paths.append(f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}")
 
-        credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
-        credentials.refresh(GoogleAuthRequest())
-        image_data = []
-        for uri in gcs_paths:
-            bucket_name, blob_name = uri[5:].split("/", 1)
-            bucket = self.storage_client.bucket(bucket_name)
-            blob = bucket.blob(blob_name)
-            signed_url = blob.generate_signed_url(
-                version="v4",
-                expiration=timedelta(minutes=60),
-                method="GET",
-                service_account_email=credentials.service_account_email,
-                access_token=credentials.token,
-            )
-            image_data.append({"gcs_uri": uri, "signed_url": signed_url})
+        signed_urls_map = self._generate_signed_urls(gcs_paths)
+        image_data = [{"gcs_uri": uri, "signed_url": signed_urls_map.get(uri, "")} for uri in gcs_paths]
 
         return {
             "message": "Image generation successful.",
@@ -903,6 +897,7 @@ class GenerationService:
             previous_image_gcs_paths: Optional[List[str]] = None,
             conversation_history: Optional[List[Dict[str, Any]]] = None,
             seed: int = 0,
+            resolution: str = '2K',
             **kwargs
     ) -> Dict[str, Any]:
         user_email = user_info.get('email', 'anonymous') if user_info else 'anonymous'
@@ -943,7 +938,9 @@ class GenerationService:
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE"],
                 image_config=types.ImageConfig(
-                    aspect_ratio=aspect_ratio
+                    aspect_ratio=aspect_ratio,
+                    image_size="1K",
+                    output_mime_type='image/png',
                 ),
                 seed=seed
             )
@@ -955,8 +952,9 @@ class GenerationService:
 
         gcs_paths = []
         rai_reasons = []
+        warnings = []
         resolution = None
-        image_data = []
+        image_resolutions = {}
 
         candidate = response.candidates[0]
         if candidate.safety_ratings:
@@ -968,10 +966,32 @@ class GenerationService:
             else:
                 rai_reasons.append({"code": candidate.safety_ratings.category, "description": "Unknown reason"})
         else:
+            upscale_factor = None
+            if resolution == '2K':
+                upscale_factor = 'x2'
+            elif resolution == '4K':
+                upscale_factor = 'x4'
+
             for part in candidate.content.parts:
                 if part.inline_data:
+                    image_bytes = part.inline_data.data
+
+                    if upscale_factor:
+                        try:
+                            # Upscale Image
+                            upscale = self.genai_client.models.upscale_image(
+                                model="imagen-4.0-upscale-preview",
+                                image=types.Image(image_bytes=image_bytes),
+                                upscale_factor=upscale_factor,
+                            )
+                            image_bytes = upscale.generated_images[0].image.image_bytes
+                            print(f"Upscale {upscale_factor} Completed.")
+                        except Exception as e:
+                            logger.error(f"Upscale failed: {e}")
+                            warnings.append(f"Upscale to {resolution} failed, returned original resolution. Error: {str(e)}")
+                    
                     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-                        pil_image = Image.open(BytesIO(part.inline_data.data))
+                        pil_image = Image.open(BytesIO(image_bytes))
                         resolution = f"{pil_image.width}x{pil_image.height}"
                         pil_image.save(temp_file.name)
                     user_folder = re.sub(r'[^a-zA-Z0-9_.-]', '_', user_email).lower()
@@ -980,17 +1000,16 @@ class GenerationService:
                     blob.upload_from_filename(temp_file.name)
                     gcs_path = f"gs://{settings.VIDEO_BUCKET_NAME}/{blob_name}"
                     gcs_paths.append(gcs_path)
+                    image_resolutions[gcs_path] = resolution
 
-                    credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/cloud-platform'])
-                    credentials.refresh(GoogleAuthRequest())
-                    signed_url = blob.generate_signed_url(
-                        version="v4",
-                        expiration=timedelta(minutes=60),
-                        method="GET",
-                        service_account_email=credentials.service_account_email,
-                        access_token=credentials.token,
-                    )
-                    image_data.append({"gcs_uri": gcs_path, "signed_url": signed_url, "resolution": resolution})
+        signed_urls_map = self._generate_signed_urls(gcs_paths)
+        image_data = []
+        for uri in gcs_paths:
+            image_data.append({
+                "gcs_uri": uri,
+                "signed_url": signed_urls_map.get(uri, ""),
+                "resolution": image_resolutions.get(uri)
+            })
 
         return {
             "message": "Image enrichment successful.",
@@ -1000,6 +1019,7 @@ class GenerationService:
             "model": model,
             "aspect_ratio": aspect_ratio,
             "rai_reasons": rai_reasons if rai_reasons else None,
+            "warnings": warnings if warnings else None,
             "gcs_paths": gcs_paths,
             "creative_project_id": kwargs.get('creative_project_id'),
             "input_token": input_token,

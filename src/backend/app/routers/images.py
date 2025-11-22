@@ -81,6 +81,7 @@ async def enrich_image(
     model: str = Form(...),
     sample_count: int = Form(1),
     aspect_ratio: str = Form("1:1"),
+    resolution: str = Form("2K"),
     creative_project_id: Optional[str] = Form(None),
     conversation_history: Optional[str] = Form(None),
     generation_service: GenerationService = Depends(get_generation_service),
@@ -113,6 +114,7 @@ async def enrich_image(
         "model": model,
         "sample_count": sample_count,
         "aspect_ratio": aspect_ratio,
+        "resolution": resolution,
         "creative_project_id": creative_project_id,
         "conversation_history": json.loads(conversation_history) if conversation_history else None,
         "trigger_time": datetime.now(timezone.utc)
@@ -136,11 +138,13 @@ async def enrich_image(
             "revised_prompt": kwargs.get("sub_prompt"),
             "model": kwargs.get("model"),
             "aspect_ratio": kwargs.get("aspect_ratio"),
+            "resolution": kwargs.get("resolution"),
             "rai_reasons": [],
             "gcs_paths": [],
             "creative_project_id": kwargs.get("creative_project_id"),
             "input_token": 0,
-            "output_token": 0
+            "output_token": 0,
+            "warnings": []
         }
         with ThreadPoolExecutor(max_workers=settings.MAX_WORKER_COUNT) as executor:
             futures = {executor.submit(generation_service.enrich_image, **kwargs, seed=i): i for i in range(sample_count)}
@@ -151,6 +155,7 @@ async def enrich_image(
                         all_results["images"].extend(result.get("images", []))
                         all_results["duration"] += result.get("duration", 0)
                         all_results["rai_reasons"].extend(result.get("rai_reasons", []) or [])
+                        all_results["warnings"].extend(result.get("warnings", []) or [])
                         all_results["gcs_paths"].extend(result.get("gcs_paths", []))
                         all_results["input_token"] += result.get("input_token", 0)
                         all_results["output_token"] += result.get("output_token", 0)
